@@ -19,6 +19,7 @@ import Mesas from './pages/Mesas';
 import Presentaciones from './pages/Presentaciones';
 import Habitaciones from './pages/Habitaciones';
 import Configuracion from './pages/Configuracion';
+import Minutograma from './pages/Minutograma';
 
 export default function App() {
   return (
@@ -74,6 +75,11 @@ export default function App() {
           <Route
             path="/habitaciones"
             element={<Habitaciones />}
+          />
+
+          <Route
+            path="/minutograma"
+            element={<Minutograma />}
           />
 
           <Route

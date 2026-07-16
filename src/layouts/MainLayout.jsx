@@ -29,6 +29,7 @@ import LoginRounded from '@mui/icons-material/LoginRounded';
 import LogoutRounded from '@mui/icons-material/LogoutRounded';
 import MenuRounded from '@mui/icons-material/MenuRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
+import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
 
 import {
   Outlet,
@@ -81,6 +82,11 @@ const items = [
     'Habitaciones',
     '/habitaciones',
     <HotelRounded />,
+  ],
+  [
+    'Minutograma',
+    '/minutograma',
+    <AccessTimeRounded />,
   ],
   [
     'Configuración',
