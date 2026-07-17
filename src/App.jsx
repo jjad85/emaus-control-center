@@ -23,6 +23,8 @@ import Mesas from './pages/Mesas';
 import Presentaciones from './pages/Presentaciones';
 import Habitaciones from './pages/Habitaciones';
 import Minutograma from './pages/Minutograma';
+import Campanero from './pages/Campanero';
+import PantallaPublica from './pages/PantallaPublica';
 import Configuracion from './pages/Configuracion';
 
 export default function App() {
@@ -38,11 +40,16 @@ export default function App() {
 
         <Route
           path="/registro"
-          element={
-            <RegistroAspirante />
-          }
+          element={<RegistroAspirante />}
         />
 
+        {/* Pantalla pública sin menú lateral ni autenticación */}
+        <Route
+          path="/pantalla-publica"
+          element={<PantallaPublica />}
+        />
+
+        {/* Rutas privadas dentro del layout principal */}
         <Route
           element={
             <PrivateRoute>
@@ -93,6 +100,11 @@ export default function App() {
           <Route
             path="/minutograma"
             element={<Minutograma />}
+          />
+
+          <Route
+            path="/campanero"
+            element={<Campanero />}
           />
 
           <Route
