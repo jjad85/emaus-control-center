@@ -9,17 +9,21 @@ import {
 } from './auth/AuthContext';
 
 import SessionAlert from './auth/SessionAlert';
+import PrivateRoute from './auth/PrivateRoute';
 
 import MainLayout from './layouts/MainLayout';
+import PublicHome from './pages/PublicHome';
+import RegistroAspirante from './pages/RegistroAspirante';
 import Dashboard from './pages/Dashboard';
+import Aspirantes from './pages/Aspirantes';
 import Equipos from './pages/Equipos';
 import Servidores from './pages/Servidores';
 import Caminantes from './pages/Caminantes';
 import Mesas from './pages/Mesas';
 import Presentaciones from './pages/Presentaciones';
 import Habitaciones from './pages/Habitaciones';
-import Configuracion from './pages/Configuracion';
 import Minutograma from './pages/Minutograma';
+import Configuracion from './pages/Configuracion';
 
 export default function App() {
   return (
@@ -28,21 +32,32 @@ export default function App() {
 
       <Routes>
         <Route
-          element={<MainLayout />}
-        >
-          <Route
-            index
-            element={
-              <Navigate
-                to="/dashboard"
-                replace
-              />
-            }
-          />
+          path="/"
+          element={<PublicHome />}
+        />
 
+        <Route
+          path="/registro"
+          element={
+            <RegistroAspirante />
+          }
+        />
+
+        <Route
+          element={
+            <PrivateRoute>
+              <MainLayout />
+            </PrivateRoute>
+          }
+        >
           <Route
             path="/dashboard"
             element={<Dashboard />}
+          />
+
+          <Route
+            path="/aspirantes"
+            element={<Aspirantes />}
           />
 
           <Route
@@ -67,9 +82,7 @@ export default function App() {
 
           <Route
             path="/presentaciones"
-            element={
-              <Presentaciones />
-            }
+            element={<Presentaciones />}
           />
 
           <Route
@@ -92,7 +105,7 @@ export default function App() {
           path="*"
           element={
             <Navigate
-              to="/dashboard"
+              to="/"
               replace
             />
           }

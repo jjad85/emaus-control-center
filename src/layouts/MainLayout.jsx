@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 
 import DashboardRounded from '@mui/icons-material/DashboardRounded';
+import AssignmentIndRounded from '@mui/icons-material/AssignmentIndRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
@@ -52,6 +53,11 @@ const items = [
     'Dashboard',
     '/dashboard',
     <DashboardRounded />,
+  ],
+  [
+    'Aspirantes',
+    '/aspirantes',
+    <AssignmentIndRounded />,
   ],
   [
     'Equipos',
