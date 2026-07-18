@@ -1,32 +1,34 @@
-# Dependencias
-node_modules/
+# ==========================================
+# FRONTEND
+# ==========================================
 
-# Build
-dist/
+Frontend/node_modules/
+Frontend/dist/
 
-# Variables de entorno
-.env
-.env.local
+Frontend/.env
+Frontend/.env.local
+Frontend/.env.development.local
+Frontend/.env.production.local
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# ==========================================
+# BACKEND
+# ==========================================
 
-# Sistema operativo
-.DS_Store
-Thumbs.db
+Backend/.clasprc.json
 
-# VS Code
+# Opcional: subir .clasp.json
+# Si eres el único desarrollador, yo SÍ lo subiría.
+# Backend/.clasp.json
+
+# ==========================================
+# VS CODE
+# ==========================================
+
 .vscode/
 
-# Archivos temporales
-*.tmp
-*.bak
+# ==========================================
+# SO
+# ==========================================
 
-# Variables locales de Vite
-.env.development.local
-.env.production.local
-
-# Archivos de pruebas
-coverage/
+Thumbs.db
+.DS_Store

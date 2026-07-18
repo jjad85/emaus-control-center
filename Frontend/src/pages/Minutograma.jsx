@@ -24,9 +24,14 @@ import {
   TrendingFlatRounded,
   TrendingUpRounded,
   ViewListRounded,
+  SwapHorizRounded,
+  ExpandMoreRounded,
 } from '@mui/icons-material';
 
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -43,6 +48,7 @@ import {
   Divider,
   Grid,
   LinearProgress,
+  Menu,
   MenuItem,
   Paper,
   Snackbar,
@@ -56,6 +62,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 
 import {
+  actualizarEstadoMinutogramaApi,
   editarActividadMinutogramaApi,
   finalizarActividadMinutogramaApi,
   iniciarActividadMinutogramaApi,
@@ -73,9 +80,9 @@ import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import DashboardMinutograma from '../components/minutograma/DashboardMinutograma';
 import EstadisticasMinutograma from '../components/minutograma/EstadisticasMinutograma';
-console.log("MINUTOGRAMA");
+
 const DIAS = ['Viernes', 'Sábado', 'Domingo'];
-const ESTADOS = ['Pendiente', 'En curso', 'Pausada', 'Finalizada', 'Cancelada'];
+const ESTADOS = ['Pendiente', 'En curso', 'Finalizada', 'Cancelada'];
 const PRIORIDADES = ['Alta', 'Media', 'Baja'];
 
 const FORM_INICIAL = {
@@ -661,30 +668,526 @@ function BotonesOperacion({
   );
 }
 
+function MenuEstado({
+  actividad,
+  puedeEstado,
+  onEstado,
+  loading,
+}) {
+  const [ancla, setAncla] = useState(null);
+  const abierto = Boolean(ancla);
+
+  const opciones = [
+    {
+      valor: 'Pendiente',
+      etiqueta: 'Pendiente',
+      color: 'primary',
+    },
+    {
+      valor: 'En curso',
+      etiqueta: 'En curso',
+      color: 'warning',
+    },
+    {
+      valor: 'Finalizada',
+      etiqueta: 'Finalizada',
+      color: 'success',
+    },
+    {
+      valor: 'Cancelada',
+      etiqueta: 'Cancelada',
+      color: 'error',
+    },
+  ];
+
+  if (!puedeEstado) {
+    return null;
+  }
+
+  return (
+    <>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<SwapHorizRounded />}
+        onClick={(event) => setAncla(event.currentTarget)}
+        disabled={loading}
+        sx={{
+          minWidth: 110,
+          textTransform: 'none',
+          fontWeight: 800,
+        }}
+      >
+        Estado
+      </Button>
+
+      <Menu
+        anchorEl={ancla}
+        open={abierto}
+        onClose={() => setAncla(null)}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 190,
+              borderRadius: 2.5,
+            },
+          },
+        }}
+      >
+        {opciones.map((opcion) => {
+          const seleccionado =
+            normalizar(actividad.estado) ===
+            normalizar(opcion.valor);
+
+          return (
+            <MenuItem
+              key={opcion.valor}
+              selected={seleccionado}
+              onClick={() => {
+                setAncla(null);
+
+                if (!seleccionado) {
+                  onEstado(
+                    actividad,
+                    opcion.valor
+                  );
+                }
+              }}
+              sx={{
+                gap: 1,
+                fontWeight: seleccionado
+                  ? 850
+                  : 600,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: `${opcion.color}.main`,
+                  flexShrink: 0,
+                }}
+              />
+
+              {opcion.etiqueta}
+            </MenuItem>
+          );
+        })}
+      </Menu>
+    </>
+  );
+}
+
+function TarjetaActividad({
+  actividad,
+  puedeEditar,
+  puedeEstado,
+  onEditar,
+  onEstado,
+  loading,
+}) {
+  const estado = normalizar(
+    actividad.estado
+  );
+
+  const estilo =
+    estado === 'en curso'
+      ? {
+          borde: 'warning.main',
+          fondo: 'warning.50',
+          opacidad: 1,
+        }
+      : estado === 'finalizada'
+        ? {
+            borde: 'success.main',
+            fondo: 'action.hover',
+            opacidad: 0.76,
+          }
+        : estado === 'cancelada'
+          ? {
+              borde: 'error.main',
+              fondo: 'error.50',
+              opacidad: 0.7,
+            }
+          : {
+              borde: 'primary.main',
+              fondo: 'background.paper',
+              opacidad: 1,
+            };
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        borderRadius: 2.5,
+        borderLeft: 5,
+        borderLeftColor: estilo.borde,
+        bgcolor: estilo.fondo,
+        opacity: estilo.opacidad,
+        transition:
+          'opacity .2s ease, background-color .2s ease',
+      }}
+    >
+      <Stack
+        direction={{
+          xs: 'column',
+          md: 'row',
+        }}
+        justifyContent="space-between"
+        gap={2}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Stack
+            direction="row"
+            gap={1}
+            flexWrap="wrap"
+            alignItems="center"
+          >
+            <Typography
+              variant="h6"
+              fontWeight={850}
+              sx={{
+                overflowWrap: 'anywhere',
+                textDecoration:
+                  estado === 'finalizada'
+                    ? 'line-through'
+                    : 'none',
+              }}
+            >
+              {actividad.actividad}
+            </Typography>
+
+            <EstadoChip
+              estado={actividad.estado}
+            />
+          </Stack>
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row',
+            }}
+            gap={{
+              xs: 0.5,
+              sm: 2,
+            }}
+            mt={1}
+          >
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              <ScheduleRounded
+                sx={{
+                  fontSize: 17,
+                  verticalAlign: 'middle',
+                  mr: 0.5,
+                }}
+              />
+              {formatoHora(
+                actividad.horaInicio
+              )}{' '}
+              –{' '}
+              {formatoHora(
+                actividad.horaFin
+              )}{' '}
+              · {actividad.duracionMinutos}{' '}
+              min
+            </Typography>
+
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              <PersonRounded
+                sx={{
+                  fontSize: 17,
+                  verticalAlign: 'middle',
+                  mr: 0.5,
+                }}
+              />
+              {actividad.responsable}
+            </Typography>
+
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              <LocationOnRounded
+                sx={{
+                  fontSize: 17,
+                  verticalAlign: 'middle',
+                  mr: 0.5,
+                }}
+              />
+              {actividad.lugar}
+            </Typography>
+          </Stack>
+
+          {actividad.observaciones && (
+            <Typography
+              variant="body2"
+              mt={1}
+            >
+              {actividad.observaciones}
+            </Typography>
+          )}
+        </Box>
+
+        <Stack
+          direction={{
+            xs: 'column',
+            sm: 'row',
+          }}
+          gap={1}
+          alignItems={{
+            sm: 'center',
+          }}
+          sx={{
+            flexShrink: 0,
+          }}
+        >
+          {puedeEditar && (
+            <Button
+              size="small"
+              startIcon={<EditRounded />}
+              onClick={() =>
+                onEditar(actividad)
+              }
+              disabled={loading}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 800,
+              }}
+            >
+              Editar
+            </Button>
+          )}
+
+          <MenuEstado
+            actividad={actividad}
+            puedeEstado={puedeEstado}
+            onEstado={onEstado}
+            loading={loading}
+          />
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
+function AcordeonActividades({
+  titulo,
+  color,
+  actividades,
+  expandido,
+  onCambiar,
+  ...props
+}) {
+  return (
+    <Accordion
+      expanded={expandido}
+      onChange={onCambiar}
+      disableGutters
+      elevation={0}
+      sx={{
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: '12px !important',
+        overflow: 'hidden',
+        '&::before': {
+          display: 'none',
+        },
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreRounded />}
+        sx={{
+          minHeight: 64,
+          bgcolor: `${color}.50`,
+          borderLeft: 6,
+          borderLeftColor: `${color}.main`,
+          '& .MuiAccordionSummary-content': {
+            alignItems: 'center',
+            gap: 1,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            width: 12,
+            height: 12,
+            borderRadius: '50%',
+            bgcolor: `${color}.main`,
+            flexShrink: 0,
+          }}
+        />
+
+        <Typography
+          variant="subtitle1"
+          fontWeight={900}
+          sx={{ flexGrow: 1 }}
+        >
+          {titulo}
+        </Typography>
+
+        <Chip
+          size="small"
+          label={actividades.length}
+          color={color}
+          variant="filled"
+          sx={{
+            minWidth: 38,
+            fontWeight: 900,
+          }}
+        />
+      </AccordionSummary>
+
+      <AccordionDetails
+        sx={{
+          p: {
+            xs: 1.25,
+            md: 2,
+          },
+          bgcolor: 'background.default',
+        }}
+      >
+        {actividades.length ? (
+          <Stack spacing={1.25}>
+            {actividades.map((actividad) => (
+              <TarjetaActividad
+                key={actividad.id}
+                actividad={actividad}
+                {...props}
+              />
+            ))}
+          </Stack>
+        ) : (
+          <Alert
+            severity="info"
+            variant="outlined"
+          >
+            No hay actividades en este estado.
+          </Alert>
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 function VistaTabla(props) {
   const { actividades } = props;
+
+  const grupos = useMemo(() => {
+    const ordenadas = [...actividades].sort(
+      (a, b) =>
+        minutosDesdeHora(a.horaInicio) -
+        minutosDesdeHora(b.horaInicio)
+    );
+
+    return {
+      enCurso: ordenadas.filter(
+        (item) =>
+          normalizar(item.estado) === 'en curso'
+      ),
+      pendientes: ordenadas.filter(
+        (item) =>
+          normalizar(item.estado) === 'pendiente'
+      ),
+      finalizadas: ordenadas.filter(
+        (item) =>
+          normalizar(item.estado) === 'finalizada'
+      ),
+      canceladas: ordenadas.filter(
+        (item) =>
+          normalizar(item.estado) === 'cancelada'
+      ),
+    };
+  }, [actividades]);
+
+  const [acordeones, setAcordeones] = useState({
+    enCurso: true,
+    pendientes: true,
+    finalizadas: false,
+    canceladas: false,
+  });
+
+  useEffect(() => {
+    if (grupos.enCurso.length > 0) {
+      setAcordeones((actual) => ({
+        ...actual,
+        enCurso: true,
+      }));
+      return;
+    }
+
+    if (grupos.pendientes.length > 0) {
+      setAcordeones((actual) => ({
+        ...actual,
+        pendientes: true,
+      }));
+    }
+  }, [
+    grupos.enCurso.length,
+    grupos.pendientes.length,
+  ]);
+
+  function cambiarAcordeon(nombre) {
+    return (_event, expandido) => {
+      setAcordeones((actual) => ({
+        ...actual,
+        [nombre]: expandido,
+      }));
+    };
+  }
+
+  if (!actividades.length) {
+    return (
+      <Alert severity="info">
+        No hay actividades para mostrar.
+      </Alert>
+    );
+  }
+
   return (
     <Stack spacing={1.5}>
-      {actividades.map((actividad) => (
-        <Paper key={actividad.id} variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2}>
-            <Box sx={{ minWidth: 0 }}>
-              <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
-                <Typography variant="h6" fontWeight={850} sx={{ overflowWrap: 'anywhere' }}>{actividad.actividad}</Typography>
-                <EstadoChip estado={actividad.estado} />
-              </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} gap={{ xs: 0.5, sm: 2 }} mt={1}>
-                <Typography variant="body2" color="text.secondary"><ScheduleRounded sx={{ fontSize: 17, verticalAlign: 'middle', mr: 0.5 }} />{formatoHora(actividad.horaInicio)} – {formatoHora(actividad.horaFin)} · {actividad.duracionMinutos} min</Typography>
-                <Typography variant="body2" color="text.secondary"><PersonRounded sx={{ fontSize: 17, verticalAlign: 'middle', mr: 0.5 }} />{actividad.responsable}</Typography>
-                <Typography variant="body2" color="text.secondary"><LocationOnRounded sx={{ fontSize: 17, verticalAlign: 'middle', mr: 0.5 }} />{actividad.lugar}</Typography>
-              </Stack>
-              {actividad.observaciones && <Typography variant="body2" mt={1}>{actividad.observaciones}</Typography>}
-            </Box>
-            <BotonesOperacion {...props} actividad={actividad} />
-          </Stack>
-        </Paper>
-      ))}
-      {actividades.length === 0 && <Alert severity="info">No hay actividades para mostrar.</Alert>}
+      <AcordeonActividades
+        {...props}
+        titulo="En curso"
+        color="warning"
+        actividades={grupos.enCurso}
+        expandido={acordeones.enCurso}
+        onCambiar={cambiarAcordeon('enCurso')}
+      />
+
+      <AcordeonActividades
+        {...props}
+        titulo="Por iniciar"
+        color="primary"
+        actividades={grupos.pendientes}
+        expandido={acordeones.pendientes}
+        onCambiar={cambiarAcordeon('pendientes')}
+      />
+
+      <AcordeonActividades
+        {...props}
+        titulo="Finalizadas"
+        color="success"
+        actividades={grupos.finalizadas}
+        expandido={acordeones.finalizadas}
+        onCambiar={cambiarAcordeon('finalizadas')}
+      />
+
+      <AcordeonActividades
+        {...props}
+        titulo="Canceladas"
+        color="error"
+        actividades={grupos.canceladas}
+        expandido={acordeones.canceladas}
+        onCambiar={cambiarAcordeon('canceladas')}
+      />
     </Stack>
   );
 }
@@ -1281,64 +1784,6 @@ export default function Minutograma() {
     return item.dia === dia && (estado === 'en curso' || estado === 'pausada');
   });
 
-  useEffect(() => {
-    if (!actividadEnCurso || alertaProcesando || alertaVisible) return;
-
-    const alerta = construirAlertaPendiente(
-      actividadEnCurso,
-      ahoraMs,
-      configuracionAlertas
-    );
-
-    if (!alerta) return;
-
-    let cancelado = false;
-
-    async function procesarAlerta() {
-      setAlertaProcesando(true);
-
-      try {
-        if (configuracionAlertas.sonido) emitirSonido(alerta.tipo);
-        if (configuracionAlertas.voz) hablarAlerta(alerta.voz);
-        if (configuracionAlertas.vibracion && navigator.vibrate) {
-          navigator.vibrate(alerta.tipo === 'AGOTADO' ? [300, 150, 300] : [180]);
-        }
-
-        if (token && (puede('INICIAR_ACTIVIDAD_MINUTOGRAMA') || puede('FINALIZAR_ACTIVIDAD_MINUTOGRAMA'))) {
-          await registrarAlertaMinutogramaApi(
-            token,
-            actividadEnCurso.id,
-            alerta.tipo,
-            alerta.mensaje
-          );
-          await api.reload();
-        }
-
-        if (!cancelado) {
-          setAlertaVisible({ ...alerta, actividad: actividadEnCurso });
-        }
-      } catch (error) {
-        if (!cancelado) {
-          setErrorAccion(error.message || 'No fue posible registrar la alerta.');
-          setAlertaVisible({ ...alerta, actividad: actividadEnCurso });
-        }
-      } finally {
-        if (!cancelado) setAlertaProcesando(false);
-      }
-    }
-
-    procesarAlerta();
-    return () => { cancelado = true; };
-  }, [
-    actividadEnCurso?.id,
-    actividadEnCurso?.estado,
-    actividadEnCurso?.alertasEmitidas,
-    ahoraMs,
-    configuracionAlertas,
-    alertaProcesando,
-    alertaVisible,
-    token,
-  ]);
 
   const filtradas = useMemo(
     () => actividades.filter((item) => !dia || item.dia === dia),
@@ -1351,6 +1796,7 @@ export default function Minutograma() {
 
   const puedeRegistrar = puede('REGISTRAR_ACTIVIDAD_MINUTOGRAMA');
   const puedeEditar = puede('EDITAR_ACTIVIDAD_MINUTOGRAMA');
+  const puedeEstado = puede('ACTUALIZAR_ESTADO_MINUTOGRAMA');
   const puedeIniciar = puede('INICIAR_ACTIVIDAD_MINUTOGRAMA');
   const puedePausar = puede('PAUSAR_ACTIVIDAD_MINUTOGRAMA');
   const puedeReanudar = puede('REANUDAR_ACTIVIDAD_MINUTOGRAMA');
@@ -1383,6 +1829,61 @@ export default function Minutograma() {
       setDialogOpen(false);
       setSeleccionada(null);
     }, seleccionada ? 'Actividad actualizada correctamente.' : 'Actividad registrada correctamente.');
+  }
+
+  async function cambiarEstado(
+    actividad,
+    nuevoEstado
+  ) {
+    const estadoNormalizado =
+      normalizar(nuevoEstado);
+
+    if (estadoNormalizado === 'en curso') {
+      const otraEnCurso =
+        actividades.find(
+          (item) =>
+            item.id !== actividad.id &&
+            item.dia === actividad.dia &&
+            normalizar(item.estado) ===
+              'en curso'
+        );
+
+      if (otraEnCurso) {
+        const continuar =
+          window.confirm(
+            `Ya existe una actividad en curso:\n\n${otraEnCurso.actividad}\n\n¿Deseas marcarla como Finalizada y comenzar "${actividad.actividad}"?`
+          );
+
+        if (!continuar) {
+          return;
+        }
+
+        const anteriorFinalizada =
+          await ejecutarAccion(
+            () =>
+              actualizarEstadoMinutogramaApi(
+                token,
+                otraEnCurso.id,
+                'Finalizada'
+              ),
+            `Actividad finalizada: ${otraEnCurso.actividad}`
+          );
+
+        if (!anteriorFinalizada) {
+          return;
+        }
+      }
+    }
+
+    await ejecutarAccion(
+      () =>
+        actualizarEstadoMinutogramaApi(
+          token,
+          actividad.id,
+          nuevoEstado
+        ),
+      `Estado actualizado: ${actividad.actividad} · ${nuevoEstado}`
+    );
   }
 
   function iniciarActividad(actividad) {
@@ -1429,18 +1930,12 @@ export default function Minutograma() {
 
   const propsOperacion = {
     puedeEditar,
-    puedeIniciar,
-    puedePausar,
-    puedeReanudar,
-    puedeFinalizar,
+    puedeEstado,
     onEditar: (actividad) => {
       setSeleccionada(actividad);
       setDialogOpen(true);
     },
-    onIniciar: iniciarActividad,
-    onPausar: pausarActividad,
-    onReanudar: reanudarActividad,
-    onFinalizar: solicitarFinalizacion,
+    onEstado: cambiarEstado,
     loading: guardando,
   };
 
@@ -1449,7 +1944,7 @@ export default function Minutograma() {
       <PageHeader
         eyebrow="Operación del retiro"
         title="Minutograma"
-        subtitle="Programación, control y seguimiento en tiempo real"
+        subtitle="Programación, consulta y seguimiento de las actividades del retiro"
         onRefresh={api.reload}
         loading={api.loading}
       />
@@ -1469,26 +1964,6 @@ export default function Minutograma() {
             ))}
           </Stack>
 
-          <Stack direction="row" gap={1} flexWrap="wrap">
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={configuracionAlertas.alertasActivas ? <NotificationsActiveRounded /> : <NotificationsOffRounded />}
-              onClick={() => setConfiguracionOpen(true)}
-            >
-              Alertas
-            </Button>
-            {(puedeIniciar || puedeFinalizar) && (
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<FullscreenRounded />}
-                onClick={() => setModoCampanero(true)}
-              >
-                Modo Campanero
-              </Button>
-            )}
-          </Stack>
         </Stack>
 
         <DashboardMinutograma actividades={actividades} dia={dia} ahoraMs={ahoraMs} />
@@ -1499,8 +1974,6 @@ export default function Minutograma() {
           <Tabs value={vista} onChange={(_, valor) => setVista(valor)} variant="scrollable" scrollButtons="auto">
             <Tab value="tabla" icon={<ViewListRounded />} iconPosition="start" label="Tabla" />
             <Tab value="gantt" icon={<TimelineRounded />} iconPosition="start" label="Cronograma" />
-            <Tab value="vivo" icon={<PlayArrowRounded />} iconPosition="start" label="En vivo" />
-            <Tab value="estadisticas" icon={<AssessmentRounded />} iconPosition="start" label="Estadísticas" />
           </Tabs>
 
           {puedeRegistrar && (
@@ -1520,8 +1993,6 @@ export default function Minutograma() {
 
         {vista === 'tabla' && <VistaTabla actividades={filtradas} {...propsOperacion} />}
         {vista === 'gantt' && <VistaGantt actividades={actividades} dia={dia} />}
-        {vista === 'vivo' && <VistaEnVivo actividades={actividades} dia={dia} ahoraMs={ahoraMs} {...propsOperacion} />}
-        {vista === 'estadisticas' && <EstadisticasMinutograma actividades={actividades} dia={dia} />}
       </Stack>
 
       <ActividadDialog
@@ -1533,39 +2004,6 @@ export default function Minutograma() {
         onSubmit={guardarActividad}
         actividad={seleccionada}
         loading={guardando}
-      />
-
-      <ConfirmarFinalizacionDialog
-        open={Boolean(actividadPorFinalizar)}
-        actividad={actividadPorFinalizar}
-        ahoraMs={ahoraMs}
-        loading={guardando}
-        onClose={() => setActividadPorFinalizar(null)}
-        onConfirmar={confirmarFinalizacion}
-      />
-
-      <ConfiguracionAlertasDialog
-        open={configuracionOpen}
-        configuracion={configuracionAlertas}
-        onClose={() => setConfiguracionOpen(false)}
-        onChange={(clave, valor) => {
-          setConfiguracionAlertas((actual) => ({ ...actual, [clave]: valor }));
-        }}
-      />
-
-      <ModoCampanero
-        open={modoCampanero}
-        actividades={actividades}
-        dia={dia}
-        ahoraMs={ahoraMs}
-        onClose={() => setModoCampanero(false)}
-        propsOperacion={propsOperacion}
-      />
-
-      <AlertaPantallaCompleta
-        alerta={alertaVisible}
-        actividad={alertaVisible?.actividad}
-        onClose={() => setAlertaVisible(null)}
       />
 
       <Snackbar open={Boolean(mensaje)} autoHideDuration={3500} onClose={() => setMensaje('')}>
