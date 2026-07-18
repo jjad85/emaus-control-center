@@ -53,6 +53,7 @@ import { useMediaQuery, useTheme } from '@mui/material';
 import { useAuth } from '../auth/AuthContext';
 import LoginDialog from '../auth/LoginDialog';
 import NotificationBell from '../components/NotificationBell';
+import FooterSistema from '../components/FooterSistema';
 
 import { obtenerConfiguraciones } from '../api/configuracionesApi';
 import { useApi } from '../hooks/useApi';
@@ -380,9 +381,16 @@ function MenuLateral({
                   component="div"
                   disablePadding
                   sx={{
-                    mt: 0.25,
-                    ml: 1,
-                    pl: 0.5,
+                    mt: 0.5,
+                    ml: 2.25,
+                    pl: 1.25,
+                    pr: 0.5,
+                    py: 0.5,
+                    borderLeft:
+                      '2px solid rgba(159,208,195,.28)',
+                    borderRadius: 1.5,
+                    bgcolor:
+                      'rgba(255,255,255,.025)',
                   }}
                 >
                   {grupo.items.map((item) => {
@@ -400,17 +408,32 @@ function MenuLateral({
                           navegar(item.path)
                         }
                         sx={{
-                          minHeight: 42,
-                          borderRadius: 2,
-                          mb: 0.25,
-                          pl: 1,
+                          minHeight: 40,
+                          borderRadius: 1.75,
+                          mb: 0.35,
+                          pl: 1.25,
+                          pr: 1,
+                          color: seleccionado
+                            ? '#fff'
+                            : 'rgba(255,255,255,.76)',
+                          transition:
+                            'background-color .18s ease, transform .18s ease, color .18s ease',
+                          '&:hover': {
+                            bgcolor:
+                              'rgba(255,255,255,.08)',
+                            color: '#fff',
+                            transform:
+                              'translateX(2px)',
+                          },
                           '&.Mui-selected': {
                             bgcolor:
-                              'rgba(255,255,255,.14)',
+                              'rgba(159,208,195,.18)',
+                            boxShadow:
+                              'inset 3px 0 0 #9fd0c3',
                           },
                           '&.Mui-selected:hover': {
                             bgcolor:
-                              'rgba(255,255,255,.18)',
+                              'rgba(159,208,195,.24)',
                           },
                         }}
                       >
@@ -418,10 +441,10 @@ function MenuLateral({
                           sx={{
                             color: seleccionado
                               ? '#9fd0c3'
-                              : 'rgba(255,255,255,.82)',
-                            minWidth: 36,
+                              : 'rgba(255,255,255,.66)',
+                            minWidth: 34,
                             '& .MuiSvgIcon-root': {
-                              fontSize: 20,
+                              fontSize: 18,
                             },
                           }}
                         >
@@ -431,9 +454,10 @@ function MenuLateral({
                         <ListItemText
                           primary={item.label}
                           primaryTypographyProps={{
-                            fontSize: 14.5,
+                            fontSize: 13.75,
+                            letterSpacing: 0.1,
                             fontWeight: seleccionado
-                              ? 850
+                              ? 800
                               : 500,
                           }}
                         />
@@ -778,6 +802,8 @@ export default function MainLayout() {
         sx={{
           flex: 1,
           minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
           width: {
             xs: '100%',
             md:
@@ -823,21 +849,30 @@ export default function MainLayout() {
 
         <Box
           sx={{
+            flex: 1,
+            width: '100%',
             px: { xs: 0, md: 4 },
             pb: { xs: 0, md: 4 },
           }}
         >
-        {configuracionApi.error && (
-          <Alert
-            severity="warning"
-            sx={{ mb: 2 }}
-          >
-            No fue posible cargar la configuración del retiro.
-          </Alert>
-        )}
+          {configuracionApi.error && (
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+            >
+              No fue posible cargar la configuración del retiro.
+            </Alert>
+          )}
 
-        <Outlet />
+          <Outlet />
         </Box>
+
+        <FooterSistema
+          autor={configuracion.sistemaAutor}
+          version={configuracion.sistemaVersion}
+          contacto={configuracion.sistemaContactoAutor}
+          anio={configuracion.anioRetiro}
+        />
       </Box>
 
       <LoginDialog />
