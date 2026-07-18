@@ -372,7 +372,13 @@ export default function Caminantes() {
       setCancelDialogOpen(false);
       setMotivoCancelacion('');
       setMensaje(
-        'La participación del caminante fue cancelada correctamente.'
+        'La participación fue cancelada. La notificación de WhatsApp quedó pendiente en la campana.'
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          'emaus:notificaciones-actualizar'
+        )
       );
       await api.reload();
     } finally {

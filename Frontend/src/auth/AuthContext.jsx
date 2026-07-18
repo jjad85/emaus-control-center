@@ -16,6 +16,7 @@ import {
 
 import {
   eliminarSesionLocal,
+  escucharCambiosSesion,
   guardarSesionLocal,
   leerSesionLocal,
 } from './sessionStorage';
@@ -197,6 +198,47 @@ export function AuthProvider({
       }
     );
   }, [expirarSesion]);
+
+  /*
+   * Sincroniza login, logout y cambio de usuario entre pestañas.
+   *
+   * - Si otra pestaña inicia sesión, esta pestaña adopta la misma sesión.
+   * - Si otra pestaña cierra sesión, esta también se cierra.
+   * - No pueden quedar dos usuarios distintos activos en el mismo navegador.
+   */
+  useEffect(() => {
+    return escucharCambiosSesion(
+      (sesionCompartida) => {
+        limpiarTemporizadores();
+        setPendingAction(null);
+        setAvisoSesion('');
+        setMensajeSesion('');
+
+        if (
+          sesionCompartida?.token
+        ) {
+          setSesion(
+            sesionCompartida
+          );
+
+          setLoginOpen(false);
+
+          programarExpiracion(
+            sesionCompartida
+              .fechaExpiracion
+          );
+
+          return;
+        }
+
+        setSesion(null);
+        setLoginOpen(false);
+      }
+    );
+  }, [
+    limpiarTemporizadores,
+    programarExpiracion,
+  ]);
 
   useEffect(() => {
     let activo = true;

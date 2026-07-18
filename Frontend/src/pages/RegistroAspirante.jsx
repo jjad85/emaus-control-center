@@ -41,6 +41,10 @@ import {
 } from '../api/publicApi';
 
 import { useApi } from '../hooks/useApi';
+import CelularField from '../components/CelularField';
+import {
+  esCelularColombiaValido,
+} from '../utils/celularUtils';
 
 const PASOS = [
   'Información personal',
@@ -259,7 +263,13 @@ export default function RegistroAspirante() {
           form.fechaNacimiento &&
           form.edad &&
           form.barrio &&
-          form.celular &&
+          esCelularColombiaValido(
+            form.celular,
+            {
+              requerido: true,
+              etiqueta: 'El celular',
+            }
+          ) &&
           form.estadoCivil
         );
       }
@@ -285,9 +295,23 @@ export default function RegistroAspirante() {
         return Boolean(
           form.contacto1Nombre &&
           form.contacto1Parentesco &&
-          form.contacto1Celular &&
+          esCelularColombiaValido(
+            form.contacto1Celular,
+            {
+              requerido: true,
+              etiqueta:
+                'El celular del contacto 1',
+            }
+          ) &&
           form.contacto2Nombre &&
-          form.contacto2Celular
+          esCelularColombiaValido(
+            form.contacto2Celular,
+            {
+              requerido: true,
+              etiqueta:
+                'El celular del contacto 2',
+            }
+          )
         );
       }
 
@@ -701,7 +725,7 @@ export default function RegistroAspirante() {
                     sm: 6,
                   }}
                 >
-                  <Campo
+                  <CelularField
                     label="Celular"
                     value={form.celular}
                     onChange={(valor) =>
@@ -1006,8 +1030,8 @@ export default function RegistroAspirante() {
                     sm: 3,
                   }}
                 >
-                  <Campo
-                    label="Celular"
+                  <CelularField
+                    label="Celular del contacto 1"
                     value={form.contacto1Celular}
                     onChange={(valor) =>
                       cambiar(
@@ -1071,8 +1095,8 @@ export default function RegistroAspirante() {
                     sm: 3,
                   }}
                 >
-                  <Campo
-                    label="Celular"
+                  <CelularField
+                    label="Celular del contacto 2"
                     value={form.contacto2Celular}
                     onChange={(valor) =>
                       cambiar(
@@ -1141,7 +1165,7 @@ export default function RegistroAspirante() {
                       sm: 6,
                     }}
                   >
-                    <Campo
+                    <CelularField
                       label="Celular de quien lo invitó"
                       value={form.celularPersonaInvito}
                       onChange={(valor) =>

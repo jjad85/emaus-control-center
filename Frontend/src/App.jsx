@@ -26,6 +26,7 @@ import Minutograma from './pages/Minutograma';
 import Campanero from './pages/Campanero';
 import PantallaPublica from './pages/PantallaPublica';
 import Configuracion from './pages/Configuracion';
+import NotificacionesWhatsApp from './pages/NotificacionesWhatsApp';
 
 export default function App() {
   return (
@@ -110,6 +111,11 @@ export default function App() {
           <Route
             path="/configuracion"
             element={<Configuracion />}
+          />
+
+          <Route
+            path="/notificaciones-whatsapp"
+            element={<NotificacionesWhatsApp />}
           />
         </Route>
 

@@ -19,6 +19,12 @@ import {
   useState,
 } from 'react';
 
+import CelularField from '../CelularField';
+import {
+  esCelularColombiaValido,
+  normalizarCelularColombia,
+} from '../../utils/celularUtils';
+
 const FORM_INICIAL = {
   nombre: '',
   telefono: '',
@@ -60,7 +66,9 @@ export default function CaminanteFormDialog({
         nombre:
           caminante.nombre || '',
         telefono:
-          caminante.telefono || '',
+          normalizarCelularColombia(
+            caminante.telefono || ''
+          ),
         tallaCamiseta:
           caminante.tallaCamiseta || '',
         estadoPago:
@@ -75,9 +83,11 @@ export default function CaminanteFormDialog({
           caminante.contacto ||
           '',
         telefonoContacto:
-          caminante.contacto?.telefono ||
-          caminante.telefonoContacto ||
-          '',
+          normalizarCelularColombia(
+            caminante.contacto?.telefono ||
+            caminante.telefonoContacto ||
+            ''
+          ),
         carta:
           caminante.entregables?.carta ||
           caminante.carta ||
@@ -133,9 +143,23 @@ export default function CaminanteFormDialog({
     () =>
       Boolean(
         form.nombre.trim() &&
-        form.telefono.trim() &&
+        esCelularColombiaValido(
+          form.telefono,
+          {
+            requerido: true,
+            etiqueta:
+              'El celular del caminante',
+          }
+        ) &&
         form.contacto.trim() &&
-        form.telefonoContacto.trim()
+        esCelularColombiaValido(
+          form.telefonoContacto,
+          {
+            requerido: true,
+            etiqueta:
+              'El celular del contacto',
+          }
+        )
       ),
     [form]
   );
@@ -237,16 +261,15 @@ export default function CaminanteFormDialog({
                 md: 4,
               }}
             >
-              <TextField
-                label="Teléfono"
+              <CelularField
+                label="Celular del caminante"
                 value={form.telefono}
-                onChange={(e) =>
+                onChange={(valor) =>
                   actualizarCampo(
                     'telefono',
-                    e.target.value
+                    valor
                   )
                 }
-                fullWidth
                 required
               />
             </Grid>
@@ -435,18 +458,17 @@ export default function CaminanteFormDialog({
                 md: 4,
               }}
             >
-              <TextField
-                label="Teléfono del contacto"
+              <CelularField
+                label="Celular del contacto"
                 value={
                   form.telefonoContacto
                 }
-                onChange={(e) =>
+                onChange={(valor) =>
                   actualizarCampo(
                     'telefonoContacto',
-                    e.target.value
+                    valor
                   )
                 }
-                fullWidth
                 required
               />
             </Grid>

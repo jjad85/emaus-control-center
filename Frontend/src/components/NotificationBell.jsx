@@ -19,6 +19,7 @@ import {
 import NotificationsRounded from '@mui/icons-material/NotificationsRounded';
 import AssignmentIndRounded from '@mui/icons-material/AssignmentIndRounded';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
+import WhatsApp from '@mui/icons-material/WhatsApp';
 
 import {
   useCallback,
@@ -55,7 +56,11 @@ export default function NotificationBell({ modo = 'desktop' }) {
   const puedeConsultar =
     !authLoading &&
     autenticado &&
-    tienePermiso('CONVERTIR_ASPIRANTE');
+    (
+      tienePermiso('CONVERTIR_ASPIRANTE') ||
+      tienePermiso('NOTIFICAR_ASPIRANTE') ||
+      tienePermiso('NOTIFICAR_CAMINANTE')
+    );
 
   const cargar = useCallback(async () => {
     if (!puedeConsultar || !token) {
@@ -283,9 +288,18 @@ export default function NotificationBell({ modo = 'desktop' }) {
                   sx={{ px: 2, py: 1.5, alignItems: 'flex-start' }}
                 >
                   <ListItemIcon
-                    sx={{ minWidth: 38, color: 'warning.main', mt: 0.25 }}
+                    sx={{
+                      minWidth: 38,
+                      color:
+                        item.tipo === 'whatsapp'
+                          ? 'success.main'
+                          : 'warning.main',
+                      mt: 0.25,
+                    }}
                   >
-                    <AssignmentIndRounded />
+                    {item.tipo === 'whatsapp'
+                      ? <WhatsApp />
+                      : <AssignmentIndRounded />}
                   </ListItemIcon>
                   <ListItemText
                     primary={item.titulo}

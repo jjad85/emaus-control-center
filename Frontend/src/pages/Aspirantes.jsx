@@ -47,6 +47,7 @@ import { useApi } from '../hooks/useApi';
 import ErrorState from '../components/ErrorState';
 import LoadingState from '../components/LoadingState';
 import PageHeader from '../components/PageHeader';
+import WhatsAppNotifyButton from '../components/WhatsAppNotifyButton';
 
 function colorEstado(estado) {
   const valor = String(estado || '').toLowerCase();
@@ -359,7 +360,14 @@ function coincideBusqueda(aspirante, busqueda) {
   );
 }
 
-function TarjetaAspirante({ item, onVerDetalle, colorBorde }) {
+function TarjetaAspirante({
+  item,
+  onVerDetalle,
+  colorBorde,
+  token,
+  puedeNotificar,
+  onNotificacionCompletada,
+}) {
   return (
     <Paper
       variant="outlined"
@@ -460,16 +468,42 @@ function TarjetaAspirante({ item, onVerDetalle, colorBorde }) {
           </Box>
         </Box>
 
-        <Button
-          startIcon={<VisibilityRounded />}
-          onClick={() => onVerDetalle(item)}
+        <Stack
+          spacing={1}
           sx={{
-            alignSelf: { xs: 'flex-start', md: 'center' },
-            whiteSpace: 'nowrap',
+            alignSelf: { xs: 'stretch', md: 'center' },
+            minWidth: { md: 205 },
           }}
         >
-          Ver detalle
-        </Button>
+          {puedeNotificar &&
+            (item.whatsappNotificaciones || []).map(
+              (notificacion) => (
+                <WhatsAppNotifyButton
+                  key={notificacion.id}
+                  token={token}
+                  notificacion={notificacion}
+                  label={
+                    notificacion.tipo === 'INSCRIPCION'
+                      ? 'Notificar preinscripción'
+                      : notificacion.tipo === 'APROBACION'
+                        ? 'Notificar aceptación'
+                        : 'Notificar'
+                  }
+                  onCompleted={onNotificacionCompletada}
+                  fullWidth
+                />
+              )
+            )}
+
+          <Button
+            startIcon={<VisibilityRounded />}
+            onClick={() => onVerDetalle(item)}
+            fullWidth
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Ver detalle
+          </Button>
+        </Stack>
       </Stack>
     </Paper>
   );
@@ -485,6 +519,9 @@ function GrupoAspirantes({
   color,
   mensajeVacio,
   onVerDetalle,
+  token,
+  puedeNotificar,
+  onNotificacionCompletada,
 }) {
   return (
     <Accordion
@@ -538,6 +575,11 @@ function GrupoAspirantes({
               item={item}
               onVerDetalle={onVerDetalle}
               colorBorde={color}
+              token={token}
+              puedeNotificar={puedeNotificar}
+              onNotificacionCompletada={
+                onNotificacionCompletada
+              }
             />
           ))}
 
@@ -736,6 +778,12 @@ export default function Aspirantes() {
           color="warning.main"
           mensajeVacio="No hay aspirantes pendientes por gestionar."
           onVerDetalle={setSeleccionado}
+          token={token}
+          puedeNotificar={
+            puede('NOTIFICAR_ASPIRANTE') ||
+            puede('CONVERTIR_ASPIRANTE')
+          }
+          onNotificacionCompletada={api.reload}
         />
 
         <GrupoAspirantes
@@ -748,6 +796,12 @@ export default function Aspirantes() {
           color="success.main"
           mensajeVacio="Todavía no hay aspirantes aprobados."
           onVerDetalle={setSeleccionado}
+          token={token}
+          puedeNotificar={
+            puede('NOTIFICAR_ASPIRANTE') ||
+            puede('CONVERTIR_ASPIRANTE')
+          }
+          onNotificacionCompletada={api.reload}
         />
 
         <GrupoAspirantes
@@ -760,6 +814,12 @@ export default function Aspirantes() {
           color="error.main"
           mensajeVacio="No hay aspirantes rechazados."
           onVerDetalle={setSeleccionado}
+          token={token}
+          puedeNotificar={
+            puede('NOTIFICAR_ASPIRANTE') ||
+            puede('CONVERTIR_ASPIRANTE')
+          }
+          onNotificacionCompletada={api.reload}
         />
       </Stack>
       <Dialog
@@ -1034,6 +1094,29 @@ export default function Aspirantes() {
           >
             Cerrar
           </Button>
+
+          {(puede('NOTIFICAR_ASPIRANTE') ||
+            puede('CONVERTIR_ASPIRANTE')) &&
+            (seleccionado?.whatsappNotificaciones || []).map(
+              (notificacion) => (
+                <WhatsAppNotifyButton
+                  key={notificacion.id}
+                  token={token}
+                  notificacion={notificacion}
+                  label={
+                    notificacion.tipo === 'INSCRIPCION'
+                      ? 'Notificar preinscripción'
+                      : notificacion.tipo === 'APROBACION'
+                        ? 'Notificar aceptación'
+                        : 'Notificar'
+                  }
+                  onCompleted={async () => {
+                    setSeleccionado(null);
+                    await api.reload();
+                  }}
+                />
+              )
+            )}
 
           {puede('ACTUALIZAR_ESTADO_ASPIRANTE') &&
             !aspiranteBloqueado(seleccionado) && (
