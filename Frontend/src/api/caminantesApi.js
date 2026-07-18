@@ -150,3 +150,22 @@ export async function actualizarFotoCaminanteApi(
 
   return response.datos;
 }
+
+
+export async function desactivarCaminanteApi(
+  token,
+  id,
+  motivoCancelacion
+) {
+  const response =
+    await postAction(
+      'desactivarCaminante',
+      {
+        token,
+        id,
+        motivoCancelacion,
+      }
+    );
+
+  return response.datos;
+}

@@ -5,6 +5,10 @@ import {
   Card,
   CardActions,
   CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Chip,
   Grid,
   InputAdornment,
@@ -24,6 +28,8 @@ import {
   PhotoRounded,
   SearchRounded,
   TableRestaurantRounded,
+  CancelRounded,
+  CheckroomRounded,
 } from '@mui/icons-material';
 
 import {
@@ -37,6 +43,7 @@ import {
   actualizarCartaCaminanteApi,
   actualizarFotoCaminanteApi,
   actualizarPagoCaminanteApi,
+  desactivarCaminanteApi,
   editarCaminanteApi,
   obtenerCaminantes,
   obtenerOpcionesRegistroCaminante,
@@ -136,6 +143,12 @@ export default function Caminantes() {
     mensaje,
     setMensaje,
   ] = useState('');
+
+  const [cancelDialogOpen, setCancelDialogOpen] =
+    useState(false);
+
+  const [motivoCancelacion, setMotivoCancelacion] =
+    useState('');
 
   const items =
     api.data?.items || [];
@@ -330,6 +343,37 @@ export default function Caminantes() {
         'Cambio guardado correctamente.'
       );
 
+      await api.reload();
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  function abrirCancelacion(caminante) {
+    setSelected(caminante);
+    setMotivoCancelacion('');
+    setCancelDialogOpen(true);
+  }
+
+  async function confirmarCancelacion() {
+    if (!motivoCancelacion.trim()) {
+      return;
+    }
+
+    setGuardando(true);
+
+    try {
+      await desactivarCaminanteApi(
+        token,
+        selected.id,
+        motivoCancelacion.trim()
+      );
+
+      setCancelDialogOpen(false);
+      setMotivoCancelacion('');
+      setMensaje(
+        'La participación del caminante fue cancelada correctamente.'
+      );
       await api.reload();
     } finally {
       setGuardando(false);
@@ -544,6 +588,18 @@ export default function Caminantes() {
                           }
                         />
 
+
+                        <Chip
+                          size="small"
+                          icon={<CheckroomRounded />}
+                          label={
+                            caminante.tallaCamiseta
+                              ? `Talla ${caminante.tallaCamiseta}`
+                              : 'Talla sin definir'
+                          }
+                          variant="outlined"
+                        />
+
                         <Chip
                           size="small"
                           label={
@@ -742,6 +798,26 @@ export default function Caminantes() {
                         Foto
                       </Button>
                     )}
+
+
+                    {puede(
+                      'DESACTIVAR_CAMINANTE'
+                    ) && (
+                      <Button
+                        size="small"
+                        color="error"
+                        startIcon={
+                          <CancelRounded />
+                        }
+                        onClick={() =>
+                          abrirCancelacion(
+                            caminante
+                          )
+                        }
+                      >
+                        Cancelar participación
+                      </Button>
+                    )}
                   </CardActions>
                 </Card>
               </Grid>
@@ -839,6 +915,67 @@ export default function Caminantes() {
                 : ESTADOS_ENTREGABLES
         }
       />
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={
+          guardando
+            ? undefined
+            : () => setCancelDialogOpen(false)
+        }
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          ¿Cancelar la participación?
+        </DialogTitle>
+
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <Alert severity="warning">
+              Está a punto de retirar a <strong>{selected?.nombre}</strong> del listado de caminantes inscritos. Esta acción liberará su mesa y habitación y actualizará los indicadores.
+            </Alert>
+
+            <TextField
+              label="Motivo de cancelación"
+              value={motivoCancelacion}
+              onChange={(e) =>
+                setMotivoCancelacion(
+                  e.target.value
+                )
+              }
+              multiline
+              minRows={3}
+              fullWidth
+              required
+              helperText="Este motivo quedará registrado en la auditoría."
+            />
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() =>
+              setCancelDialogOpen(false)
+            }
+            disabled={guardando}
+          >
+            Volver
+          </Button>
+
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmarCancelacion}
+            disabled={
+              guardando ||
+              !motivoCancelacion.trim()
+            }
+          >
+            Sí, cancelar participación
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={Boolean(mensaje)}

@@ -48,8 +48,11 @@ import {
   useState,
 } from 'react';
 
+import { useMediaQuery, useTheme } from '@mui/material';
+
 import { useAuth } from '../auth/AuthContext';
 import LoginDialog from '../auth/LoginDialog';
+import NotificationBell from '../components/NotificationBell';
 
 import { obtenerConfiguraciones } from '../api/configuracionesApi';
 import { useApi } from '../hooks/useApi';
@@ -548,6 +551,10 @@ function MenuLateral({
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const esEscritorio = useMediaQuery(
+    theme.breakpoints.up('md')
+  );
 
   const {
     autenticado,
@@ -695,6 +702,12 @@ export default function MainLayout() {
             </Typography>
           </Box>
 
+          {!esEscritorio && (
+            <Box sx={{ mr: 0.5 }}>
+              <NotificationBell modo="mobile" />
+            </Box>
+          )}
+
           {autenticado && (
             <Avatar
               sx={{
@@ -773,12 +786,12 @@ export default function MainLayout() {
           pt: {
             xs:
               'calc(74px + env(safe-area-inset-top))',
-            md: 4,
+            md: 0,
           },
           px: {
             xs: 1.5,
             sm: 2,
-            md: 4,
+            md: 0,
           },
           pb: {
             xs:
@@ -787,6 +800,33 @@ export default function MainLayout() {
           },
         }}
       >
+        {esEscritorio && (
+          <Box
+            sx={{
+              position: 'sticky',
+              top: 0,
+              zIndex: (theme) => theme.zIndex.appBar - 1,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              minHeight: 72,
+              px: 4,
+              bgcolor: 'background.default',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              mb: 3,
+            }}
+          >
+            <NotificationBell modo="desktop" />
+          </Box>
+        )}
+
+        <Box
+          sx={{
+            px: { xs: 0, md: 4 },
+            pb: { xs: 0, md: 4 },
+          }}
+        >
         {configuracionApi.error && (
           <Alert
             severity="warning"
@@ -797,6 +837,7 @@ export default function MainLayout() {
         )}
 
         <Outlet />
+        </Box>
       </Box>
 
       <LoginDialog />

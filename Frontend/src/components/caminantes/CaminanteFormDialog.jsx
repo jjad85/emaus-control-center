@@ -22,6 +22,7 @@ import {
 const FORM_INICIAL = {
   nombre: '',
   telefono: '',
+  tallaCamiseta: '',
   estadoPago: 'Pendiente',
   mesa: '',
   habitacion: '',
@@ -60,6 +61,8 @@ export default function CaminanteFormDialog({
           caminante.nombre || '',
         telefono:
           caminante.telefono || '',
+        tallaCamiseta:
+          caminante.tallaCamiseta || '',
         estadoPago:
           caminante.estadoPago ||
           'Pendiente',
@@ -246,6 +249,40 @@ export default function CaminanteFormDialog({
                 fullWidth
                 required
               />
+            </Grid>
+
+            <Grid
+              size={{
+                xs: 12,
+                md: 4,
+              }}
+            >
+              <TextField
+                select
+                label="Talla de camiseta"
+                value={form.tallaCamiseta}
+                onChange={(e) =>
+                  actualizarCampo(
+                    'tallaCamiseta',
+                    e.target.value
+                  )
+                }
+                fullWidth
+              >
+                <MenuItem value="">
+                  Sin definir
+                </MenuItem>
+                {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(
+                  (talla) => (
+                    <MenuItem
+                      key={talla}
+                      value={talla}
+                    >
+                      {talla}
+                    </MenuItem>
+                  )
+                )}
+              </TextField>
             </Grid>
 
             <Grid
