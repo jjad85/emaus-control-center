@@ -52,7 +52,9 @@ function procesarRespuesta(
       errorApi.codigo ===
         'SESION_REQUERIDA' ||
       errorApi.codigo ===
-        'SESION_INVALIDA'
+        'SESION_INVALIDA' ||
+      errorApi.codigo ===
+        'SESION_REVOCADA'
     ) {
       emitirSesionExpirada(
         errorApi.detalle

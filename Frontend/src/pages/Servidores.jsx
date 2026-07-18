@@ -16,8 +16,8 @@ export default function Servidores() {
       <PageHeader eyebrow="Equipo humano" title="Servidores" subtitle={`${items.length} registros`} onRefresh={api.reload} loading={api.loading} />
       <TableContainer component={Paper}>
         <Table>
-          <TableHead><TableRow><TableCell>Nombre</TableCell><TableCell>Celular</TableCell><TableCell>Pago</TableCell><TableCell>Equipo</TableCell><TableCell>Rol</TableCell><TableCell>Mesa</TableCell><TableCell>Habitación</TableCell><TableCell>Temas</TableCell></TableRow></TableHead>
-          <TableBody>{items.map((i) => <TableRow key={i.id} hover><TableCell>{i.nombre}</TableCell><TableCell>{i.celular || '—'}</TableCell><TableCell><StatusChip value={i.estadoPago} /></TableCell><TableCell>{i.equipo}</TableCell><TableCell>{i.rol}</TableCell><TableCell>{i.mesa || '—'}</TableCell><TableCell>{i.habitacion || '—'}</TableCell><TableCell>{i.temas.join(', ') || '—'}</TableCell></TableRow>)}</TableBody>
+          <TableHead><TableRow><TableCell>Nombre</TableCell><TableCell>Correo</TableCell><TableCell>Celular</TableCell><TableCell>Pago</TableCell><TableCell>Equipo</TableCell><TableCell>Rol</TableCell><TableCell>Mesa</TableCell><TableCell>Habitación</TableCell><TableCell>Temas</TableCell></TableRow></TableHead>
+          <TableBody>{items.map((i) => <TableRow key={i.id} hover><TableCell>{i.nombre}</TableCell><TableCell>{i.correo || '—'}</TableCell><TableCell>{i.celular || '—'}</TableCell><TableCell><StatusChip value={i.estadoPago} /></TableCell><TableCell>{i.equipo}</TableCell><TableCell>{i.rol}</TableCell><TableCell>{i.mesa || '—'}</TableCell><TableCell>{i.habitacion || '—'}</TableCell><TableCell>{i.temas.join(', ') || '—'}</TableCell></TableRow>)}</TableBody>
         </Table>
       </TableContainer>
     </>

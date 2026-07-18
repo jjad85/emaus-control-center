@@ -13,6 +13,7 @@ import {
 
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
+import PasswordRecoveryDialog from './PasswordRecoveryDialog';
 
 export default function LoginDialog() {
   const {
@@ -33,6 +34,16 @@ export default function LoginDialog() {
 
   const [error, setError] =
     useState('');
+
+  const [
+    recoveryOpen,
+    setRecoveryOpen,
+  ] = useState('');
+
+  const [
+    mensajeRecuperacion,
+    setMensajeRecuperacion,
+  ] = useState('');
 
   async function handleSubmit(
     event
@@ -115,6 +126,12 @@ export default function LoginDialog() {
             </Typography>
           )}
 
+          {mensajeRecuperacion && (
+            <Alert severity="success">
+              {mensajeRecuperacion}
+            </Alert>
+          )}
+
           {error && (
             <Alert severity="error">
               {error}
@@ -148,6 +165,23 @@ export default function LoginDialog() {
             disabled={loading}
             fullWidth
           />
+
+          <Button
+            type="button"
+            variant="text"
+            onClick={() => {
+              setError('');
+              setMensajeRecuperacion('');
+              setRecoveryOpen(true);
+            }}
+            disabled={loading}
+            sx={{
+              alignSelf: 'flex-start',
+              px: 0,
+            }}
+          >
+            ¿Olvidaste tu contraseña?
+          </Button>
         </Stack>
       </DialogContent>
 
@@ -176,6 +210,18 @@ export default function LoginDialog() {
           Iniciar sesión
         </Button>
       </DialogActions>
+
+      <PasswordRecoveryDialog
+        open={Boolean(recoveryOpen)}
+        onClose={() =>
+          setRecoveryOpen(false)
+        }
+        onSuccess={(mensaje) =>
+          setMensajeRecuperacion(
+            mensaje
+          )
+        }
+      />
     </Dialog>
   );
 }

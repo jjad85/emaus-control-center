@@ -40,3 +40,38 @@ export async function cerrarSesionApi(
 
   return response.datos;
 }
+
+
+export async function solicitarRecuperacionClaveApi(
+  usuario,
+  correo
+) {
+  const response = await postAction(
+    'solicitarRecuperacionClave',
+    {
+      usuario,
+      correo,
+    }
+  );
+
+  return response.datos;
+}
+
+export async function restablecerClaveConCodigoApi(
+  usuario,
+  correo,
+  codigo,
+  nuevaClave
+) {
+  const response = await postAction(
+    'restablecerClaveConCodigo',
+    {
+      usuario,
+      correo,
+      codigo,
+      nuevaClave,
+    }
+  );
+
+  return response.datos;
+}

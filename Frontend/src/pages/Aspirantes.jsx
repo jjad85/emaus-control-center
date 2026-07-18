@@ -232,6 +232,112 @@ const CONFETTI_PARTICLES = Array.from(
   })
 );
 
+function reproducirSonidoCelebracion() {
+  try {
+    const AudioContexto =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    if (!AudioContexto) {
+      return;
+    }
+
+    const contexto =
+      new AudioContexto();
+
+    const ahora =
+      contexto.currentTime;
+
+    const notas = [
+      {
+        frecuencia: 523.25,
+        inicio: 0,
+        duracion: 0.16,
+      },
+      {
+        frecuencia: 659.25,
+        inicio: 0.16,
+        duracion: 0.16,
+      },
+      {
+        frecuencia: 783.99,
+        inicio: 0.32,
+        duracion: 0.18,
+      },
+      {
+        frecuencia: 1046.5,
+        inicio: 0.5,
+        duracion: 0.42,
+      },
+    ];
+
+    notas.forEach(
+      ({
+        frecuencia,
+        inicio,
+        duracion,
+      }) => {
+        const oscilador =
+          contexto.createOscillator();
+
+        const volumen =
+          contexto.createGain();
+
+        oscilador.type =
+          'triangle';
+
+        oscilador.frequency.setValueAtTime(
+          frecuencia,
+          ahora + inicio
+        );
+
+        volumen.gain.setValueAtTime(
+          0.0001,
+          ahora + inicio
+        );
+
+        volumen.gain.exponentialRampToValueAtTime(
+          0.18,
+          ahora + inicio + 0.025
+        );
+
+        volumen.gain.exponentialRampToValueAtTime(
+          0.0001,
+          ahora + inicio + duracion
+        );
+
+        oscilador.connect(
+          volumen
+        );
+
+        volumen.connect(
+          contexto.destination
+        );
+
+        oscilador.start(
+          ahora + inicio
+        );
+
+        oscilador.stop(
+          ahora + inicio + duracion
+        );
+      }
+    );
+
+    window.setTimeout(
+      () => {
+        contexto.close().catch(
+          () => {}
+        );
+      },
+      1400
+    );
+  } catch (_) {
+    // El navegador puede bloquear el audio.
+    // La conversión continúa normalmente.
+  }
+}
+
 function ConfetiCelebracion() {
   return (
     <Box
@@ -360,6 +466,126 @@ function coincideBusqueda(aspirante, busqueda) {
   );
 }
 
+function fechaAspiranteMilisegundos(
+  valor
+) {
+  if (!valor) {
+    return 0;
+  }
+
+  if (
+    valor instanceof Date
+  ) {
+    return valor.getTime();
+  }
+
+  const texto =
+    String(valor).trim();
+
+  const fechaDirecta =
+    new Date(texto);
+
+  if (
+    !Number.isNaN(
+      fechaDirecta.getTime()
+    )
+  ) {
+    return fechaDirecta.getTime();
+  }
+
+  const coincidencia =
+    texto.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+
+  if (!coincidencia) {
+    return 0;
+  }
+
+  return new Date(
+    Number(coincidencia[3]),
+    Number(coincidencia[2]) - 1,
+    Number(coincidencia[1]),
+    Number(coincidencia[4] || 0),
+    Number(coincidencia[5] || 0),
+    Number(coincidencia[6] || 0)
+  ).getTime();
+}
+
+function ordenarAspirantesAntiguosPrimero(
+  items
+) {
+  return [...items].sort(
+    (a, b) => {
+      const diferencia =
+        fechaAspiranteMilisegundos(
+          a.fechaRegistro
+        ) -
+        fechaAspiranteMilisegundos(
+          b.fechaRegistro
+        );
+
+      if (diferencia !== 0) {
+        return diferencia;
+      }
+
+      return (
+        Number(a.id || 0) -
+        Number(b.id || 0)
+      );
+    }
+  );
+}
+
+function notificacionesWhatsappUnicas(
+  notificaciones
+) {
+  const unicas =
+    new Map();
+
+  (
+    Array.isArray(notificaciones)
+      ? notificaciones
+      : []
+  ).forEach(
+    (notificacion) => {
+      const clave = [
+        String(
+          notificacion.tipo || ''
+        ).trim().toUpperCase(),
+        String(
+          notificacion.entidad || ''
+        ).trim().toUpperCase(),
+        String(
+          notificacion.entidadId || ''
+        ).trim(),
+      ].join('|');
+
+      const existente =
+        unicas.get(clave);
+
+      if (
+        !existente ||
+        fechaAspiranteMilisegundos(
+          notificacion.fechaCreacion
+        ) <
+          fechaAspiranteMilisegundos(
+            existente.fechaCreacion
+          )
+      ) {
+        unicas.set(
+          clave,
+          notificacion
+        );
+      }
+    }
+  );
+
+  return Array.from(
+    unicas.values()
+  );
+}
+
 function TarjetaAspirante({
   item,
   onVerDetalle,
@@ -476,7 +702,9 @@ function TarjetaAspirante({
           }}
         >
           {puedeNotificar &&
-            (item.whatsappNotificaciones || []).map(
+            notificacionesWhatsappUnicas(
+              item.whatsappNotificaciones
+            ).map(
               (notificacion) => (
                 <WhatsAppNotifyButton
                   key={notificacion.id}
@@ -621,17 +849,45 @@ export default function Aspirantes() {
     );
 
     return {
-      pendientes: visibles.filter((item) => {
-        const estado = normalizarBusqueda(item.estadoSolicitud);
-        return estado === 'pendiente' || estado === 'en revision';
-      }),
-      aprobados: visibles.filter((item) => {
-        const estado = normalizarBusqueda(item.estadoSolicitud);
-        return estado === 'aprobado' || estado === 'convertido';
-      }),
-      rechazados: visibles.filter((item) =>
-        normalizarBusqueda(item.estadoSolicitud) === 'rechazado'
-      ),
+      pendientes:
+        ordenarAspirantesAntiguosPrimero(
+          visibles.filter((item) => {
+            const estado =
+              normalizarBusqueda(
+                item.estadoSolicitud
+              );
+
+            return (
+              estado === 'pendiente' ||
+              estado === 'en revision'
+            );
+          })
+        ),
+
+      aprobados:
+        ordenarAspirantesAntiguosPrimero(
+          visibles.filter((item) => {
+            const estado =
+              normalizarBusqueda(
+                item.estadoSolicitud
+              );
+
+            return (
+              estado === 'aprobado' ||
+              estado === 'convertido'
+            );
+          })
+        ),
+
+      rechazados:
+        ordenarAspirantesAntiguosPrimero(
+          visibles.filter(
+            (item) =>
+              normalizarBusqueda(
+                item.estadoSolicitud
+              ) === 'rechazado'
+          )
+        ),
     };
   }, [items, busqueda]);
 
@@ -693,6 +949,8 @@ export default function Aspirantes() {
           'aprobado' &&
         resultado?.caminante
       ) {
+        reproducirSonidoCelebracion();
+
         setCelebracion({
           nombre:
             resultado.caminante.nombre ||
@@ -1097,7 +1355,9 @@ export default function Aspirantes() {
 
           {(puede('NOTIFICAR_ASPIRANTE') ||
             puede('CONVERTIR_ASPIRANTE')) &&
-            (seleccionado?.whatsappNotificaciones || []).map(
+            notificacionesWhatsappUnicas(
+              seleccionado?.whatsappNotificaciones
+            ).map(
               (notificacion) => (
                 <WhatsAppNotifyButton
                   key={notificacion.id}

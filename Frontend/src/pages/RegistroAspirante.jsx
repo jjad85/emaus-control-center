@@ -5,9 +5,14 @@ import {
   Checkbox,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   FormGroup,
+  FormHelperText,
   FormLabel,
   Grid,
   MenuItem,
@@ -41,10 +46,6 @@ import {
 } from '../api/publicApi';
 
 import { useApi } from '../hooks/useApi';
-import CelularField from '../components/CelularField';
-import {
-  esCelularColombiaValido,
-} from '../utils/celularUtils';
 
 const PASOS = [
   'Información personal',
@@ -125,6 +126,7 @@ const INICIAL = {
   personaConocidaAsistira: '',
   nombrePersonaConocida: '',
   autorizaTratamientoDatos: '',
+  autorizaFotografias: 'No',
 };
 
 function Campo({
@@ -132,6 +134,8 @@ function Campo({
   value,
   onChange,
   required = false,
+  error = false,
+  helperText = '',
   ...props
 }) {
   return (
@@ -144,6 +148,13 @@ function Campo({
         )
       }
       required={required}
+      error={error}
+      helperText={
+        error
+          ? helperText ||
+            'Este campo es obligatorio.'
+          : helperText
+      }
       fullWidth
       {...props}
     />
@@ -155,9 +166,13 @@ function PreguntaSiNo({
   value,
   onChange,
   required = false,
+  error = false,
 }) {
   return (
-    <FormControl required={required}>
+    <FormControl
+      required={required}
+      error={error}
+    >
       <FormLabel>
         {label}
       </FormLabel>
@@ -183,6 +198,12 @@ function PreguntaSiNo({
           label="No"
         />
       </RadioGroup>
+
+      {error && (
+        <FormHelperText>
+          Seleccione una opción.
+        </FormHelperText>
+      )}
     </FormControl>
   );
 }
@@ -208,11 +229,173 @@ export default function RegistroAspirante() {
   const [error, setError] =
     useState('');
 
+  const [
+    mostrarErrores,
+    setMostrarErrores,
+  ] = useState(false);
+
   const [resultado, setResultado] =
     useState(null);
 
+  const [
+    dialogoAutorizacion,
+    setDialogoAutorizacion,
+  ] = useState(null);
+
   const portal =
     portalApi.data || {};
+
+  function campoVacio(
+    valor
+  ) {
+    if (Array.isArray(valor)) {
+      return valor.length === 0;
+    }
+
+    return !String(
+      valor ?? ''
+    ).trim();
+  }
+
+  function errorObligatorio(
+    campo,
+    condicion = true
+  ) {
+    return (
+      mostrarErrores &&
+      condicion &&
+      campoVacio(
+        form[campo]
+      )
+    );
+  }
+
+  function calcularEdad(
+    fechaNacimiento
+  ) {
+    if (!fechaNacimiento) {
+      return '';
+    }
+
+    const partes =
+      String(
+        fechaNacimiento
+      ).split('-');
+
+    if (partes.length !== 3) {
+      return '';
+    }
+
+    const nacimiento =
+      new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
+      );
+
+    if (
+      Number.isNaN(
+        nacimiento.getTime()
+      )
+    ) {
+      return '';
+    }
+
+    const hoy =
+      new Date();
+
+    let edad =
+      hoy.getFullYear() -
+      nacimiento.getFullYear();
+
+    const diferenciaMes =
+      hoy.getMonth() -
+      nacimiento.getMonth();
+
+    if (
+      diferenciaMes < 0 ||
+      (
+        diferenciaMes === 0 &&
+        hoy.getDate() <
+          nacimiento.getDate()
+      )
+    ) {
+      edad -= 1;
+    }
+
+    if (
+      edad < 0 ||
+      edad > 120
+    ) {
+      return '';
+    }
+
+    return edad;
+  }
+
+  function normalizarCelular(
+    valor
+  ) {
+    return String(
+      valor || ''
+    ).replace(
+      /\D/g,
+      ''
+    );
+  }
+
+  function celularValido(
+    valor
+  ) {
+    return /^3\d{9}$/.test(
+      normalizarCelular(
+        valor
+      )
+    );
+  }
+
+  function errorCelular(
+    campo,
+    obligatorio = true
+  ) {
+    const valor =
+      form[campo];
+
+    if (!valor) {
+      return (
+        obligatorio &&
+        mostrarErrores
+      );
+    }
+
+    return !celularValido(
+      valor
+    );
+  }
+
+  function ayudaCelular(
+    campo,
+    obligatorio = true
+  ) {
+    if (
+      !form[campo] &&
+      obligatorio &&
+      mostrarErrores
+    ) {
+      return 'Este campo es obligatorio.';
+    }
+
+    if (
+      form[campo] &&
+      !celularValido(
+        form[campo]
+      )
+    ) {
+      return 'Ingrese 10 dígitos y comience por 3.';
+    }
+
+    return '';
+  }
 
   function cambiar(
     campo,
@@ -231,19 +414,38 @@ export default function RegistroAspirante() {
       const actuales =
         actual.sacramentosRecibidos;
 
-      const nuevos =
-        actuales.includes(
-          sacramento
-        )
-          ? actuales.filter(
-              (item) =>
-                item !==
-                sacramento
-            )
-          : [
-              ...actuales,
-              sacramento,
-            ];
+      let nuevos;
+
+      if (
+        sacramento === 'Ninguno'
+      ) {
+        nuevos =
+          actuales.includes(
+            'Ninguno'
+          )
+            ? []
+            : ['Ninguno'];
+      } else {
+        const sinNinguno =
+          actuales.filter(
+            (item) =>
+              item !== 'Ninguno'
+          );
+
+        nuevos =
+          sinNinguno.includes(
+            sacramento
+          )
+            ? sinNinguno.filter(
+                (item) =>
+                  item !==
+                  sacramento
+              )
+            : [
+                ...sinNinguno,
+                sacramento,
+              ];
+      }
 
       return {
         ...actual,
@@ -263,12 +465,8 @@ export default function RegistroAspirante() {
           form.fechaNacimiento &&
           form.edad &&
           form.barrio &&
-          esCelularColombiaValido(
-            form.celular,
-            {
-              requerido: true,
-              etiqueta: 'El celular',
-            }
+          celularValido(
+            form.celular
           ) &&
           form.estadoCivil
         );
@@ -295,22 +493,13 @@ export default function RegistroAspirante() {
         return Boolean(
           form.contacto1Nombre &&
           form.contacto1Parentesco &&
-          esCelularColombiaValido(
-            form.contacto1Celular,
-            {
-              requerido: true,
-              etiqueta:
-                'El celular del contacto 1',
-            }
+          celularValido(
+            form.contacto1Celular
           ) &&
           form.contacto2Nombre &&
-          esCelularColombiaValido(
-            form.contacto2Celular,
-            {
-              requerido: true,
-              etiqueta:
-                'El celular del contacto 2',
-            }
+          form.contacto2Parentesco &&
+          celularValido(
+            form.contacto2Celular
           )
         );
       }
@@ -318,6 +507,12 @@ export default function RegistroAspirante() {
       return Boolean(
         form.comoSeEntero &&
         form.personaConocidaAsistira &&
+        (
+          !form.celularPersonaInvito ||
+          celularValido(
+            form.celularPersonaInvito
+          )
+        ) &&
         form.autorizaTratamientoDatos ===
           'Sí'
       );
@@ -327,6 +522,8 @@ export default function RegistroAspirante() {
     ]);
 
   function siguiente() {
+    setMostrarErrores(true);
+
     if (!validacionPaso) {
       setError(
         'Completa los campos obligatorios antes de continuar.'
@@ -335,6 +532,7 @@ export default function RegistroAspirante() {
     }
 
     setError('');
+    setMostrarErrores(false);
     setPaso((actual) =>
       Math.min(
         PASOS.length - 1,
@@ -344,6 +542,8 @@ export default function RegistroAspirante() {
   }
 
   async function enviar() {
+    setMostrarErrores(true);
+
     if (!validacionPaso) {
       setError(
         'Completa los campos obligatorios y acepta el tratamiento de datos.'
@@ -580,6 +780,9 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'nombreCompleto'
+                    )}
                   />
                 </Grid>
 
@@ -599,6 +802,9 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'documentoIdentidad'
+                    )}
                   />
                 </Grid>
 
@@ -612,16 +818,26 @@ export default function RegistroAspirante() {
                     label="Fecha de nacimiento"
                     type="date"
                     value={form.fechaNacimiento}
-                    onChange={(valor) =>
+                    onChange={(valor) => {
                       cambiar(
                         'fechaNacimiento',
                         valor
-                      )
-                    }
+                      );
+
+                      cambiar(
+                        'edad',
+                        calcularEdad(
+                          valor
+                        )
+                      );
+                    }}
                     InputLabelProps={{
                       shrink: true,
                     }}
                     required
+                    error={errorObligatorio(
+                      'fechaNacimiento'
+                    )}
                   />
                 </Grid>
 
@@ -641,6 +857,9 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'direccionResidencia'
+                    )}
                   />
                 </Grid>
 
@@ -654,13 +873,14 @@ export default function RegistroAspirante() {
                     label="Edad"
                     type="number"
                     value={form.edad}
-                    onChange={(valor) =>
-                      cambiar(
-                        'edad',
-                        valor
-                      )
-                    }
+                    onChange={() => {}}
+                    InputProps={{
+                      readOnly: true,
+                    }}
                     required
+                    error={errorObligatorio(
+                      'edad'
+                    )}
                   />
                 </Grid>
 
@@ -680,6 +900,9 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'barrio'
+                    )}
                   />
                 </Grid>
 
@@ -725,7 +948,7 @@ export default function RegistroAspirante() {
                     sm: 6,
                   }}
                 >
-                  <CelularField
+                  <Campo
                     label="Celular"
                     value={form.celular}
                     onChange={(valor) =>
@@ -735,6 +958,16 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorCelular(
+                      'celular'
+                    )}
+                    helperText={ayudaCelular(
+                      'celular'
+                    )}
+                    inputProps={{
+                      inputMode: 'numeric',
+                      maxLength: 10,
+                    }}
                   />
                 </Grid>
 
@@ -751,6 +984,16 @@ export default function RegistroAspirante() {
                     }
                     fullWidth
                     required
+                    error={errorObligatorio(
+                      'estadoCivil'
+                    )}
+                    helperText={
+                      errorObligatorio(
+                        'estadoCivil'
+                      )
+                        ? 'Este campo es obligatorio.'
+                        : ''
+                    }
                   >
                     {ESTADOS_CIVILES.map(
                       (item) => (
@@ -779,6 +1022,9 @@ export default function RegistroAspirante() {
                     )
                   }
                   required
+                  error={errorObligatorio(
+                    'sufreEnfermedad'
+                  )}
                 />
 
                 {form.sufreEnfermedad ===
@@ -793,6 +1039,10 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'enfermedadCual',
+                      form.sufreEnfermedad === 'Sí'
+                    )}
                   />
                 )}
 
@@ -806,6 +1056,9 @@ export default function RegistroAspirante() {
                     )
                   }
                   required
+                  error={errorObligatorio(
+                    'tomaMedicamento'
+                  )}
                 />
 
                 {form.tomaMedicamento ===
@@ -821,6 +1074,10 @@ export default function RegistroAspirante() {
                         )
                       }
                       required
+                    error={errorObligatorio(
+                      'medicamentoCual',
+                      form.tomaMedicamento === 'Sí'
+                    )}
                     />
 
                     <Campo
@@ -858,6 +1115,9 @@ export default function RegistroAspirante() {
                         )
                       }
                       required
+                    error={errorObligatorio(
+                      'eps'
+                    )}
                     />
                   </Grid>
 
@@ -877,6 +1137,9 @@ export default function RegistroAspirante() {
                         )
                       }
                       required
+                    error={errorObligatorio(
+                      'profesionOcupacion'
+                    )}
                     />
                   </Grid>
                 </Grid>
@@ -891,6 +1154,9 @@ export default function RegistroAspirante() {
                     )
                   }
                   required
+                  error={errorObligatorio(
+                    'tieneLimitacionFisica'
+                  )}
                 />
 
                 {form.tieneLimitacionFisica ===
@@ -905,6 +1171,10 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'limitacionCual',
+                      form.tieneLimitacionFisica === 'Sí'
+                    )}
                   />
                 )}
               </Stack>
@@ -912,7 +1182,12 @@ export default function RegistroAspirante() {
 
             {paso === 2 && (
               <Stack spacing={3}>
-                <FormControl required>
+                <FormControl
+                  required
+                  error={errorObligatorio(
+                    'sacramentosRecibidos'
+                  )}
+                >
                   <FormLabel>
                     Sacramentos recibidos
                   </FormLabel>
@@ -941,9 +1216,22 @@ export default function RegistroAspirante() {
                       )
                     )}
                   </FormGroup>
+
+                  {errorObligatorio(
+                    'sacramentosRecibidos'
+                  ) && (
+                    <FormHelperText>
+                      Seleccione al menos una opción.
+                    </FormHelperText>
+                  )}
                 </FormControl>
 
-                <FormControl required>
+                <FormControl
+                  required
+                  error={errorObligatorio(
+                    'tallaCamisa'
+                  )}
+                >
                   <FormLabel>
                     Talla de camisa tipo polo
                   </FormLabel>
@@ -969,6 +1257,14 @@ export default function RegistroAspirante() {
                       )
                     )}
                   </RadioGroup>
+
+                  {errorObligatorio(
+                    'tallaCamisa'
+                  ) && (
+                    <FormHelperText>
+                      Seleccione una talla.
+                    </FormHelperText>
+                  )}
                 </FormControl>
               </Stack>
             )}
@@ -1002,6 +1298,9 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'contacto1Nombre'
+                    )}
                   />
                 </Grid>
 
@@ -1021,6 +1320,9 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'contacto1Parentesco'
+                    )}
                   />
                 </Grid>
 
@@ -1030,8 +1332,8 @@ export default function RegistroAspirante() {
                     sm: 3,
                   }}
                 >
-                  <CelularField
-                    label="Celular del contacto 1"
+                  <Campo
+                    label="Celular"
                     value={form.contacto1Celular}
                     onChange={(valor) =>
                       cambiar(
@@ -1040,6 +1342,16 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorCelular(
+                      'contacto1Celular'
+                    )}
+                    helperText={ayudaCelular(
+                      'contacto1Celular'
+                    )}
+                    inputProps={{
+                      inputMode: 'numeric',
+                      maxLength: 10,
+                    }}
                   />
                 </Grid>
 
@@ -1068,6 +1380,9 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'contacto2Nombre'
+                    )}
                   />
                 </Grid>
 
@@ -1086,6 +1401,10 @@ export default function RegistroAspirante() {
                         valor
                       )
                     }
+                    required
+                    error={errorObligatorio(
+                      'contacto2Parentesco'
+                    )}
                   />
                 </Grid>
 
@@ -1095,8 +1414,8 @@ export default function RegistroAspirante() {
                     sm: 3,
                   }}
                 >
-                  <CelularField
-                    label="Celular del contacto 2"
+                  <Campo
+                    label="Celular"
                     value={form.contacto2Celular}
                     onChange={(valor) =>
                       cambiar(
@@ -1105,6 +1424,16 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorCelular(
+                      'contacto2Celular'
+                    )}
+                    helperText={ayudaCelular(
+                      'contacto2Celular'
+                    )}
+                    inputProps={{
+                      inputMode: 'numeric',
+                      maxLength: 10,
+                    }}
                   />
                 </Grid>
               </Grid>
@@ -1124,6 +1453,16 @@ export default function RegistroAspirante() {
                   }
                   fullWidth
                   required
+                  error={errorObligatorio(
+                    'comoSeEntero'
+                  )}
+                  helperText={
+                    errorObligatorio(
+                      'comoSeEntero'
+                    )
+                      ? 'Este campo es obligatorio.'
+                      : ''
+                  }
                 >
                   {COMO_SE_ENTERO.map(
                     (item) => (
@@ -1165,7 +1504,7 @@ export default function RegistroAspirante() {
                       sm: 6,
                     }}
                   >
-                    <CelularField
+                    <Campo
                       label="Celular de quien lo invitó"
                       value={form.celularPersonaInvito}
                       onChange={(valor) =>
@@ -1174,6 +1513,18 @@ export default function RegistroAspirante() {
                           valor
                         )
                       }
+                      error={errorCelular(
+                        'celularPersonaInvito',
+                        false
+                      )}
+                      helperText={ayudaCelular(
+                        'celularPersonaInvito',
+                        false
+                      )}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        maxLength: 10,
+                      }}
                     />
                   </Grid>
                 </Grid>
@@ -1188,6 +1539,9 @@ export default function RegistroAspirante() {
                     )
                   }
                   required
+                  error={errorObligatorio(
+                    'personaConocidaAsistira'
+                  )}
                 />
 
                 {form.personaConocidaAsistira ===
@@ -1202,27 +1556,164 @@ export default function RegistroAspirante() {
                       )
                     }
                     required
+                    error={errorObligatorio(
+                      'nombrePersonaConocida',
+                      form.personaConocidaAsistira === 'Sí'
+                    )}
                   />
                 )}
 
                 <Paper
                   variant="outlined"
                   sx={{
-                    p: 2,
+                    p: 2.5,
                     borderRadius: 3,
                   }}
                 >
-                  <PreguntaSiNo
-                    label="¿Autoriza el tratamiento de sus datos personales y la toma de fotografías para fines relacionados únicamente con el retiro?"
-                    value={form.autorizaTratamientoDatos}
-                    onChange={(valor) =>
-                      cambiar(
-                        'autorizaTratamientoDatos',
-                        valor
-                      )
-                    }
-                    required
-                  />
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography
+                        fontWeight={900}
+                      >
+                        Protección de datos personales
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        mt={0.5}
+                      >
+                        Antes de aceptar, puede consultar
+                        el texto completo de la autorización.
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      variant="outlined"
+                      onClick={() =>
+                        setDialogoAutorizacion(
+                          'datos'
+                        )
+                      }
+                      sx={{
+                        alignSelf: 'flex-start',
+                      }}
+                    >
+                      Ver autorización completa
+                    </Button>
+
+                    <FormControl
+                      required
+                      error={
+                        mostrarErrores &&
+                        form.autorizaTratamientoDatos !==
+                          'Sí'
+                      }
+                    >
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={
+                              form.autorizaTratamientoDatos ===
+                              'Sí'
+                            }
+                            onChange={(event) =>
+                              cambiar(
+                                'autorizaTratamientoDatos',
+                                event.target.checked
+                                  ? 'Sí'
+                                  : 'No'
+                              )
+                            }
+                          />
+                        }
+                        label={
+                          portal.autorizacionDatosTextoAceptacion ||
+                          'He leído y acepto la autorización para el tratamiento de mis datos personales.'
+                        }
+                      />
+
+                      {mostrarErrores &&
+                        form.autorizaTratamientoDatos !==
+                          'Sí' && (
+                          <FormHelperText>
+                            Debe aceptar el tratamiento de datos
+                            personales para enviar el registro.
+                          </FormHelperText>
+                        )}
+                    </FormControl>
+
+                    <Alert severity="info">
+                      Sin esta autorización no es posible
+                      registrar al aspirante, porque los datos
+                      son necesarios para gestionar la
+                      inscripción y la participación en el retiro.
+                    </Alert>
+                  </Stack>
+                </Paper>
+
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 3,
+                  }}
+                >
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography
+                        fontWeight={900}
+                      >
+                        Fotografías y material audiovisual
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        mt={0.5}
+                      >
+                        Esta autorización es independiente y
+                        opcional. Rechazarla no impide el registro.
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      variant="outlined"
+                      onClick={() =>
+                        setDialogoAutorizacion(
+                          'fotos'
+                        )
+                      }
+                      sx={{
+                        alignSelf: 'flex-start',
+                      }}
+                    >
+                      Ver autorización de fotografías
+                    </Button>
+
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={
+                            form.autorizaFotografias ===
+                            'Sí'
+                          }
+                          onChange={(event) =>
+                            cambiar(
+                              'autorizaFotografias',
+                              event.target.checked
+                                ? 'Sí'
+                                : 'No'
+                            )
+                          }
+                        />
+                      }
+                      label={
+                        portal.autorizacionFotosTextoAceptacion ||
+                        'Autorizo el uso de fotografías y material audiovisual conforme al texto informado.'
+                      }
+                    />
+                  </Stack>
                 </Paper>
               </Stack>
             )}
@@ -1240,6 +1731,7 @@ export default function RegistroAspirante() {
                 disabled={paso === 0}
                 onClick={() => {
                   setError('');
+                  setMostrarErrores(false);
                   setPaso((actual) =>
                     Math.max(
                       0,
@@ -1290,6 +1782,140 @@ export default function RegistroAspirante() {
           </Paper>
         </Stack>
       </Container>
+
+      <Dialog
+        open={dialogoAutorizacion === 'datos'}
+        onClose={() =>
+          setDialogoAutorizacion(null)
+        }
+        fullWidth
+        maxWidth="md"
+        scroll="paper"
+      >
+        <DialogTitle>
+          {portal.autorizacionDatosTitulo ||
+            'Autorización para el tratamiento de datos personales'}
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Box
+            sx={{
+              '& p': {
+                lineHeight: 1.7,
+              },
+              '& li': {
+                mb: 1,
+              },
+            }}
+            dangerouslySetInnerHTML={{
+              __html:
+                portal.autorizacionDatosTextoHtml ||
+                '<p>El texto de la autorización no ha sido configurado. Comuníquese con el responsable del retiro.</p>',
+            }}
+          />
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            mt={3}
+          >
+            Versión:{' '}
+            {portal.autorizacionDatosVersion ||
+              'Sin definir'}
+          </Typography>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() =>
+              setDialogoAutorizacion(null)
+            }
+          >
+            Cerrar
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={() => {
+              cambiar(
+                'autorizaTratamientoDatos',
+                'Sí'
+              );
+              setDialogoAutorizacion(null);
+            }}
+          >
+            He leído y acepto
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={dialogoAutorizacion === 'fotos'}
+        onClose={() =>
+          setDialogoAutorizacion(null)
+        }
+        fullWidth
+        maxWidth="md"
+        scroll="paper"
+      >
+        <DialogTitle>
+          {portal.autorizacionFotosTitulo ||
+            'Autorización de fotografías y material audiovisual'}
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Box
+            sx={{
+              '& p': {
+                lineHeight: 1.7,
+              },
+              '& li': {
+                mb: 1,
+              },
+            }}
+            dangerouslySetInnerHTML={{
+              __html:
+                portal.autorizacionFotosTextoHtml ||
+                '<p>El texto de la autorización no ha sido configurado.</p>',
+            }}
+          />
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            mt={3}
+          >
+            Versión:{' '}
+            {portal.autorizacionFotosVersion ||
+              'Sin definir'}
+          </Typography>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() =>
+              setDialogoAutorizacion(null)
+            }
+          >
+            Cerrar
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={() => {
+              cambiar(
+                'autorizaFotografias',
+                'Sí'
+              );
+              setDialogoAutorizacion(null);
+            }}
+          >
+            Autorizar fotografías
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
