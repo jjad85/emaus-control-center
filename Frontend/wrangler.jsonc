@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "emaus-control-center",
+  "name": "portalemaus",
   "compatibility_date": "2026-07-15",
 
   "assets": {
