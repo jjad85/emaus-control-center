@@ -183,3 +183,72 @@ function probarPasswordUtils() {
       valido
   );
 }
+
+/**
+ * Valida la política mínima de contraseñas.
+ */
+function validarPoliticaPassword(
+  password
+) {
+  const clave =
+    String(password || '');
+
+  if (clave.length < 10) {
+    throw crearErrorAplicacion(
+      'PASSWORD_DEBIL',
+      'La contraseña debe tener mínimo 10 caracteres.'
+    );
+  }
+
+  if (!/[a-z]/.test(clave)) {
+    throw crearErrorAplicacion(
+      'PASSWORD_DEBIL',
+      'La contraseña debe incluir al menos una letra minúscula.'
+    );
+  }
+
+  if (!/[A-Z]/.test(clave)) {
+    throw crearErrorAplicacion(
+      'PASSWORD_DEBIL',
+      'La contraseña debe incluir al menos una letra mayúscula.'
+    );
+  }
+
+  if (!/\d/.test(clave)) {
+    throw crearErrorAplicacion(
+      'PASSWORD_DEBIL',
+      'La contraseña debe incluir al menos un número.'
+    );
+  }
+
+  if (!/[^A-Za-z0-9]/.test(clave)) {
+    throw crearErrorAplicacion(
+      'PASSWORD_DEBIL',
+      'La contraseña debe incluir al menos un símbolo.'
+    );
+  }
+
+  const normalizada =
+    normalizarTexto(clave);
+
+  const prohibidas = [
+    '1234567890',
+    'password',
+    'contrasena',
+    'administrador',
+    'emaus2026'
+  ];
+
+  if (
+    prohibidas.some(function(item) {
+      return normalizada.includes(item);
+    })
+  ) {
+    throw crearErrorAplicacion(
+      'PASSWORD_DEBIL',
+      'La contraseña es demasiado predecible.'
+    );
+  }
+
+  return true;
+}

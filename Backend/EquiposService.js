@@ -84,7 +84,7 @@ function construirEquipo(
       function(servidor) {
         return (
           normalizarTexto(
-            servidor.rol
+            servidor.rolEquipo || servidor.rol
           ) === 'lider'
         );
       }

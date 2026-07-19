@@ -33,6 +33,10 @@ function registrarAspirantePublico(
         registro
       );
 
+      completarEvidenciaConsentimientos(
+        registro
+      );
+
       const creado =
         crearRegistroSheet(
           HOJAS.ASPIRANTES,
@@ -114,9 +118,55 @@ function actualizarEstadoAspirante(
     );
   }
 
+  if (
+    normalizarTexto(
+      estadoValido
+    ) === 'convertido'
+  ) {
+    throw crearErrorAplicacion(
+      'ESTADO_CONVERTIDO_NO_MANUAL',
+      'El estado Convertido se asigna automáticamente al aprobar al aspirante.'
+    );
+  }
+
+  /*
+   * Aprobar al aspirante ejecuta una sola transacción:
+   * crea el caminante y bloquea definitivamente
+   * la gestión del aspirante.
+   */
+  if (
+    normalizarTexto(
+      estadoValido
+    ) === 'aprobado'
+  ) {
+    validarPermiso(
+      token,
+      'CONVERTIR_ASPIRANTE'
+    );
+
+    return ejecutarCrudConBloqueo(
+      function() {
+        return convertirAspiranteEnCaminanteInterno(
+          sesion,
+          id,
+          observacionesGestion
+        );
+      }
+    );
+  }
+
   const actualizado =
     ejecutarCrudConBloqueo(
       function() {
+        const aspirante =
+          obtenerAspirantePorId(
+            id
+          );
+
+        validarAspiranteEditable(
+          aspirante
+        );
+
         return actualizarRegistroSheet(
           HOJAS.ASPIRANTES,
           id,
@@ -159,6 +209,11 @@ function actualizarEstadoAspirante(
   return actualizado;
 }
 
+/**
+ * Conversión manual conservada por compatibilidad.
+ * Normalmente la conversión se ejecuta automáticamente
+ * al seleccionar el estado Aprobado.
+ */
 function convertirAspiranteEnCaminante(
   token,
   id
@@ -171,95 +226,164 @@ function convertirAspiranteEnCaminante(
 
   return ejecutarCrudConBloqueo(
     function() {
-      const aspirante =
-        obtenerAspirantePorId(
-          id
-        );
-
-      if (
-        normalizarTexto(
-          aspirante.estadoSolicitud
-        ) !==
-        'aprobado'
-      ) {
-        throw crearErrorAplicacion(
-          'ASPIRANTE_NO_APROBADO',
-          'Solo se pueden convertir aspirantes aprobados.'
-        );
-      }
-
-      if (
-        aspirante.caminanteId
-      ) {
-        throw crearErrorAplicacion(
-          'ASPIRANTE_YA_CONVERTIDO',
-          'Este aspirante ya fue convertido en caminante.'
-        );
-      }
-
-      const caminante =
-        registrarCaminante(
-          token,
-          {
-            nombre:
-              aspirante.nombreCompleto,
-            telefono:
-              aspirante.celular ||
-              aspirante.telefono,
-            estadoPago:
-              'Pendiente',
-            mesa: '',
-            habitacion: '',
-            contacto:
-              aspirante.contacto1Nombre,
-            telefonoContacto:
-              aspirante.contacto1Celular,
-            carta:
-              'Pendiente',
-            foto:
-              'Pendiente'
-          }
-        );
-
-      const actualizado =
-        actualizarRegistroSheet(
-          HOJAS.ASPIRANTES,
-          id,
-          {
-            estadoSolicitud:
-              'Convertido',
-            caminanteId:
-              caminante.id
-          },
-          opcionesCrudAspirante(
-            sesion.usuario
-          )
-        );
-
-      registrarAuditoria({
-        usuario:
-          sesion.usuario,
-        nombre:
-          sesion.nombre,
-        accion:
-          'CONVERTIR_ASPIRANTE',
-        entidad:
-          'Aspirantes',
-        idRegistro:
-          id,
-        detalle:
-          'Convertido en caminante ID ' +
-          caminante.id
-      });
-
-      return {
-        aspirante:
-          actualizado,
-        caminante:
-          caminante
-      };
+      return convertirAspiranteEnCaminanteInterno(
+        sesion,
+        id,
+        ''
+      );
     }
   );
+}
+
+/**
+ * Ejecuta la conversión dentro de un bloqueo ya adquirido.
+ * No solicita permisos adicionales ni genera otro bloqueo.
+ */
+function convertirAspiranteEnCaminanteInterno(
+  sesion,
+  id,
+  observacionesGestion
+) {
+  const aspirante =
+    obtenerAspirantePorId(
+      id
+    );
+
+  validarAspiranteEditable(
+    aspirante
+  );
+
+  const datosCaminante = {
+    nombre:
+      aspirante.nombreCompleto,
+
+    telefono:
+      aspirante.celular,
+
+    tallaCamiseta:
+      aspirante.tallaCamisa ||
+      '',
+
+    estadoPago:
+      'Pendiente',
+
+    mesa:
+      '',
+
+    habitacion:
+      '',
+
+    contacto:
+      aspirante.contacto1Nombre,
+
+    telefonoContacto:
+      aspirante.contacto1Celular,
+
+    carta:
+      'Pendiente',
+
+    foto:
+      'Pendiente'
+  };
+
+  /*
+   * La creación se hace con la sesión ya validada.
+   * Esto evita exigir REGISTRAR_CAMINANTE y evita
+   * un segundo bloqueo dentro de la misma operación.
+   */
+  const caminante =
+    registrarCaminanteInterno(
+      sesion,
+      datosCaminante
+    );
+
+  const actualizado =
+    actualizarRegistroSheet(
+      HOJAS.ASPIRANTES,
+      id,
+      {
+        estadoSolicitud:
+          'Convertido',
+
+        observacionesGestion:
+          String(
+            observacionesGestion ||
+            aspirante.observacionesGestion ||
+            ''
+          ).trim(),
+
+        caminanteId:
+          caminante.id
+      },
+      opcionesCrudAspirante(
+        sesion.usuario
+      )
+    );
+
+  registrarAuditoria({
+    usuario:
+      sesion.usuario,
+    nombre:
+      sesion.nombre,
+    accion:
+      'APROBAR_Y_CONVERTIR_ASPIRANTE',
+    entidad:
+      'Aspirantes',
+    idRegistro:
+      id,
+    detalle:
+      JSON.stringify({
+        estadoAnterior:
+          aspirante.estadoSolicitud ||
+          '',
+        estadoNuevo:
+          'Convertido',
+        caminanteId:
+          caminante.id
+      })
+  });
+
+  const caminantes =
+    obtenerCaminantes({});
+
+  const indicadores =
+    obtenerIndicadoresCaminantes(
+      caminantes
+    );
+
+  return {
+    aspirante:
+      actualizado,
+    caminante:
+      caminante,
+    indicadores:
+      indicadores
+  };
+}
+
+/**
+ * Un aspirante convertido queda bloqueado.
+ */
+function validarAspiranteEditable(
+  aspirante
+) {
+  const convertido =
+    normalizarTexto(
+      aspirante.estadoSolicitud
+    ) === 'convertido' ||
+    Boolean(
+      String(
+        aspirante.caminanteId ||
+        ''
+      ).trim()
+    );
+
+  if (convertido) {
+    throw crearErrorAplicacion(
+      'ASPIRANTE_NO_EDITABLE',
+      'El aspirante ya fue aprobado y convertido en caminante. No puede modificarse.'
+    );
+  }
 }
 
 function prepararAspirante(
@@ -287,9 +411,8 @@ function prepararAspirante(
         entrada.fechaNacimiento
       ),
     edad:
-      convertirNumero(
-        entrada.edad,
-        0
+      calcularEdadAspirante(
+        entrada.fechaNacimiento
       ),
     barrio:
       limpiarTextoAspirante(
@@ -412,12 +535,128 @@ function prepararAspirante(
       limpiarTextoAspirante(
         entrada.autorizaTratamientoDatos
       ),
+    versionAutorizacionDatos: '',
+    fechaAceptacionDatos: '',
+    textoAutorizacionDatos: '',
+
+    autorizaFotografias:
+      limpiarTextoAspirante(
+        entrada.autorizaFotografias
+      ) || 'No',
+    versionAutorizacionFotografias: '',
+    fechaAceptacionFotografias: '',
+    textoAutorizacionFotografias: '',
 
     estadoSolicitud:
       'Pendiente',
     observacionesGestion: '',
     caminanteId: ''
   };
+}
+
+function calcularEdadAspirante(
+  fechaNacimiento
+) {
+  const texto =
+    limpiarTextoAspirante(
+      fechaNacimiento
+    );
+
+  if (!texto) {
+    return 0;
+  }
+
+  const partes =
+    texto.split('-');
+
+  if (partes.length !== 3) {
+    return 0;
+  }
+
+  const nacimiento =
+    new Date(
+      Number(partes[0]),
+      Number(partes[1]) - 1,
+      Number(partes[2])
+    );
+
+  if (
+    isNaN(
+      nacimiento.getTime()
+    )
+  ) {
+    return 0;
+  }
+
+  const hoy =
+    new Date();
+
+  let edad =
+    hoy.getFullYear() -
+    nacimiento.getFullYear();
+
+  const diferenciaMes =
+    hoy.getMonth() -
+    nacimiento.getMonth();
+
+  if (
+    diferenciaMes < 0 ||
+    (
+      diferenciaMes === 0 &&
+      hoy.getDate() <
+        nacimiento.getDate()
+    )
+  ) {
+    edad -= 1;
+  }
+
+  return (
+    edad >= 0 &&
+    edad <= 120
+  )
+    ? edad
+    : 0;
+}
+
+function normalizarCelularAspirante(
+  valor
+) {
+  return String(
+    valor || ''
+  ).replace(
+    /\D/g,
+    ''
+  );
+}
+
+function validarFormatoCelularAspirante(
+  valor,
+  etiqueta,
+  obligatorio
+) {
+  const celular =
+    normalizarCelularAspirante(
+      valor
+    );
+
+  if (
+    !celular &&
+    !obligatorio
+  ) {
+    return;
+  }
+
+  if (
+    !/^3\d{9}$/.test(
+      celular
+    )
+  ) {
+    throw crearErrorAplicacion(
+      'CELULAR_ASPIRANTE_INVALIDO',
+      etiqueta +
+        ' debe tener 10 dígitos y comenzar por 3.'
+    );
+  }
 }
 
 function validarAspirante(
@@ -497,6 +736,10 @@ function validarAspirante(
       'Contacto de emergencia 2'
     ],
     [
+      registro.contacto2Parentesco,
+      'Parentesco del contacto 2'
+    ],
+    [
       registro.contacto2Celular,
       'Celular del contacto 2'
     ],
@@ -526,6 +769,30 @@ function validarAspirante(
     );
   }
 
+  validarFormatoCelularAspirante(
+    registro.celular,
+    'El celular del aspirante',
+    true
+  );
+
+  validarFormatoCelularAspirante(
+    registro.contacto1Celular,
+    'El celular del contacto 1',
+    true
+  );
+
+  validarFormatoCelularAspirante(
+    registro.contacto2Celular,
+    'El celular del contacto 2',
+    true
+  );
+
+  validarFormatoCelularAspirante(
+    registro.celularPersonaInvito,
+    'El celular de quien lo invitó',
+    false
+  );
+
   if (
     normalizarTexto(
       registro.autorizaTratamientoDatos
@@ -533,7 +800,7 @@ function validarAspirante(
   ) {
     throw crearErrorAplicacion(
       'AUTORIZACION_REQUERIDA',
-      'Debe autorizar el tratamiento de datos para continuar.'
+      'Debe leer y aceptar la autorización para el tratamiento de datos personales. Sin esta aceptación no es posible registrar al aspirante.'
     );
   }
 
@@ -562,6 +829,63 @@ function validarAspirante(
   }
 }
 
+/**
+ * Conserva evidencia consultable de las autorizaciones aceptadas.
+ *
+ * La fecha se genera en el servidor y no se toma del navegador.
+ * También se almacena una copia del texto vigente, no solamente
+ * su versión, para que una modificación futura de Configuraciones
+ * no borre la evidencia histórica.
+ */
+function completarEvidenciaConsentimientos(
+  registro
+) {
+  const configuracion =
+    obtenerConfiguraciones();
+
+  registro.versionAutorizacionDatos =
+    limpiarTextoAspirante(
+      configuracion.portalAutorizacionDatosVersion ||
+      '1.0'
+    );
+
+  registro.fechaAceptacionDatos =
+    new Date();
+
+  registro.textoAutorizacionDatos =
+    limpiarTextoAspirante(
+      configuracion.portalAutorizacionDatosTextoHtml ||
+      ''
+    );
+
+  const autorizaFotos =
+    normalizarTexto(
+      registro.autorizaFotografias
+    ) === 'si';
+
+  registro.autorizaFotografias =
+    autorizaFotos
+      ? 'Sí'
+      : 'No';
+
+  registro.versionAutorizacionFotografias =
+    limpiarTextoAspirante(
+      configuracion.portalAutorizacionFotosVersion ||
+      '1.0'
+    );
+
+  registro.fechaAceptacionFotografias =
+    autorizaFotos
+      ? new Date()
+      : '';
+
+  registro.textoAutorizacionFotografias =
+    limpiarTextoAspirante(
+      configuracion.portalAutorizacionFotosTextoHtml ||
+      ''
+    );
+}
+
 function validarDuplicadoAspirante(
   registro
 ) {
@@ -570,30 +894,26 @@ function validarDuplicadoAspirante(
       HOJAS.ASPIRANTES
     );
 
+  const documento =
+    normalizarTexto(
+      registro.documentoIdentidad
+    );
+
   const duplicado =
     existentes.find(
       function(item) {
         return (
           normalizarTexto(
             item.documentoIdentidad
-          ) ===
-            normalizarTexto(
-              registro.documentoIdentidad
-            ) ||
-          normalizarTexto(
-            item.celular
-          ) ===
-            normalizarTexto(
-              registro.celular
-            )
+          ) === documento
         );
       }
     );
 
   if (duplicado) {
     throw crearErrorAplicacion(
-      'ASPIRANTE_DUPLICADO',
-      'Ya existe una inscripción con el mismo documento o celular.'
+      'ASPIRANTE_DOCUMENTO_DUPLICADO',
+      'Un usuario con ese número de documento ya está registrado.'
     );
   }
 }

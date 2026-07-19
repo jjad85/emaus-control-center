@@ -32,9 +32,11 @@ function obtenerMesas() {
     );
 
   const servidores =
-    obtenerServidores({
-      equipo: 'Mesa'
-    });
+    obtenerServidores({}).filter(
+      function(servidor) {
+        return String(servidor.mesa || '').trim() !== '';
+      }
+    );
 
   const caminantes =
     obtenerCaminantes({});
@@ -122,7 +124,7 @@ function construirDetalleMesa(
       function(servidor) {
         return (
           normalizarTexto(
-            servidor.rol
+            servidor.rolMesa || servidor.rol
           ) === 'lider'
         );
       }
@@ -133,7 +135,7 @@ function construirDetalleMesa(
       function(servidor) {
         return (
           normalizarTexto(
-            servidor.rol
+            servidor.rolMesa || servidor.rol
           ) === 'colider'
         );
       }

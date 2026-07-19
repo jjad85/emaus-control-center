@@ -52,6 +52,54 @@ function obtenerPortalPublico() {
   };
 }
 
+function convertirFechaAspiranteMilisegundos(
+  valor
+) {
+  if (
+    valor instanceof Date
+  ) {
+    return valor.getTime();
+  }
+
+  const texto =
+    String(
+      valor || ''
+    ).trim();
+
+  if (!texto) {
+    return 0;
+  }
+
+  const fechaDirecta =
+    new Date(texto);
+
+  if (
+    !isNaN(
+      fechaDirecta.getTime()
+    )
+  ) {
+    return fechaDirecta.getTime();
+  }
+
+  const coincidencia =
+    texto.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+
+  if (!coincidencia) {
+    return 0;
+  }
+
+  return new Date(
+    Number(coincidencia[3]),
+    Number(coincidencia[2]) - 1,
+    Number(coincidencia[1]),
+    Number(coincidencia[4] || 0),
+    Number(coincidencia[5] || 0),
+    Number(coincidencia[6] || 0)
+  ).getTime();
+}
+
 function obtenerAspirantes(
   token,
   filtros
@@ -84,13 +132,27 @@ function obtenerAspirantes(
       );
     })
     .sort(function(a, b) {
+      const fechaA =
+        convertirFechaAspiranteMilisegundos(
+          a.fechaRegistro
+        );
+
+      const fechaB =
+        convertirFechaAspiranteMilisegundos(
+          b.fechaRegistro
+        );
+
+      if (fechaA !== fechaB) {
+        return fechaA - fechaB;
+      }
+
       return (
         convertirNumero(
-          b.id,
+          a.id,
           0
         ) -
         convertirNumero(
-          a.id,
+          b.id,
           0
         )
       );

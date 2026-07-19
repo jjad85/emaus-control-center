@@ -95,10 +95,10 @@ export default function ReportesMinutograma() {
       {tab === 0 && <Stack spacing={2.5}>
         <Box className="print-only" sx={{ display: 'none' }}><Typography variant="h4" fontWeight={900}>Reporte ejecutivo — {nombreRetiro}</Typography><Typography>{fechaRetiro}</Typography></Box>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={3}><TarjetaIndicador icono="✅" titulo="Cumplimiento" valor={porcentaje(resumen.cumplimientoPorcentaje)} detalle={`${resumen.finalizadas || 0} actividades finalizadas`} /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><TarjetaIndicador icono="⏱️" titulo="Puntualidad" valor={porcentaje(resumen.puntualidadPorcentaje)} detalle="Actividades terminadas dentro del tiempo" /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><TarjetaIndicador icono="📋" titulo="Total actividades" valor={resumen.total || 0} detalle={`${resumen.pendientes || 0} pendientes`} /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><TarjetaIndicador icono="⚖️" titulo="Balance de tiempo" valor={minutosTexto(resumen.balanceMinutos)} detalle="Programado menos ejecutado" /></Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><TarjetaIndicador icono="✅" titulo="Cumplimiento" valor={porcentaje(resumen.cumplimientoPorcentaje)} detalle={`${resumen.finalizadas || 0} actividades finalizadas`} /></Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><TarjetaIndicador icono="⏱️" titulo="Puntualidad" valor={porcentaje(resumen.puntualidadPorcentaje)} detalle="Actividades terminadas dentro del tiempo" /></Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><TarjetaIndicador icono="📋" titulo="Total actividades" valor={resumen.total || 0} detalle={`${resumen.pendientes || 0} pendientes`} /></Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><TarjetaIndicador icono="⚖️" titulo="Balance de tiempo" valor={minutosTexto(resumen.balanceMinutos)} detalle="Programado menos ejecutado" /></Grid>
         </Grid>
         <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
           <Typography variant="h6" fontWeight={800}>Estado general</Typography><Divider sx={{ my: 1.5 }} />

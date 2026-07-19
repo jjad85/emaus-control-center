@@ -39,6 +39,31 @@ function routePost(contenido) {
           'Sesión cerrada correctamente'
       };
 
+
+    case 'solicitarrecuperacionclave':
+      return {
+        datos:
+          solicitarRecuperacionClave(
+            contenido.usuario,
+            contenido.correo
+          ),
+        mensaje:
+          'Solicitud de recuperación procesada'
+      };
+
+    case 'restablecerclaveconcodigo':
+      return {
+        datos:
+          restablecerClaveConCodigo(
+            contenido.usuario,
+            contenido.correo,
+            contenido.codigo,
+            contenido.nuevaClave
+          ),
+        mensaje:
+          'Contraseña restablecida correctamente'
+      };
+
     case 'obteneropcionesregistrocaminante':
       return {
         datos:
@@ -130,6 +155,19 @@ function routePost(contenido) {
           ),
         mensaje:
           'Foto actualizada correctamente'
+      };
+
+
+    case 'desactivarcaminante':
+      return {
+        datos:
+          desactivarCaminante(
+            contenido.token,
+            contenido.id,
+            contenido.motivoCancelacion
+          ),
+        mensaje:
+          'Participación cancelada correctamente'
       };
 
 
@@ -273,11 +311,156 @@ function routePost(contenido) {
           'Aspirante convertido en caminante correctamente'
       };
 
+    case 'prepararnotificacionwhatsapp':
+      return {
+        datos:
+          prepararNotificacionWhatsapp(
+            contenido.token,
+            contenido.id
+          ),
+        mensaje:
+          'WhatsApp preparado correctamente'
+      };
+
+    case 'confirmarnotificacionwhatsapp':
+      return {
+        datos:
+          confirmarNotificacionWhatsapp(
+            contenido.token,
+            contenido.id
+          ),
+        mensaje:
+          'Notificación confirmada correctamente'
+      };
+
+    case 'obteneropcionesgestionservidor':
+      return {
+        datos: obtenerOpcionesGestionServidor(contenido.token, contenido.id),
+        mensaje: 'Opciones de servidor consultadas correctamente'
+      };
+
+    case 'editarservidor':
+      return {
+        datos: editarServidor(contenido.token, contenido.id, contenido.datos),
+        mensaje: 'Servidor actualizado correctamente'
+      };
+
+    case 'actualizarpagoservidor':
+      return {
+        datos: actualizarPagoServidor(contenido.token, contenido.id, contenido.estadoPago),
+        mensaje: 'Pago del servidor actualizado correctamente'
+      };
+
+    case 'asignartemaservidor':
+      return {
+        datos: asignarTemaServidor(contenido.token, contenido.id, contenido.temaId),
+        mensaje: 'Tema asignado correctamente'
+      };
+
+    case 'asignarmesaservidor':
+      return {
+        datos: asignarMesaServidor(
+          contenido.token,
+          contenido.id,
+          contenido.mesa,
+          contenido.rolMesa,
+          contenido.tipoAsignacion,
+          contenido.equipo
+        ),
+        mensaje: 'Mesa o equipo asignado correctamente'
+      };
+
+    case 'asignarequiposervidor':
+      return {
+        datos: asignarEquipoServidor(contenido.token, contenido.id, contenido.equipo, contenido.rolEquipo),
+        mensaje: 'Equipo asignado correctamente'
+      };
+
+    case 'asignarhabitacionservidor':
+      return {
+        datos: asignarHabitacionServidor(contenido.token, contenido.id, contenido.habitacion),
+        mensaje: 'Habitación asignada correctamente'
+      };
+
+    case 'registrartema':
+      return {
+        datos: registrarTema(contenido.token, contenido.datos),
+        mensaje: 'Tema registrado correctamente'
+      };
+
+    case 'editartema':
+      return {
+        datos: editarTema(contenido.token, contenido.id, contenido.datos),
+        mensaje: 'Tema actualizado correctamente'
+      };
+
+    case 'cambiarestadotema':
+      return {
+        datos: cambiarEstadoTema(contenido.token, contenido.id, contenido.activo),
+        mensaje: 'Estado del tema actualizado correctamente'
+      };
+
+    case 'obteneradministracionsistema':
+      return {
+        datos:
+          obtenerAdministracionSistema(
+            contenido.token
+          ),
+        mensaje:
+          'Administración consultada correctamente'
+      };
+
+    case 'desbloquearusuariosistema':
+      return {
+        datos:
+          desbloquearUsuarioSistema(
+            contenido.token,
+            contenido.usuario
+          ),
+        mensaje:
+          'Usuario desbloqueado correctamente'
+      };
+
+    case 'guardarpermisosrolsistema':
+      return {
+        datos:
+          guardarPermisosRolSistema(
+            contenido.token,
+            contenido.rol,
+            contenido.permisos
+          ),
+        mensaje:
+          'Permisos actualizados correctamente'
+      };
+
+    case 'obtenerconfiguracionesadministracion':
+      return {
+        datos:
+          obtenerConfiguracionesAdministracion(
+            contenido.token
+          ),
+        mensaje:
+          'Configuraciones consultadas correctamente'
+      };
+
+    case 'actualizarconfiguracionexistente':
+      return {
+        datos:
+          actualizarConfiguracionExistente(
+            contenido.token,
+            contenido.clave,
+            contenido.valor,
+            contenido.activo
+          ),
+        mensaje:
+          'Configuración actualizada correctamente'
+      };
+
     default:
       throw crearErrorAplicacion(
         'ACCION_NO_VALIDA',
         'La acción solicitada no existe: ' +
-          accion
+        accion
       );
   }
 }

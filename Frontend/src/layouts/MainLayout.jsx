@@ -25,9 +25,11 @@ import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
 import SlideshowRounded from '@mui/icons-material/SlideshowRounded';
+import RecordVoiceOverRounded from '@mui/icons-material/RecordVoiceOverRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
 import ConstructionRounded from '@mui/icons-material/ConstructionRounded';
 import SettingsRounded from '@mui/icons-material/SettingsRounded';
+import AdminPanelSettingsRounded from '@mui/icons-material/AdminPanelSettingsRounded';
 import LoginRounded from '@mui/icons-material/LoginRounded';
 import LogoutRounded from '@mui/icons-material/LogoutRounded';
 import MenuRounded from '@mui/icons-material/MenuRounded';
@@ -114,6 +116,12 @@ const menuGroups = [
         path: '/presentaciones',
         icon: <SlideshowRounded />,
       },
+      {
+        label: 'Temas',
+        path: '/temas',
+        icon: <RecordVoiceOverRounded />,
+        soloAdministrador: true,
+      },
     ],
   },
   {
@@ -134,6 +142,11 @@ const menuGroups = [
     icon: <SettingsRounded />,
     items: [
       {
+        label: 'Administración',
+        path: '/administracion',
+        icon: <AdminPanelSettingsRounded />,
+      },
+      {
         label: 'Configuración',
         path: '/configuracion',
         icon: <SettingsRounded />,
@@ -149,12 +162,48 @@ function rutaActiva(pathname, path) {
   );
 }
 
-function obtenerGrupoActivo(pathname) {
-  return menuGroups.find((grupo) =>
-    grupo.items.some((item) =>
-      rutaActiva(pathname, item.path)
+function esRolAdministrador(rol) {
+  const normalizado =
+    String(rol || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(
+        /[\u0300-\u036f]/g,
+        ''
+      );
+
+  return (
+    normalizado === 'administrador' ||
+    normalizado === 'administradores'
+  );
+}
+
+function obtenerGruposVisibles(rol) {
+  const administrador = esRolAdministrador(rol);
+
+  return menuGroups
+    .filter(
+      (grupo) =>
+        grupo.id !== 'sistema' ||
+        administrador
     )
-  )?.id;
+    .map((grupo) => ({
+      ...grupo,
+      items: grupo.items.filter(
+        (item) => !item.soloAdministrador || administrador
+      ),
+    }))
+    .filter((grupo) => grupo.items.length > 0);
+}
+
+function obtenerGrupoActivo(pathname, rol) {
+  return obtenerGruposVisibles(rol)
+    .find((grupo) =>
+      grupo.items.some((item) =>
+        rutaActiva(pathname, item.path)
+      )
+    )?.id;
 }
 
 function MenuLateral({
@@ -170,9 +219,22 @@ function MenuLateral({
   cerrarMenuMovil,
   mostrarCerrar = false,
 }) {
+  const gruposVisibles =
+    useMemo(
+      () => obtenerGruposVisibles(rol),
+      [rol]
+    );
+
   const grupoActivo = useMemo(
-    () => obtenerGrupoActivo(location.pathname),
-    [location.pathname]
+    () =>
+      obtenerGrupoActivo(
+        location.pathname,
+        rol
+      ),
+    [
+      location.pathname,
+      rol,
+    ]
   );
 
   const [grupoAbierto, setGrupoAbierto] =
@@ -306,7 +368,7 @@ function MenuLateral({
           />
         </ListItemButton>
 
-        {menuGroups.map((grupo) => {
+        {gruposVisibles.map((grupo) => {
           const abierto = grupoAbierto === grupo.id;
 
           const contieneRutaActiva =

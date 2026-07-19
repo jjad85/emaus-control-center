@@ -27,7 +27,9 @@ const HOJAS = {
   ROLES: 'Roles',
   PERMISOS_ROL: 'PermisosRol',
   MINUTOGRAMA: 'Minutograma',
-  ASPIRANTES: 'Aspirantes'
+  ASPIRANTES: 'Aspirantes',
+  RECUPERACIONES_CLAVE: 'RecuperacionesClave',
+  TEMAS: 'Temas'
 };
 
 
@@ -189,6 +191,16 @@ function convertirEncabezado(texto){
     'nombre':'nombre',
     'telefono':'telefono',
     'estado de pago':'estadoPago',
+    'rol mesa':'rolMesa',
+    'rol de mesa':'rolMesa',
+    'rol equipo':'rolEquipo',
+    'rol de equipo':'rolEquipo',
+    'tema id':'temaId',
+    'servidor id':'servidorId',
+    'servidor nombre':'servidorNombre',
+    'requiere presentación':'requierePresentacion',
+    'requiere presentacion':'requierePresentacion',
+    'requiere testimonio':'requiereTestimonio',
     'equipo':'equipo',
     'rol':'rol',
     'tema':'tema',

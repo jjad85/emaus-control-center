@@ -11,7 +11,7 @@ function routeRequest(parametros) {
       return {
         datos: {
           api: 'EMAUS_CONTROL_CENTER',
-          versionBackend: '2026.07.17-ASPIRANTES-01',
+          versionBackend: '2026.07.17-NOTIFICACIONES-01',
           recursoRecibido:
             parametros.recurso ||
             parametros.resource ||
@@ -39,6 +39,27 @@ function routeRequest(parametros) {
           'Configuraciones consultadas correctamente'
       };
 
+    case 'notificaciones':
+      return {
+        datos:
+          obtenerNotificaciones(
+            parametros.token
+          ),
+        mensaje:
+          'Notificaciones consultadas correctamente'
+      };
+
+    case 'notificacioneswhatsapp':
+      return {
+        datos:
+          obtenerNotificacionesWhatsapp(
+            parametros.token,
+            parametros
+          ),
+        mensaje:
+          'Notificaciones de WhatsApp consultadas correctamente'
+      };
+
     case 'aspirantes':
       return atenderAspirantes(
         parametros
@@ -53,6 +74,12 @@ function routeRequest(parametros) {
       return atenderServidores(
         parametros
       );
+
+    case 'temas':
+      return {
+        datos: obtenerTemas(parametros.token, parametros),
+        mensaje: 'Temas consultados correctamente'
+      };
 
     case 'mesas':
       return atenderMesas(
@@ -156,9 +183,12 @@ function atenderAspirantes(parametros) {
   }
 
   const items =
-    obtenerAspirantes(
-      parametros.token,
-      parametros
+    enriquecerConWhatsapp(
+      obtenerAspirantes(
+        parametros.token,
+        parametros
+      ),
+      'Aspirantes'
     );
 
   return {
@@ -187,8 +217,11 @@ function atenderCaminantes(parametros) {
   }
 
   const items =
-    obtenerCaminantes(
-      parametros
+    enriquecerConWhatsapp(
+      obtenerCaminantes(
+        parametros
+      ),
+      'Caminantes'
     );
 
   return {

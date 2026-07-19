@@ -26,7 +26,9 @@ import Minutograma from './pages/Minutograma';
 import Campanero from './pages/Campanero';
 import PantallaPublica from './pages/PantallaPublica';
 import Configuracion from './pages/Configuracion';
+import Administracion from './pages/Administracion';
 import NotificacionesWhatsApp from './pages/NotificacionesWhatsApp';
+import Temas from './pages/Temas';
 
 export default function App() {
   return (
@@ -106,6 +108,16 @@ export default function App() {
           <Route
             path="/campanero"
             element={<Campanero />}
+          />
+
+          <Route
+            path="/temas"
+            element={<Temas />}
+          />
+
+          <Route
+            path="/administracion"
+            element={<Administracion />}
           />
 
           <Route

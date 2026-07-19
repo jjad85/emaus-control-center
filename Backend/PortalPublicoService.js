@@ -47,7 +47,39 @@ function obtenerPortalPublico() {
 
     mensajeConfirmacion:
       configuracion.portalMensajeConfirmacion ||
-      'Gracias por registrarte. El equipo organizador revisará tu información.'
+      'Gracias por registrarte. El equipo organizador revisará tu información.',
+
+    autorizacionDatosTitulo:
+      configuracion.portalAutorizacionDatosTitulo ||
+      'Autorización para el tratamiento de datos personales',
+
+    autorizacionDatosTextoHtml:
+      configuracion.portalAutorizacionDatosTextoHtml ||
+      '',
+
+    autorizacionDatosVersion:
+      configuracion.portalAutorizacionDatosVersion ||
+      '1.0',
+
+    autorizacionDatosTextoAceptacion:
+      configuracion.portalAutorizacionDatosTextoAceptacion ||
+      'He leído y acepto la autorización para el tratamiento de mis datos personales.',
+
+    autorizacionFotosTitulo:
+      configuracion.portalAutorizacionFotosTitulo ||
+      'Autorización de fotografías y material audiovisual',
+
+    autorizacionFotosTextoHtml:
+      configuracion.portalAutorizacionFotosTextoHtml ||
+      '',
+
+    autorizacionFotosVersion:
+      configuracion.portalAutorizacionFotosVersion ||
+      '1.0',
+
+    autorizacionFotosTextoAceptacion:
+      configuracion.portalAutorizacionFotosTextoAceptacion ||
+      'Autorizo el uso de fotografías y material audiovisual conforme al texto informado.'
   };
 }
 

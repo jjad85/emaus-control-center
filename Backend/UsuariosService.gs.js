@@ -41,7 +41,7 @@ function buscarUsuarioPorUsuario(usuarioIngresado) {
         1,
         ultimaColumna
       )
-      .getDisplayValues()[0];
+      .getValues()[0];
 
   // Buscar la columna Usuario
   const indiceUsuario =
@@ -88,7 +88,7 @@ function buscarUsuarioPorUsuario(usuarioIngresado) {
             1,
             ultimaColumna
           )
-          .getDisplayValues()[0];
+          .getValues()[0];
 
       return convertirFilaUsuario(
         encabezados,
@@ -164,7 +164,21 @@ function convertirEncabezadoUsuario(
 
     'rol':'rol',
 
-    'activo':'activo'
+    'activo':'activo',
+
+    'intentos fallidos':'intentosFallidos',
+
+    'intentosfallidos':'intentosFallidos',
+
+    'ultimo intento fallido':'ultimoIntentoFallido',
+
+    'último intento fallido':'ultimoIntentoFallido',
+
+    'ultimointentofallido':'ultimoIntentoFallido',
+
+    'bloqueado hasta':'bloqueadoHasta',
+
+    'bloqueadohasta':'bloqueadoHasta'
 
   };
 

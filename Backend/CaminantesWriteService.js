@@ -83,50 +83,91 @@ function registrarCaminante(
 
   return ejecutarCrudConBloqueo(
     function() {
-      const registro =
-        prepararDatosCaminante(
-          datos || {}
-        );
-
-      validarDatosCaminante(
-        registro
-      );
-
-      validarDuplicadoCaminanteCrud(
-        registro,
-        null
-      );
-
-      validarMesaCaminanteCrud(
-        registro.mesa,
-        null
-      );
-
-      validarHabitacionCaminanteCrud(
-        registro.habitacion,
-        null
-      );
-
-      const creado =
-        crearRegistroSheet(
-          HOJAS.CAMINANTES,
-          registro,
-          opcionesCrudCaminante(
-            sesion.usuario
-          )
-        );
-
-      auditarCaminanteCrud(
+      return registrarCaminanteInterno(
         sesion,
-        'REGISTRAR_CAMINANTE',
-        creado.id,
-        creado
-      );
-
-      return convertirRegistroCaminanteRespuesta(
-        creado
+        datos
       );
     }
+  );
+}
+
+/**
+ * Registra un caminante usando una sesión previamente
+ * validada y un bloqueo ya adquirido.
+ *
+ * Se utiliza en la aprobación automática de aspirantes.
+ */
+function registrarCaminanteInterno(
+  sesion,
+  datos
+) {
+  if (
+    !sesion ||
+    !sesion.usuario
+  ) {
+    throw crearErrorAplicacion(
+      'SESION_INTERNA_REQUERIDA',
+      'No fue posible identificar al usuario que registra el caminante.'
+    );
+  }
+
+  const registro =
+    prepararDatosCaminante(
+      datos || {}
+    );
+
+  validarDatosCaminante(
+    registro
+  );
+
+  validarDuplicadoCaminanteCrud(
+    registro,
+    null
+  );
+
+  validarMesaCaminanteCrud(
+    registro.mesa,
+    null
+  );
+
+  validarHabitacionCaminanteCrud(
+    registro.habitacion,
+    null
+  );
+
+  const momento =
+    new Date();
+
+  registro.activo =
+    'Sí';
+
+  registro.fechaRegistro =
+    momento;
+
+  registro.fechaActualizacion =
+    momento;
+
+  registro.actualizadoPor =
+    sesion.usuario;
+
+  const creado =
+    crearRegistroSheet(
+      HOJAS.CAMINANTES,
+      registro,
+      opcionesCrudCaminante(
+        sesion.usuario
+      )
+    );
+
+  auditarCaminanteCrud(
+    sesion,
+    'REGISTRAR_CAMINANTE',
+    creado.id,
+    creado
+  );
+
+  return convertirRegistroCaminanteRespuesta(
+    creado
   );
 }
 
@@ -391,40 +432,97 @@ function actualizarFotoCaminante(
 }
 
 /**
- * Desactiva un caminante.
+ * Cancela la participación de un caminante sin eliminar su historial.
  */
 function desactivarCaminante(
   token,
-  id
+  id,
+  motivoCancelacion
 ) {
   const sesion =
     validarPermiso(
       token,
-      'EDITAR_CAMINANTE'
+      'DESACTIVAR_CAMINANTE'
     );
 
-  const resultado =
-    ejecutarCrudConBloqueo(
-      function() {
-        return desactivarRegistroSheet(
-          HOJAS.CAMINANTES,
-          id,
-          opcionesCrudCaminante(
-            sesion.usuario
-          )
+  const motivo = String(
+    motivoCancelacion || ''
+  ).trim();
+
+  if (!motivo) {
+    throw crearErrorAplicacion(
+      'MOTIVO_CANCELACION_REQUERIDO',
+      'Debe indicar el motivo de la cancelación.'
+    );
+  }
+
+  return ejecutarCrudConBloqueo(
+    function() {
+      const actual = leerRegistroPorIdSheet(
+        HOJAS.CAMINANTES,
+        id,
+        opcionesCrudCaminante(
+          sesion.usuario
+        )
+      );
+
+      if (!convertirBooleano(actual.activo)) {
+        throw crearErrorAplicacion(
+          'CAMINANTE_YA_CANCELADO',
+          'El caminante ya se encuentra cancelado.'
         );
       }
-    );
 
-  auditarCaminanteCrud(
-    sesion,
-    'DESACTIVAR_CAMINANTE',
-    id,
-    resultado
-  );
+      const momento = new Date();
 
-  return convertirRegistroCaminanteRespuesta(
-    resultado
+      const actualizado = actualizarRegistroSheet(
+        HOJAS.CAMINANTES,
+        id,
+        {
+          activo: 'No',
+          mesa: '',
+          habitacion: '',
+          fechaCancelacion: momento,
+          motivoCancelacion: motivo
+        },
+        opcionesCrudCaminante(
+          sesion.usuario
+        )
+      );
+
+      auditarCaminanteCrud(
+        sesion,
+        'DESACTIVAR_CAMINANTE',
+        id,
+        {
+          nombre: actual.nombre || '',
+          mesaAnterior: actual.mesa || '',
+          habitacionAnterior:
+            actual.habitacion || '',
+          fechaCancelacion: momento,
+          motivoCancelacion: motivo
+        }
+      );
+
+      crearNotificacionWhatsappPendiente({
+        tipo:
+          TIPOS_NOTIFICACION_WHATSAPP.CANCELACION,
+        entidad:
+          'Caminantes',
+        entidadId:
+          id,
+        nombre:
+          actual.nombre || '',
+        telefono:
+          actual.telefono || '',
+        motivo:
+          motivo
+      });
+
+      return convertirRegistroCaminanteRespuesta(
+        actualizado
+      );
+    }
   );
 }
 
@@ -462,8 +560,18 @@ function prepararDatosCaminante(
       ).trim(),
 
     telefono:
+      validarCelularColombia(
+        datos.telefono,
+        {
+          requerido: true,
+          etiqueta:
+            'El celular del caminante'
+        }
+      ),
+
+    tallaCamiseta:
       String(
-        datos.telefono || ''
+        datos.tallaCamiseta || ''
       ).trim(),
 
     estadoPago:
@@ -489,9 +597,14 @@ function prepararDatosCaminante(
       ).trim(),
 
     telefonoContacto:
-      String(
-        datos.telefonoContacto || ''
-      ).trim(),
+      validarCelularColombia(
+        datos.telefonoContacto,
+        {
+          requerido: true,
+          etiqueta:
+            'El celular del contacto'
+        }
+      ),
 
     carta:
       estandarizarOpcionCaminante(
@@ -913,6 +1026,9 @@ function convertirRegistroCaminanteRespuesta(
     telefono:
       registro.telefono,
 
+    tallaCamiseta:
+      registro.tallaCamiseta || '',
+
     estadoPago:
       registro.estadoPago,
 
@@ -951,7 +1067,13 @@ function convertirRegistroCaminanteRespuesta(
       registro.fechaActualizacion,
 
     actualizadoPor:
-      registro.actualizadoPor
+      registro.actualizadoPor,
+
+    fechaCancelacion:
+      registro.fechaCancelacion || '',
+
+    motivoCancelacion:
+      registro.motivoCancelacion || ''
   };
 }
 

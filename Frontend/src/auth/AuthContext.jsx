@@ -16,7 +16,6 @@ import {
 
 import {
   eliminarSesionLocal,
-  escucharCambiosSesion,
   guardarSesionLocal,
   leerSesionLocal,
 } from './sessionStorage';
@@ -89,6 +88,14 @@ export function AuthProvider({
 
   const timerAvisoRef =
     useRef(null);
+
+  /*
+   * Evita que respuestas pendientes o el endpoint de cierre
+   * disparen el evento global de "sesión expirada" después
+   * de que el usuario cerró la sesión voluntariamente.
+   */
+  const cierreManualRef =
+    useRef(false);
 
   const limpiarTemporizadores =
     useCallback(() => {
@@ -192,53 +199,18 @@ export function AuthProvider({
   useEffect(() => {
     return escucharSesionExpirada(
       (event) => {
+        if (
+          cierreManualRef.current
+        ) {
+          return;
+        }
+
         expirarSesion(
           event?.detail?.mensaje
         );
       }
     );
   }, [expirarSesion]);
-
-  /*
-   * Sincroniza login, logout y cambio de usuario entre pestañas.
-   *
-   * - Si otra pestaña inicia sesión, esta pestaña adopta la misma sesión.
-   * - Si otra pestaña cierra sesión, esta también se cierra.
-   * - No pueden quedar dos usuarios distintos activos en el mismo navegador.
-   */
-  useEffect(() => {
-    return escucharCambiosSesion(
-      (sesionCompartida) => {
-        limpiarTemporizadores();
-        setPendingAction(null);
-        setAvisoSesion('');
-        setMensajeSesion('');
-
-        if (
-          sesionCompartida?.token
-        ) {
-          setSesion(
-            sesionCompartida
-          );
-
-          setLoginOpen(false);
-
-          programarExpiracion(
-            sesionCompartida
-              .fechaExpiracion
-          );
-
-          return;
-        }
-
-        setSesion(null);
-        setLoginOpen(false);
-      }
-    );
-  }, [
-    limpiarTemporizadores,
-    programarExpiracion,
-  ]);
 
   useEffect(() => {
     let activo = true;
@@ -390,17 +362,37 @@ export function AuthProvider({
       const token =
         sesion?.token;
 
+      /*
+       * Se marca antes de limpiar la sesión porque pueden existir
+       * consultas pendientes que respondan con SESION_EXPIRADA.
+       */
+      cierreManualRef.current =
+        true;
+
       cerrarSesionLocal();
       setMensajeSesion('');
+      setLoginOpen(false);
 
-      if (token) {
-        try {
+      try {
+        if (token) {
           await cerrarSesionApi(
             token
           );
-        } catch {
-          // La sesión local ya quedó cerrada.
         }
+      } catch {
+        // La sesión local ya quedó cerrada voluntariamente.
+      } finally {
+        /*
+         * Se deja una ventana corta para ignorar respuestas
+         * tardías que pertenecían a la sesión cerrada.
+         */
+        window.setTimeout(
+          () => {
+            cierreManualRef.current =
+              false;
+          },
+          1500
+        );
       }
     },
     [
@@ -439,11 +431,19 @@ export function AuthProvider({
       (
         accionPosterior = null
       ) => {
+        /*
+         * Abrir el login manualmente nunca debe mostrar
+         * un mensaje de expiración anterior.
+         */
+        cierreManualRef.current =
+          false;
+
         setPendingAction(
           accionPosterior
         );
 
         setMensajeSesion('');
+        setAvisoSesion('');
         setLoginOpen(true);
       },
       []

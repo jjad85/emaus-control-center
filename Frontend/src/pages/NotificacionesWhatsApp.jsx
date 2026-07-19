@@ -74,7 +74,7 @@ export default function NotificacionesWhatsApp() {
 
       <Grid container spacing={2}>
         {items.map((item) => (
-          <Grid item xs={12} md={6} lg={4} key={item.id}>
+          <Grid size={{ xs: 12, md: 6, lg: 4 }} key={item.id}>
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent>
                 <Stack
