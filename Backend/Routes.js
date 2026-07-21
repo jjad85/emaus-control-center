@@ -66,9 +66,16 @@ function routeRequest(parametros) {
       );
 
     case 'caminantes':
-      return atenderCaminantes(
-        parametros
-      );
+      return atenderCaminantes(parametros);
+
+    case 'buscarcaminantepago':
+      return { datos: buscarCaminantePago(parametros.criterio), mensaje: 'Caminante consultado correctamente' };
+
+    case 'pagos':
+      return { datos: obtenerPagos(parametros.token, parametros), mensaje: 'Pagos consultados correctamente' };
+
+    case 'pagoscaminante':
+      return { datos: obtenerPagosCaminante(parametros.token, parametros.caminanteId), mensaje: 'Pagos del caminante consultados correctamente' };
 
     case 'servidores':
       return atenderServidores(

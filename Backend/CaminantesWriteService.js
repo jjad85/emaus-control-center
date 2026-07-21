@@ -553,7 +553,7 @@ function opcionesCrudCaminante(
 function prepararDatosCaminante(
   datos
 ) {
-  return {
+  return Object.assign({}, datos, {
     nombre:
       String(
         datos.nombre || ''
@@ -619,7 +619,7 @@ function prepararDatosCaminante(
           'Pendiente',
         ESTADOS_ENTREGABLE_CAMINANTE
       )
-  };
+  });
 }
 
 /**

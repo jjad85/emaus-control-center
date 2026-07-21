@@ -48,6 +48,16 @@ function obtenerNotificaciones(token) {
     }
   }
 
+  if (permisos.includes('GESTIONAR_PAGOS')) {
+    const pagosPendientes = leerHojaComoObjetos(HOJAS.PAGOS).filter(function(p) {
+      return normalizarTexto(p.estadoPagoReportado || p.estado) === 'pendiente';
+    });
+    if (pagosPendientes.length) {
+      items.push({ id:'PAGOS_PENDIENTES', tipo:'warning', titulo: pagosPendientes.length + ' pagos pendientes por validar', mensaje:'Tesorería debe revisar los comprobantes reportados.', cantidad:pagosPendientes.length, ruta:'/pagos', permiso:'GESTIONAR_PAGOS' });
+      totalPendientes += pagosPendientes.length;
+    }
+  }
+
   const resumenWhatsapp =
     obtenerResumenNotificacionesWhatsappParaCampana(token);
 

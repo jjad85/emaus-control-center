@@ -59,7 +59,8 @@ export default function NotificationBell({ modo = 'desktop' }) {
     (
       tienePermiso('CONVERTIR_ASPIRANTE') ||
       tienePermiso('NOTIFICAR_ASPIRANTE') ||
-      tienePermiso('NOTIFICAR_CAMINANTE')
+      tienePermiso('NOTIFICAR_CAMINANTE') ||
+      tienePermiso('GESTIONAR_PAGOS')
     );
 
   const cargar = useCallback(async () => {
@@ -164,7 +165,7 @@ export default function NotificationBell({ modo = 'desktop' }) {
         <IconButton
           aria-label={
             cantidad > 0
-              ? `${cantidad} aspirantes pendientes`
+              ? `${cantidad} pendientes por gestionar`
               : 'Sin notificaciones pendientes'
           }
           onClick={abrir}
@@ -274,7 +275,7 @@ export default function NotificationBell({ modo = 'desktop' }) {
                 No tienes pendientes
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                No hay aspirantes que requieran gestión.
+                No hay elementos que requieran gestión.
               </Typography>
             </Box>
           )}

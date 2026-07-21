@@ -24,6 +24,7 @@ import AssignmentIndRounded from '@mui/icons-material/AssignmentIndRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
+import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import SlideshowRounded from '@mui/icons-material/SlideshowRounded';
 import RecordVoiceOverRounded from '@mui/icons-material/RecordVoiceOverRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
@@ -83,6 +84,11 @@ const menuGroups = [
         label: 'Caminantes',
         path: '/caminantes',
         icon: <GroupsRounded />,
+      },
+      {
+        label: 'Pagos',
+        path: '/pagos',
+        icon: <PaymentsRounded />,
       },
       {
         label: 'Servidores',

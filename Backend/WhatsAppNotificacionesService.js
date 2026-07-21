@@ -13,7 +13,8 @@ const HOJA_NOTIFICACIONES_WHATSAPP = 'NotificacionesWhatsApp';
 const TIPOS_NOTIFICACION_WHATSAPP = {
   INSCRIPCION: 'INSCRIPCION',
   APROBACION: 'APROBACION',
-  CANCELACION: 'CANCELACION'
+  CANCELACION: 'CANCELACION',
+  PAGO_RECHAZADO: 'PAGO_RECHAZADO'
 };
 
 const ESTADOS_NOTIFICACION_WHATSAPP = {
@@ -281,7 +282,8 @@ function obtenerResumenNotificacionesWhatsappParaCampana(token) {
     const etiquetas = {
       INSCRIPCION: 'inscripciones pendientes por notificar',
       APROBACION: 'aprobaciones pendientes por notificar',
-      CANCELACION: 'cancelaciones pendientes por notificar'
+      CANCELACION: 'cancelaciones pendientes por notificar',
+      PAGO_RECHAZADO: 'pagos rechazados pendientes por notificar'
     };
 
     items.push({
@@ -362,8 +364,8 @@ function sincronizarNotificacionesWhatsappPendientes_() {
       tipo: TIPOS_NOTIFICACION_WHATSAPP.INSCRIPCION,
       entidad: 'Aspirantes',
       entidadId: aspirante.id,
-      nombre: aspirante.nombreCompleto,
-      telefono: aspirante.celular || aspirante.telefono
+      nombre: obtenerDestinatarioRegistro(aspirante).nombre,
+      telefono: obtenerDestinatarioRegistro(aspirante).telefono
     });
 
     const estado = normalizarTexto(aspirante.estadoSolicitud);
@@ -377,8 +379,8 @@ function sincronizarNotificacionesWhatsappPendientes_() {
         tipo: TIPOS_NOTIFICACION_WHATSAPP.APROBACION,
         entidad: 'Aspirantes',
         entidadId: aspirante.id,
-        nombre: aspirante.nombreCompleto,
-        telefono: aspirante.celular || aspirante.telefono
+        nombre: obtenerDestinatarioRegistro(aspirante).nombre,
+        telefono: obtenerDestinatarioRegistro(aspirante).telefono
       });
     }
   });
@@ -420,7 +422,7 @@ function puedeGestionarTipoWhatsapp_(permisos, tipo) {
     );
   }
 
-  if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.CANCELACION) {
+  if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.CANCELACION || tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.PAGO_RECHAZADO) {
     return (
       permisos.includes('NOTIFICAR_CAMINANTE') ||
       permisos.includes('DESACTIVAR_CAMINANTE')
@@ -441,6 +443,9 @@ function obtenerPlantillaWhatsapp_(tipo, configuracion) {
   plantillas[TIPOS_NOTIFICACION_WHATSAPP.CANCELACION] =
     configuracion.whatsappMensajeCancelacion ||
     'Hola {{nombre}}. Te informamos que tu participación en el retiro fue cancelada. Motivo: {{motivo}}.';
+  plantillas[TIPOS_NOTIFICACION_WHATSAPP.PAGO_RECHAZADO] =
+    configuracion.whatsappMensajePagoRechazado ||
+    'Hola {{nombre}}. El comprobante de pago fue rechazado. Motivo: {{motivo}}. Por favor ingresa nuevamente a Reportar pago y carga un nuevo comprobante.';
 
   return plantillas[String(tipo || '').toUpperCase()] || '';
 }

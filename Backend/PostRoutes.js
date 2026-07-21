@@ -277,6 +277,12 @@ function routePost(contenido) {
       };
 
 
+
+    case 'reportarpagopublico':
+      return { datos: reportarPagoPublico(contenido.datos), mensaje: 'Pago reportado correctamente' };
+    case 'validarpago':
+      return { datos: validarPago(contenido.token, contenido.id, contenido.decision || {}), mensaje: 'Pago validado correctamente' };
+
     case 'registraraspirantepublico':
       return {
         datos:

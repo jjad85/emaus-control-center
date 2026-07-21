@@ -12,6 +12,7 @@ import {
 
 import LoginRounded from '@mui/icons-material/LoginRounded';
 import HowToRegRounded from '@mui/icons-material/HowToRegRounded';
+import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -232,14 +233,44 @@ export default function PublicHome() {
 
               <Divider sx={{ my: 3 }} />
 
-              {registroActivo ? (
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1.5}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+              >
+                {registroActivo ? (
+                  <Button
+                    variant="contained"
+                    size="large"
+                    startIcon={<HowToRegRounded />}
+                    onClick={() => navigate('/registro')}
+                    sx={{
+                      minHeight: 52,
+                      borderRadius: 3,
+                      px: 3,
+                      fontWeight: 850,
+                      textTransform: 'none',
+                    }}
+                  >
+                    {portal.textoBotonRegistro ||
+                      'Registrarme al retiro'}
+                  </Button>
+                ) : (
+                  <Typography
+                    color="warning.main"
+                    fontWeight={800}
+                    sx={{ py: 1 }}
+                  >
+                    {portal.mensajeRegistroCerrado ||
+                      'Las inscripciones se encuentran cerradas.'}
+                  </Typography>
+                )}
+
                 <Button
-                  variant="contained"
+                  variant="outlined"
                   size="large"
-                  startIcon={<HowToRegRounded />}
-                  onClick={() =>
-                    navigate('/registro')
-                  }
+                  startIcon={<PaymentsRounded />}
+                  onClick={() => navigate('/reportar-pago')}
                   sx={{
                     minHeight: 52,
                     borderRadius: 3,
@@ -248,18 +279,9 @@ export default function PublicHome() {
                     textTransform: 'none',
                   }}
                 >
-                  {portal.textoBotonRegistro ||
-                    'Registrarme al retiro'}
+                  Reportar pago
                 </Button>
-              ) : (
-                <Typography
-                  color="warning.main"
-                  fontWeight={800}
-                >
-                  {portal.mensajeRegistroCerrado ||
-                    'Las inscripciones se encuentran cerradas.'}
-                </Typography>
-              )}
+              </Stack>
             </CardContent>
           </Card>
 

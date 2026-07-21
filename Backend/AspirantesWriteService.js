@@ -254,6 +254,12 @@ function convertirAspiranteEnCaminanteInterno(
   );
 
   const datosCaminante = {
+    aspiranteId: aspirante.id,
+    numeroInscripcion: aspirante.numeroInscripcion,
+    documentoIdentidad: aspirante.documentoIdentidad,
+    tipoRegistrante: aspirante.tipoRegistrante || 'ASPIRANTE',
+    nombreRegistrante: aspirante.nombreRegistrante || '',
+    telefonoRegistrante: aspirante.telefonoRegistrante || '',
     nombre:
       aspirante.nombreCompleto,
 
@@ -394,6 +400,12 @@ function prepararAspirante(
 
   return {
     numeroInscripcion: '',
+    tipoRegistrante:
+      limpiarTextoAspirante(entrada.tipoRegistrante) || 'ASPIRANTE',
+    nombreRegistrante:
+      limpiarTextoAspirante(entrada.nombreRegistrante),
+    telefonoRegistrante:
+      limpiarTextoAspirante(entrada.telefonoRegistrante),
     nombreCompleto:
       limpiarTextoAspirante(
         entrada.nombreCompleto
@@ -662,6 +674,16 @@ function validarFormatoCelularAspirante(
 function validarAspirante(
   registro
 ) {
+  const tipoRegistrante = normalizarTexto(registro.tipoRegistrante || 'ASPIRANTE');
+  const esInvitador = tipoRegistrante === 'invitador' || tipoRegistrante === 'otra persona';
+
+  if (esInvitador) {
+    if (!registro.nombreRegistrante) {
+      throw crearErrorAplicacion('NOMBRE_REGISTRANTE_REQUERIDO', 'El nombre de la persona que realiza la inscripción es obligatorio.');
+    }
+    validarFormatoCelularAspirante(registro.telefonoRegistrante, 'El teléfono del registrante', true);
+  }
+
   const requeridos = [
     [
       registro.nombreCompleto,

@@ -147,6 +147,28 @@ function formatearFechaCorta(valor) {
   }).format(fecha);
 }
 
+
+function calcularEdad(fechaNacimiento) {
+  if (!fechaNacimiento) return null;
+
+  const texto = String(fechaNacimiento).trim();
+  const coincidencia = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const nacimiento = coincidencia
+    ? new Date(Number(coincidencia[1]), Number(coincidencia[2]) - 1, Number(coincidencia[3]))
+    : new Date(texto);
+
+  if (Number.isNaN(nacimiento.getTime())) return null;
+
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const noHaCumplido =
+    hoy.getMonth() < nacimiento.getMonth() ||
+    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate());
+
+  if (noHaCumplido) edad -= 1;
+  return edad >= 0 && edad <= 120 ? edad : null;
+}
+
 function CampoDetalle({ etiqueta, valor, anchoCompleto = false }) {
   return (
     <Box
@@ -1134,6 +1156,14 @@ export default function Aspirantes() {
                   valor={seleccionado.numeroInscripcion}
                 />
                 <CampoDetalle
+                  etiqueta="Inscripción diligenciada por"
+                  valor={seleccionado.tipoRegistrante === 'INVITADOR' ? 'Otra persona' : 'El aspirante'}
+                />
+                {seleccionado.tipoRegistrante === 'INVITADOR' && <>
+                  <CampoDetalle etiqueta="Nombre del registrante" valor={seleccionado.nombreRegistrante} />
+                  <CampoDetalle etiqueta="Teléfono del registrante" valor={seleccionado.telefonoRegistrante} />
+                </>}
+                <CampoDetalle
                   etiqueta="Nombre completo"
                   valor={seleccionado.nombreCompleto}
                 />
@@ -1145,7 +1175,13 @@ export default function Aspirantes() {
                   etiqueta="Fecha de nacimiento"
                   valor={formatearFechaCorta(seleccionado.fechaNacimiento)}
                 />
-                <CampoDetalle etiqueta="Edad" valor={seleccionado.edad} />
+                <CampoDetalle
+                  etiqueta="Edad"
+                  valor={(() => {
+                    const edad = calcularEdad(seleccionado.fechaNacimiento);
+                    return edad !== null ? `${edad} años` : "No informada";
+                  })()}
+                />
                 <CampoDetalle
                   etiqueta="Estado civil"
                   valor={seleccionado.estadoCivil}

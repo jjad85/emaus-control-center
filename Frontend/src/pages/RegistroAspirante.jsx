@@ -30,6 +30,7 @@ import {
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
+import DownloadRounded from '@mui/icons-material/DownloadRounded';
 
 import {
   useMemo,
@@ -89,11 +90,13 @@ const COMO_SE_ENTERO = [
 ];
 
 const INICIAL = {
+  tipoRegistrante: 'ASPIRANTE',
+  nombreRegistrante: '',
+  telefonoRegistrante: '',
   nombreCompleto: '',
   documentoIdentidad: '',
   direccionResidencia: '',
   fechaNacimiento: '',
-  edad: '',
   barrio: '',
   telefono: '',
   celular: '',
@@ -458,12 +461,14 @@ export default function RegistroAspirante() {
   const validacionPaso =
     useMemo(() => {
       if (paso === 0) {
+        const registranteValido = form.tipoRegistrante !== 'INVITADOR' || (form.nombreRegistrante && celularValido(form.telefonoRegistrante));
         return Boolean(
+          registranteValido &&
           form.nombreCompleto &&
           form.documentoIdentidad &&
           form.direccionResidencia &&
           form.fechaNacimiento &&
-          form.edad &&
+          calcularEdad(form.fechaNacimiento) >= 18 &&
           form.barrio &&
           celularValido(
             form.celular
@@ -554,10 +559,21 @@ export default function RegistroAspirante() {
     setEnviando(true);
     setError('');
 
+    const edadCalculada = calcularEdad(form.fechaNacimiento);
+
+    if (edadCalculada === '' || edadCalculada < 18) {
+      setError('El aspirante debe tener 18 años o más.');
+      setEnviando(false);
+      return;
+    }
+
     try {
+      const datosFormulario = { ...form };
+      delete datosFormulario.edad;
+
       const datos =
         await registrarAspirantePublico(
-          form
+          datosFormulario
         );
 
       setResultado(datos);
@@ -570,6 +586,71 @@ export default function RegistroAspirante() {
       setEnviando(false);
     }
   }
+
+  const descargarCodigoInscripcion = () => {
+    const codigo = resultado?.numeroInscripcion;
+
+    if (!codigo) {
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 1200;
+
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      return;
+    }
+
+    context.fillStyle = '#f5efe3';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    context.fillStyle = '#ffffff';
+    context.beginPath();
+    context.roundRect(80, 80, 1040, 1040, 48);
+    context.fill();
+
+    context.textAlign = 'center';
+    context.fillStyle = '#2e7d32';
+    context.font = 'bold 92px Arial, sans-serif';
+    context.fillText('✓', 600, 250);
+
+    context.fillStyle = '#1f2937';
+    context.font = 'bold 58px Arial, sans-serif';
+    context.fillText('Inscripción recibida', 600, 350);
+
+    context.fillStyle = '#6b7280';
+    context.font = '34px Arial, sans-serif';
+    context.fillText('Tu código de inscripción es:', 600, 440);
+
+    context.fillStyle = '#7b1e3b';
+    context.font = 'bold 92px Arial, sans-serif';
+    context.fillText(codigo, 600, 565);
+
+    context.fillStyle = '#374151';
+    context.font = '32px Arial, sans-serif';
+    context.fillText('Guarda este código.', 600, 680);
+    context.fillText('Lo puedes necesitar para consultar tu inscripción', 600, 735);
+    context.fillText('o para reportar y consultar tus pagos.', 600, 790);
+
+    context.strokeStyle = '#d1d5db';
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(180, 865);
+    context.lineTo(1020, 865);
+    context.stroke();
+
+    context.fillStyle = '#6b7280';
+    context.font = '28px Arial, sans-serif';
+    context.fillText('Retiro de Emaús 2026', 600, 950);
+
+    const enlace = document.createElement('a');
+    enlace.download = `inscripcion-${codigo}.png`;
+    enlace.href = canvas.toDataURL('image/png');
+    enlace.click();
+  };
 
   if (resultado) {
     return (
@@ -634,17 +715,42 @@ export default function RegistroAspirante() {
             }
           </Typography>
 
-          <Button
-            variant="contained"
-            onClick={() =>
-              navigate('/')
-            }
+          <Alert
+            severity="info"
             sx={{
               mt: 3,
+              textAlign: 'left',
             }}
           >
-            Volver al inicio
-          </Button>
+            <strong>Guarda este código.</strong> Lo puedes necesitar para preguntar por tu inscripción o para reportar y consultar tus pagos.
+          </Alert>
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row',
+            }}
+            spacing={1.5}
+            justifyContent="center"
+            mt={3}
+          >
+            <Button
+              variant="contained"
+              startIcon={<DownloadRounded />}
+              onClick={descargarCodigoInscripcion}
+            >
+              Descargar código como imagen
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() =>
+                navigate('/')
+              }
+            >
+              Volver al inicio
+            </Button>
+          </Stack>
         </Paper>
       </Box>
     );
@@ -770,6 +876,43 @@ export default function RegistroAspirante() {
                 spacing={2}
               >
                 <Grid size={12}>
+                  <FormControl required>
+                    <FormLabel>¿Quién está diligenciando esta inscripción?</FormLabel>
+                    <RadioGroup
+                      value={form.tipoRegistrante}
+                      onChange={(event) => cambiar('tipoRegistrante', event.target.value)}
+                    >
+                      <FormControlLabel value="ASPIRANTE" control={<Radio />} label="La persona que asistirá al retiro" />
+                      <FormControlLabel value="INVITADOR" control={<Radio />} label="Otra persona que desea regalarle el retiro" />
+                    </RadioGroup>
+                  </FormControl>
+                </Grid>
+
+                {form.tipoRegistrante === 'INVITADOR' && (
+                  <>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Campo
+                        label="Nombre de quien realiza la inscripción"
+                        value={form.nombreRegistrante}
+                        onChange={(valor) => cambiar('nombreRegistrante', valor)}
+                        required
+                        error={errorObligatorio('nombreRegistrante')}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Campo
+                        label="Teléfono de quien realiza la inscripción"
+                        value={form.telefonoRegistrante}
+                        onChange={(valor) => cambiar('telefonoRegistrante', normalizarCelular(valor).slice(0, 10))}
+                        required
+                        error={errorCelular('telefonoRegistrante')}
+                        helperText={ayudaCelular('telefonoRegistrante')}
+                      />
+                    </Grid>
+                  </>
+                )}
+
+                <Grid size={12}>
                   <Campo
                     label="Nombre completo"
                     value={form.nombreCompleto}
@@ -818,26 +961,32 @@ export default function RegistroAspirante() {
                     label="Fecha de nacimiento"
                     type="date"
                     value={form.fechaNacimiento}
-                    onChange={(valor) => {
+                    onChange={(valor) =>
                       cambiar(
                         'fechaNacimiento',
                         valor
-                      );
-
-                      cambiar(
-                        'edad',
-                        calcularEdad(
-                          valor
-                        )
-                      );
-                    }}
+                      )
+                    }
                     InputLabelProps={{
                       shrink: true,
                     }}
                     required
-                    error={errorObligatorio(
-                      'fechaNacimiento'
-                    )}
+                    error={
+                      errorObligatorio('fechaNacimiento') ||
+                      Boolean(
+                        form.fechaNacimiento &&
+                        calcularEdad(form.fechaNacimiento) < 18
+                      )
+                    }
+                    helperText={
+                      form.fechaNacimiento &&
+                      calcularEdad(form.fechaNacimiento) < 18
+                        ? 'El aspirante debe tener 18 años o más.'
+                        : ''
+                    }
+                    inputProps={{
+                      max: new Date().toISOString().split('T')[0],
+                    }}
                   />
                 </Grid>
 
@@ -863,26 +1012,6 @@ export default function RegistroAspirante() {
                   />
                 </Grid>
 
-                <Grid
-                  size={{
-                    xs: 12,
-                    sm: 4,
-                  }}
-                >
-                  <Campo
-                    label="Edad"
-                    type="number"
-                    value={form.edad}
-                    onChange={() => {}}
-                    InputProps={{
-                      readOnly: true,
-                    }}
-                    required
-                    error={errorObligatorio(
-                      'edad'
-                    )}
-                  />
-                </Grid>
 
                 <Grid
                   size={{

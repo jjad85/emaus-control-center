@@ -23,15 +23,23 @@ import {
 import {
   AddRounded,
   BedRounded,
+  ContactEmergencyRounded,
+  ContactPhoneRounded,
+  FavoriteRounded,
+  HomeRounded,
+  InfoRounded,
+  ChurchRounded,
   EditRounded,
   MailRounded,
   PaymentsRounded,
+  PersonRounded,
   PhotoRounded,
   SearchRounded,
   TableRestaurantRounded,
+  TaskAltRounded,
 } from "@mui/icons-material";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   asignarHabitacionCaminanteApi,
@@ -44,6 +52,7 @@ import {
   obtenerOpcionesRegistroCaminante,
   registrarCaminanteApi,
 } from "../api/caminantesApi";
+import { obtenerPagosCaminante } from "../api/pagosApi";
 
 import { useApi } from "../hooks/useApi";
 import { useAuth } from "../auth/AuthContext";
@@ -92,8 +101,35 @@ function formatearFechaDetalle(valor) {
   }).format(fecha);
 }
 
+function calcularEdad(fechaNacimiento) {
+  if (!tieneValor(fechaNacimiento)) return null;
+
+  const texto = String(fechaNacimiento).trim();
+  const coincidencia = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const nacimiento = coincidencia
+    ? new Date(Number(coincidencia[1]), Number(coincidencia[2]) - 1, Number(coincidencia[3]))
+    : new Date(texto);
+
+  if (Number.isNaN(nacimiento.getTime())) return null;
+
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const noHaCumplido =
+    hoy.getMonth() < nacimiento.getMonth() ||
+    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate());
+
+  if (noHaCumplido) edad -= 1;
+  return edad >= 0 && edad <= 120 ? edad : null;
+}
+
 function CampoDetalle({ etiqueta, valor, anchoCompleto = false }) {
-  if (!tieneValor(valor)) return null;
+  const valorVisible = Array.isArray(valor)
+    ? valor.length
+      ? valor.join(", ")
+      : "Pendiente"
+    : tieneValor(valor)
+      ? String(valor)
+      : "Pendiente";
 
   return (
     <Grid size={{ xs: 12, sm: anchoCompleto ? 12 : 6 }}>
@@ -101,28 +137,79 @@ function CampoDetalle({ etiqueta, valor, anchoCompleto = false }) {
         {etiqueta}
       </Typography>
       <Typography fontWeight={700} sx={{ whiteSpace: "pre-wrap" }}>
-        {String(valor)}
+        {valorVisible}
       </Typography>
     </Grid>
   );
 }
 
-function SeccionDetalle({ titulo, children }) {
-  const elementos = Array.isArray(children)
-    ? children.filter(Boolean)
-    : children;
+function primerValor(...valores) {
+  return valores.find((valor) => tieneValor(valor));
+}
 
-  if (Array.isArray(elementos) && elementos.length === 0) {
-    return null;
+function obtenerDatoDetalle(datos, ...claves) {
+  const fuentes = [datos?.aspirante, datos?.caminante, datos].filter(Boolean);
+
+  for (const clave of claves) {
+    for (const fuente of fuentes) {
+      const partes = clave.split(".");
+      let valor = fuente;
+
+      for (const parte of partes) {
+        valor = valor?.[parte];
+      }
+
+      if (tieneValor(valor) || (Array.isArray(valor) && valor.length)) {
+        return valor;
+      }
+    }
   }
 
+  return undefined;
+}
+
+function SeccionDetalle({ titulo, icono, children }) {
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Typography variant="subtitle1" fontWeight={850} sx={{ mb: 1.75 }}>
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 3,
+        overflow: "hidden",
+        borderColor: "divider",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.25,
+          px: 2.25,
+          py: 1.5,
+          bgcolor: "action.hover",
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Box
+          sx={{
+            width: 36,
+            height: 36,
+            borderRadius: 2,
+            display: "grid",
+            placeItems: "center",
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+          }}
+        >
+          {icono}
+        </Box>
+        <Typography variant="subtitle1" fontWeight={900}>
           {titulo}
         </Typography>
-        <Grid container spacing={2}>
+      </Box>
+
+      <CardContent sx={{ p: 2.25 }}>
+        <Grid container spacing={2.25}>
           {children}
         </Grid>
       </CardContent>
@@ -156,6 +243,12 @@ export default function Caminantes() {
   const [mensaje, setMensaje] = useState("");
 
   const [detalleCaminante, setDetalleCaminante] = useState(null);
+  const [resumenPagos, setResumenPagos] = useState(null);
+
+  useEffect(() => {
+    if (!detalleCaminante?.id || !token) { setResumenPagos(null); return; }
+    obtenerPagosCaminante(token, detalleCaminante.id).then(setResumenPagos).catch(() => setResumenPagos(null));
+  }, [detalleCaminante?.id, token]);
 
   const items = api.data?.items || [];
 
@@ -632,7 +725,7 @@ export default function Caminantes() {
           >
             <Box>
               <Typography variant="h5" fontWeight={900}>
-                {detalleCaminante?.nombre || "Detalle del caminante"}
+                {obtenerDatoDetalle(detalleCaminante, "nombreCompleto", "nombre") || "Detalle del caminante"}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Información completa para la gestión del retiro
@@ -665,291 +758,319 @@ export default function Caminantes() {
           </Stack>
         </DialogTitle>
 
-        <DialogContent dividers>
-          <Stack spacing={2.25}>
-            <SeccionDetalle titulo="Información personal">
+        <DialogContent dividers sx={{ bgcolor: "background.default" }}>
+          <Stack spacing={2}>
+            <SeccionDetalle
+              titulo="Información personal"
+              icono={<PersonRounded fontSize="small" />}
+            >
               <CampoDetalle
-                etiqueta="Número de inscripción"
-                valor={detalleCaminante?.numeroInscripcion}
+                etiqueta="Nombre completo"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "nombreCompleto",
+                  "nombre",
+                )}
+                anchoCompleto
               />
               <CampoDetalle
+                etiqueta="Inscripción diligenciada por"
+                valor={normalizar(obtenerDatoDetalle(detalleCaminante, "tipoRegistrante")) === "invitador" ? "Otra persona" : "El caminante"}
+              />
+              {normalizar(obtenerDatoDetalle(detalleCaminante, "tipoRegistrante")) === "invitador" && <>
+                <CampoDetalle etiqueta="Nombre del registrante" valor={obtenerDatoDetalle(detalleCaminante, "nombreRegistrante")} />
+                <CampoDetalle etiqueta="Teléfono del registrante" valor={obtenerDatoDetalle(detalleCaminante, "telefonoRegistrante")} />
+              </>}
+              <CampoDetalle
                 etiqueta="Documento de identidad"
-                valor={
-                  detalleCaminante?.documentoIdentidad ||
-                  detalleCaminante?.documento ||
-                  detalleCaminante?.numeroDocumento
-                }
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "documentoIdentidad",
+                  "numeroDocumento",
+                  "documento",
+                )}
               />
               <CampoDetalle
                 etiqueta="Fecha de nacimiento"
-                valor={formatearFechaDetalle(detalleCaminante?.fechaNacimiento)}
+                valor={formatearFechaDetalle(
+                  obtenerDatoDetalle(detalleCaminante, "fechaNacimiento"),
+                )}
               />
-              <CampoDetalle etiqueta="Edad" valor={detalleCaminante?.edad} />
+              <CampoDetalle
+                etiqueta="Edad"
+                valor={(() => {
+                  const edad = calcularEdad(
+                    obtenerDatoDetalle(detalleCaminante, "fechaNacimiento"),
+                  );
+                  return edad !== null ? `${edad} años` : "Pendiente";
+                })()}
+              />
               <CampoDetalle
                 etiqueta="Estado civil"
-                valor={detalleCaminante?.estadoCivil}
-              />
-              <CampoDetalle
-                etiqueta="Profesión u ocupación"
-                valor={
-                  detalleCaminante?.profesionOcupacion ||
-                  detalleCaminante?.profesion ||
-                  detalleCaminante?.ocupacion
-                }
-              />
-              <CampoDetalle
-                etiqueta="Talla de camiseta"
-                valor={
-                  detalleCaminante?.tallaCamiseta ||
-                  detalleCaminante?.tallaCamisa ||
-                  detalleCaminante?.talla
-                }
-              />
-              <CampoDetalle
-                etiqueta="Parroquia"
-                valor={detalleCaminante?.parroquia || detalleCaminante?.iglesia}
-              />
-            </SeccionDetalle>
-
-            <SeccionDetalle titulo="Ubicación y contacto">
-              <CampoDetalle
-                etiqueta="Celular"
-                valor={detalleCaminante?.telefono || detalleCaminante?.celular}
-              />
-              <CampoDetalle
-                etiqueta="Teléfono fijo"
-                valor={detalleCaminante?.telefonoFijo}
-              />
-              <CampoDetalle
-                etiqueta="Correo electrónico"
-                valor={detalleCaminante?.correo}
+                valor={obtenerDatoDetalle(detalleCaminante, "estadoCivil")}
               />
               <CampoDetalle
                 etiqueta="Dirección de residencia"
-                valor={
-                  detalleCaminante?.direccionResidencia ||
-                  detalleCaminante?.direccion
-                }
+                valor={obtenerDatoDetalle(detalleCaminante, "direccionResidencia")}
                 anchoCompleto
               />
               <CampoDetalle
                 etiqueta="Barrio"
-                valor={detalleCaminante?.barrio}
+                valor={obtenerDatoDetalle(detalleCaminante, "barrio")}
               />
               <CampoDetalle
-                etiqueta="Ciudad o municipio"
-                valor={detalleCaminante?.ciudad || detalleCaminante?.municipio}
+                etiqueta="Parroquia a la que asiste"
+                valor={obtenerDatoDetalle(detalleCaminante, "parroquia")}
+              />
+              <CampoDetalle
+                etiqueta="Teléfono"
+                valor={obtenerDatoDetalle(detalleCaminante, "telefono")}
+              />
+              <CampoDetalle
+                etiqueta="Celular"
+                valor={obtenerDatoDetalle(detalleCaminante, "celular")}
               />
             </SeccionDetalle>
 
-            <Card variant="outlined">
-              <CardContent>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={850}
-                  sx={{ mb: 1.75 }}
-                >
-                  Información del retiro
-                </Typography>
-
-                <Stack spacing={2}>
-                  <Stack direction="row" gap={1} flexWrap="wrap">
-                    <StatusChip
-                      value={detalleCaminante?.estadoPago || "Pendiente"}
-                    />
-                    <Chip
-                      icon={<TableRestaurantRounded />}
-                      label={
-                        detalleCaminante?.mesa
-                          ? `Mesa ${detalleCaminante.mesa}`
-                          : "Sin mesa asignada"
-                      }
-                      variant="outlined"
-                    />
-                    <Chip
-                      icon={<BedRounded />}
-                      label={
-                        detalleCaminante?.habitacion
-                          ? `Habitación ${detalleCaminante.habitacion}`
-                          : "Sin habitación asignada"
-                      }
-                      variant="outlined"
-                    />
-                  </Stack>
-
-                  <Divider />
-
-                  <Grid container spacing={2}>
-                    <CampoDetalle
-                      etiqueta="Sacramentos recibidos"
-                      valor={detalleCaminante?.sacramentosRecibidos}
-                      anchoCompleto
-                    />
-                    <CampoDetalle
-                      etiqueta="Cómo se enteró del retiro"
-                      valor={detalleCaminante?.comoSeEntero}
-                    />
-                    <CampoDetalle
-                      etiqueta="Persona que lo invitó"
-                      valor={
-                        detalleCaminante?.nombrePersonaInvito ||
-                        detalleCaminante?.personaInvito ||
-                        detalleCaminante?.invitadoPor
-                      }
-                    />
-                    <CampoDetalle
-                      etiqueta="Celular de quien lo invitó"
-                      valor={detalleCaminante?.celularPersonaInvito}
-                    />
-                    <CampoDetalle
-                      etiqueta="Asistirá una persona conocida"
-                      valor={detalleCaminante?.personaConocidaAsistira}
-                    />
-                    <CampoDetalle
-                      etiqueta="Persona conocida"
-                      valor={detalleCaminante?.nombrePersonaConocida}
-                    />
-                    <CampoDetalle
-                      etiqueta="Autoriza tratamiento de datos"
-                      valor={detalleCaminante?.autorizaTratamientoDatos}
-                    />
-                    <CampoDetalle
-                      etiqueta="Autoriza fotografías"
-                      valor={detalleCaminante?.autorizaFotografias}
-                    />
-                  </Grid>
-
-                  <Divider />
-
-                  <Stack direction="row" gap={1} flexWrap="wrap">
-                    <Chip
-                      icon={<MailRounded />}
-                      label={`Carta: ${detalleCaminante?.entregables?.carta || "Pendiente"}`}
-                    />
-                    <Chip
-                      icon={<PhotoRounded />}
-                      label={`Foto: ${detalleCaminante?.entregables?.foto || "Pendiente"}`}
-                    />
-                  </Stack>
-                </Stack>
-              </CardContent>
-            </Card>
-
-            <SeccionDetalle titulo="Información de salud">
+            <SeccionDetalle
+              titulo="Salud"
+              icono={<FavoriteRounded fontSize="small" />}
+            >
+              <CampoDetalle
+                etiqueta="¿Sufre alguna enfermedad?"
+                valor={obtenerDatoDetalle(detalleCaminante, "sufreEnfermedad")}
+              />
+              <CampoDetalle
+                etiqueta="¿Cuál enfermedad?"
+                valor={obtenerDatoDetalle(detalleCaminante, "enfermedadCual")}
+              />
+              <CampoDetalle
+                etiqueta="¿Toma algún medicamento?"
+                valor={obtenerDatoDetalle(detalleCaminante, "tomaMedicamento")}
+              />
+              <CampoDetalle
+                etiqueta="¿Cuál medicamento?"
+                valor={obtenerDatoDetalle(detalleCaminante, "medicamentoCual")}
+              />
+              <CampoDetalle
+                etiqueta="Horarios de los medicamentos"
+                valor={obtenerDatoDetalle(detalleCaminante, "horariosMedicamentos")}
+                anchoCompleto
+              />
               <CampoDetalle
                 etiqueta="EPS"
-                valor={detalleCaminante?.eps || detalleCaminante?.nombreEps}
+                valor={obtenerDatoDetalle(detalleCaminante, "eps")}
               />
               <CampoDetalle
-                etiqueta="Sufre alguna enfermedad"
-                valor={detalleCaminante?.sufreEnfermedad}
+                etiqueta="Profesión u ocupación"
+                valor={obtenerDatoDetalle(detalleCaminante, "profesionOcupacion")}
               />
               <CampoDetalle
-                etiqueta="Enfermedad o condición"
-                valor={
-                  detalleCaminante?.enfermedadCual ||
-                  detalleCaminante?.condicionMedica
-                }
-                anchoCompleto
+                etiqueta="¿Tiene alguna limitación física?"
+                valor={obtenerDatoDetalle(detalleCaminante, "tieneLimitacionFisica")}
               />
               <CampoDetalle
-                etiqueta="Toma medicamentos"
-                valor={detalleCaminante?.tomaMedicamento}
-              />
-              <CampoDetalle
-                etiqueta="Medicamento"
-                valor={
-                  detalleCaminante?.medicamentoCual ||
-                  detalleCaminante?.medicamentos
-                }
-              />
-              <CampoDetalle
-                etiqueta="Horario de medicamentos"
-                valor={detalleCaminante?.horariosMedicamentos}
-                anchoCompleto
-              />
-              <CampoDetalle
-                etiqueta="Tiene limitación física"
-                valor={detalleCaminante?.tieneLimitacionFisica}
-              />
-              <CampoDetalle
-                etiqueta="Limitación física"
-                valor={detalleCaminante?.limitacionCual}
-              />
-              <CampoDetalle
-                etiqueta="Alergias"
-                valor={detalleCaminante?.alergias}
-                anchoCompleto
-              />
-              <CampoDetalle
-                etiqueta="Restricciones alimentarias"
-                valor={detalleCaminante?.restriccionesAlimentarias}
-                anchoCompleto
-              />
-              <CampoDetalle
-                etiqueta="Tipo de sangre"
-                valor={detalleCaminante?.tipoSangre}
+                etiqueta="¿Cuál limitación?"
+                valor={obtenerDatoDetalle(detalleCaminante, "limitacionCual")}
               />
             </SeccionDetalle>
 
-            <SeccionDetalle titulo="Contactos de emergencia">
+            <SeccionDetalle
+              titulo="Información general"
+              icono={<ChurchRounded fontSize="small" />}
+            >
               <CampoDetalle
-                etiqueta="Contacto principal"
-                valor={detalleCaminante?.contacto?.nombre}
+                etiqueta="Sacramentos recibidos"
+                valor={obtenerDatoDetalle(detalleCaminante, "sacramentosRecibidos")}
+                anchoCompleto
               />
               <CampoDetalle
-                etiqueta="Parentesco"
-                valor={detalleCaminante?.contacto?.parentesco}
-              />
-              <CampoDetalle
-                etiqueta="Celular principal"
-                valor={detalleCaminante?.contacto?.telefono}
-              />
-              <CampoDetalle
-                etiqueta="Contacto alterno"
-                valor={detalleCaminante?.contactoAlterno?.nombre}
-              />
-              <CampoDetalle
-                etiqueta="Parentesco del contacto alterno"
-                valor={detalleCaminante?.contactoAlterno?.parentesco}
-              />
-              <CampoDetalle
-                etiqueta="Celular alterno"
-                valor={detalleCaminante?.contactoAlterno?.telefono}
+                etiqueta="Talla de camisa tipo polo"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "tallaCamisa",
+                  "tallaCamiseta",
+                  "talla",
+                )}
               />
             </SeccionDetalle>
 
-            {(tieneValor(detalleCaminante?.observaciones) ||
-              tieneValor(detalleCaminante?.observacionesGestion)) && (
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight={850}
-                    sx={{ mb: 1.25 }}
-                  >
-                    Observaciones
-                  </Typography>
-                  {tieneValor(detalleCaminante?.observaciones) && (
-                    <Typography sx={{ whiteSpace: "pre-wrap" }}>
-                      {detalleCaminante.observaciones}
-                    </Typography>
-                  )}
-                  {tieneValor(detalleCaminante?.observacionesGestion) && (
-                    <Typography
-                      sx={{
-                        whiteSpace: "pre-wrap",
-                        mt: tieneValor(detalleCaminante?.observaciones)
-                          ? 1.5
-                          : 0,
-                      }}
-                    >
-                      {detalleCaminante.observacionesGestion}
-                    </Typography>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            <SeccionDetalle
+              titulo="Emergencia"
+              icono={<ContactEmergencyRounded fontSize="small" />}
+            >
+              <CampoDetalle
+                etiqueta="Contacto de emergencia 1"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "contacto1Nombre",
+                  "contacto1.nombre",
+                  "nombreContacto1",
+                  "contactoEmergencia1",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Parentesco contacto 1"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "contacto1Parentesco",
+                  "contacto1.parentesco",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Celular contacto 1"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "contacto1Celular",
+                  "contacto1.celular",
+                  "contacto1.telefono",
+                  "telefonoContacto1",
+                  "celularContacto1",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Contacto de emergencia 2"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "contacto2Nombre",
+                  "contacto2.nombre",
+                  "nombreContacto2",
+                  "contactoEmergencia2",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Parentesco contacto 2"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "contacto2Parentesco",
+                  "contacto2.parentesco",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Celular contacto 2"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "contacto2Celular",
+                  "contacto2.celular",
+                  "contacto2.telefono",
+                  "telefonoContacto2",
+                  "celularContacto2",
+                )}
+              />
+            </SeccionDetalle>
+
+            <SeccionDetalle
+              titulo="Pagos del retiro"
+              icono={<PaymentsRounded fontSize="small" />}
+            >
+              <CampoDetalle etiqueta="Valor del retiro" valor={resumenPagos ? `$${Number(resumenPagos.valorRetiro).toLocaleString("es-CO")}` : "Pendiente"} />
+              <CampoDetalle etiqueta="Total aprobado" valor={resumenPagos ? `$${Number(resumenPagos.totalAprobado).toLocaleString("es-CO")}` : "Pendiente"} />
+              <CampoDetalle etiqueta="Saldo pendiente" valor={resumenPagos ? `$${Number(resumenPagos.saldoPendiente).toLocaleString("es-CO")}` : "Pendiente"} />
+              <CampoDetalle etiqueta="Excedente" valor={resumenPagos ? `$${Number(resumenPagos.excedente).toLocaleString("es-CO")}` : "Pendiente"} />
+              {(resumenPagos?.pagos || []).map((pago) => (
+                <Box key={pago.id} sx={{ gridColumn: "1 / -1", border: 1, borderColor: "divider", borderRadius: 2, p: 1.5 }}>
+                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}>
+                    <Typography fontWeight={800}>{formatearFechaDetalle(pago.fechaPago)} · ${Number(pago.valorAprobado ?? pago.valorReportado).toLocaleString("es-CO")}</Typography>
+                    <StatusChip value={pago.estado} />
+                  </Stack>
+                  {pago.comprobanteUrl && <Button size="small" href={pago.comprobanteUrl} target="_blank" sx={{ mt: 1 }}>Ver o descargar comprobante</Button>}
+                </Box>
+              ))}
+              {resumenPagos && !resumenPagos.pagos?.length && <Typography sx={{ gridColumn: "1 / -1" }} color="text.secondary">No hay pagos registrados.</Typography>}
+            </SeccionDetalle>
+
+            <SeccionDetalle
+              titulo="Información del retiro"
+              icono={<InfoRounded fontSize="small" />}
+            >
+              <CampoDetalle
+                etiqueta="Código de inscripción"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "numeroInscripcion",
+                  "codigoInscripcion",
+                  "nroInscripcion",
+                  "aspirante.numeroInscripcion",
+                  "aspirante.codigoInscripcion",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="¿Cómo se enteró del retiro?"
+                valor={obtenerDatoDetalle(detalleCaminante, "comoSeEntero")}
+                anchoCompleto
+              />
+              <CampoDetalle
+                etiqueta="Nombre de quien lo invitó"
+                valor={obtenerDatoDetalle(detalleCaminante, "nombrePersonaInvito")}
+              />
+              <CampoDetalle
+                etiqueta="Celular de quien lo invitó"
+                valor={obtenerDatoDetalle(detalleCaminante, "celularPersonaInvito")}
+              />
+              <CampoDetalle
+                etiqueta="¿Asistirá una persona conocida?"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "personaConocidaAsistira",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Nombre de la persona conocida"
+                valor={obtenerDatoDetalle(detalleCaminante, "nombrePersonaConocida")}
+              />
+              <CampoDetalle
+                etiqueta="Autoriza tratamiento de datos"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "autorizaTratamientoDatos",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Autoriza fotografías"
+                valor={obtenerDatoDetalle(detalleCaminante, "autorizaFotografias")}
+              />
+              <CampoDetalle
+                etiqueta="Fecha de registro"
+                valor={formatearFechaDetalle(
+                  obtenerDatoDetalle(
+                    detalleCaminante,
+                    "fechaRegistro",
+                    "fechaCreacion",
+                    "createdAt",
+                  ),
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Estado de pago"
+                valor={obtenerDatoDetalle(detalleCaminante, "estadoPago")}
+              />
+              <CampoDetalle
+                etiqueta="Estado de la carta"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "entregables.carta",
+                  "estadoCarta",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Estado de la foto"
+                valor={obtenerDatoDetalle(
+                  detalleCaminante,
+                  "entregables.foto",
+                  "entregables.fotos",
+                  "estadoFoto",
+                  "estadoFotos",
+                )}
+              />
+              <CampoDetalle
+                etiqueta="Mesa asignada"
+                valor={obtenerDatoDetalle(detalleCaminante, "mesa")}
+              />
+              <CampoDetalle
+                etiqueta="Habitación asignada"
+                valor={obtenerDatoDetalle(detalleCaminante, "habitacion")}
+              />
+            </SeccionDetalle>
           </Stack>
         </DialogContent>
 

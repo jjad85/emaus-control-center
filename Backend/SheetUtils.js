@@ -29,7 +29,8 @@ const HOJAS = {
   MINUTOGRAMA: 'Minutograma',
   ASPIRANTES: 'Aspirantes',
   RECUPERACIONES_CLAVE: 'RecuperacionesClave',
-  TEMAS: 'Temas'
+  TEMAS: 'Temas',
+  PAGOS: 'Pagos'
 };
 
 
@@ -178,7 +179,35 @@ function convertirEncabezado(texto){
     'estado solicitud':'estadoSolicitud',
     'observaciones gestión':'observacionesGestion',
     'observaciones gestion':'observacionesGestion',
+
+    'tipo registrante':'tipoRegistrante',
+    'nombre registrante':'nombreRegistrante',
+    'telefono registrante':'telefonoRegistrante',
+    'destinatario notificacion':'destinatarioNotificacion',
     'caminante id':'caminanteId',
+    'retiro id':'retiroId',
+    'valor reportado':'valorReportado',
+    'valor aprobado':'valorAprobado',
+    'fecha pago':'fechaPago',
+    'medio pago':'medioPago',
+    'entidad pago':'entidadPago',
+    'referencia pago':'referenciaPago',
+    'nombre pagador':'nombrePagador',
+    'telefono pagador':'telefonoPagador',
+    'comprobante url':'comprobanteUrl',
+    'comprobante id':'comprobanteId',
+    'comprobante nombre':'comprobanteNombre',
+    'comprobante tipo':'comprobanteTipo',
+    'comprobante tamano':'comprobanteTamano',
+    'estado pago reportado':'estadoPagoReportado',
+    'observaciones reportante':'observacionesReportante',
+    'observaciones tesoreria':'observacionesTesoreria',
+    'validado por':'validadoPor',
+    'fecha validacion':'fechaValidacion',
+    'motivo modificacion valor':'motivoModificacionValor',
+    'supera saldo':'superaSaldo',
+    'excedente':'excedente',
+
     'orden':'orden',
     'dia':'dia',
     'hora inicio':'horaInicio',

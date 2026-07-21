@@ -346,30 +346,38 @@ function actualizarRegistroSheet(
       configuracion.usuario || '';
   }
 
-  const actualizado =
-    Object.assign(
-      {},
-      actual,
-      cambios
-    );
+  const propiedadesCambiadas =
+    Object.keys(cambios);
 
-  const filaActualizada =
-    construirFilaCrud(
-      encabezados,
-      actualizado,
-      actual
-    );
+  propiedadesCambiadas.forEach(
+    function(propiedad) {
+      const indiceColumna =
+        encabezados.findIndex(
+          function(encabezado) {
+            return (
+              encabezado.propiedad ===
+              propiedad
+            );
+          }
+        );
 
-  hoja
-    .getRange(
-      numeroFila,
-      1,
-      1,
-      encabezados.length
-    )
-    .setValues([
-      filaActualizada
-    ]);
+      // Ignora propiedades que no existen en la hoja.
+      if (indiceColumna < 0) {
+        return;
+      }
+
+      hoja
+        .getRange(
+          numeroFila,
+          indiceColumna + 1
+        )
+        .setValue(
+          convertirValorParaCeldaCrud(
+            cambios[propiedad]
+          )
+        );
+    }
+  );
 
   return leerRegistroPorIdSheet(
     nombreHoja,

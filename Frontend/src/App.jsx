@@ -14,6 +14,8 @@ import PrivateRoute from './auth/PrivateRoute';
 import MainLayout from './layouts/MainLayout';
 import PublicHome from './pages/PublicHome';
 import RegistroAspirante from './pages/RegistroAspirante';
+import ReportarPago from './pages/ReportarPago';
+import Pagos from './pages/Pagos';
 import Dashboard from './pages/Dashboard';
 import Aspirantes from './pages/Aspirantes';
 import Equipos from './pages/Equipos';
@@ -41,10 +43,8 @@ export default function App() {
           element={<PublicHome />}
         />
 
-        <Route
-          path="/registro"
-          element={<RegistroAspirante />}
-        />
+        <Route path="/registro" element={<RegistroAspirante />} />
+        <Route path="/reportar-pago" element={<ReportarPago />} />
 
         {/* Pantalla pública sin menú lateral ni autenticación */}
         <Route
@@ -80,10 +80,8 @@ export default function App() {
             element={<Servidores />}
           />
 
-          <Route
-            path="/caminantes"
-            element={<Caminantes />}
-          />
+          <Route path="/caminantes" element={<Caminantes />} />
+          <Route path="/pagos" element={<Pagos />} />
 
           <Route
             path="/mesas"
