@@ -9,6 +9,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   FormControl,
   FormControlLabel,
   FormGroup,
@@ -31,6 +32,7 @@ import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import DownloadRounded from '@mui/icons-material/DownloadRounded';
+import CloseRounded from '@mui/icons-material/CloseRounded';
 
 import {
   useMemo,
@@ -90,7 +92,7 @@ const COMO_SE_ENTERO = [
 ];
 
 const INICIAL = {
-  tipoRegistrante: 'ASPIRANTE',
+  tipoRegistrante: '',
   nombreRegistrante: '',
   telefonoRegistrante: '',
   nombreCompleto: '',
@@ -244,6 +246,16 @@ export default function RegistroAspirante() {
     dialogoAutorizacion,
     setDialogoAutorizacion,
   ] = useState(null);
+
+  const [
+    dialogoTipoRegistrante,
+    setDialogoTipoRegistrante,
+  ] = useState(true);
+
+  const [
+    errorTipoRegistrante,
+    setErrorTipoRegistrante,
+  ] = useState('');
 
   const portal =
     portalApi.data || {};
@@ -408,6 +420,31 @@ export default function RegistroAspirante() {
       ...actual,
       [campo]: valor,
     }));
+  }
+
+  function confirmarTipoRegistrante() {
+    if (!form.tipoRegistrante) {
+      setErrorTipoRegistrante(
+        'Selecciona quién está diligenciando la inscripción.'
+      );
+      return;
+    }
+
+    if (
+      form.tipoRegistrante === 'INVITADOR' &&
+      (
+        !form.nombreRegistrante.trim() ||
+        !celularValido(form.telefonoRegistrante)
+      )
+    ) {
+      setErrorTipoRegistrante(
+        'Ingresa el nombre y un celular válido de quien realiza la inscripción.'
+      );
+      return;
+    }
+
+    setErrorTipoRegistrante('');
+    setDialogoTipoRegistrante(false);
   }
 
   function cambiarSacramento(
@@ -802,6 +839,133 @@ export default function RegistroAspirante() {
             </Typography>
           </Box>
 
+          <Dialog
+            open={dialogoTipoRegistrante}
+            fullWidth
+            maxWidth="sm"
+            onClose={() => navigate('/')}
+          >
+            <DialogTitle sx={{ position: 'relative', pr: 6 }}>
+              Antes de comenzar
+
+              <IconButton
+                aria-label="Cerrar inscripción"
+                onClick={() => navigate('/')}
+                sx={{
+                  position: 'absolute',
+                  right: 8,
+                  top: 8,
+                }}
+              >
+                <CloseRounded />
+              </IconButton>
+            </DialogTitle>
+
+            <DialogContent>
+              <Typography
+                color="text.secondary"
+                sx={{ mb: 2 }}
+              >
+                Indícanos quién está diligenciando esta inscripción. Esta selección no hace parte de los pasos del formulario.
+              </Typography>
+
+              <FormControl
+                required
+                error={Boolean(errorTipoRegistrante)}
+                fullWidth
+              >
+                <FormLabel>
+                  ¿Quién está diligenciando la inscripción?
+                </FormLabel>
+
+                <RadioGroup
+                  value={form.tipoRegistrante}
+                  onChange={(event) => {
+                    const valor = event.target.value;
+                    cambiar('tipoRegistrante', valor);
+                    setErrorTipoRegistrante('');
+
+                    if (valor === 'ASPIRANTE') {
+                      cambiar('nombreRegistrante', '');
+                      cambiar('telefonoRegistrante', '');
+                    }
+                  }}
+                >
+                  <FormControlLabel
+                    value="ASPIRANTE"
+                    control={<Radio />}
+                    label="Soy la persona que asistirá al retiro"
+                  />
+
+                  <FormControlLabel
+                    value="INVITADOR"
+                    control={<Radio />}
+                    label="Estoy inscribiendo a otra persona"
+                  />
+                </RadioGroup>
+
+                {errorTipoRegistrante && (
+                  <FormHelperText>
+                    {errorTipoRegistrante}
+                  </FormHelperText>
+                )}
+              </FormControl>
+
+              {form.tipoRegistrante === 'INVITADOR' && (
+                <Stack spacing={2} mt={2}>
+                  <Campo
+                    label="Nombre de quien realiza la inscripción"
+                    value={form.nombreRegistrante}
+                    onChange={(valor) => {
+                      cambiar('nombreRegistrante', valor);
+                      setErrorTipoRegistrante('');
+                    }}
+                    required
+                  />
+
+                  <Campo
+                    label="Celular de quien realiza la inscripción"
+                    value={form.telefonoRegistrante}
+                    onChange={(valor) => {
+                      cambiar(
+                        'telefonoRegistrante',
+                        normalizarCelular(valor).slice(0, 10)
+                      );
+                      setErrorTipoRegistrante('');
+                    }}
+                    required
+                    error={Boolean(
+                      form.telefonoRegistrante &&
+                      !celularValido(form.telefonoRegistrante)
+                    )}
+                    helperText={
+                      form.telefonoRegistrante &&
+                      !celularValido(form.telefonoRegistrante)
+                        ? 'Ingrese 10 dígitos y comience por 3.'
+                        : ''
+                    }
+                  />
+                </Stack>
+              )}
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 3 }}>
+              <Button
+                onClick={() => navigate('/')}
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                variant="contained"
+                onClick={confirmarTipoRegistrante}
+                disabled={!form.tipoRegistrante}
+              >
+                Continuar con la inscripción
+              </Button>
+            </DialogActions>
+          </Dialog>
+
           <Paper
             sx={{
               p: {
@@ -875,43 +1039,6 @@ export default function RegistroAspirante() {
                 container
                 spacing={2}
               >
-                <Grid size={12}>
-                  <FormControl required>
-                    <FormLabel>¿Quién está diligenciando esta inscripción?</FormLabel>
-                    <RadioGroup
-                      value={form.tipoRegistrante}
-                      onChange={(event) => cambiar('tipoRegistrante', event.target.value)}
-                    >
-                      <FormControlLabel value="ASPIRANTE" control={<Radio />} label="La persona que asistirá al retiro" />
-                      <FormControlLabel value="INVITADOR" control={<Radio />} label="Otra persona que desea regalarle el retiro" />
-                    </RadioGroup>
-                  </FormControl>
-                </Grid>
-
-                {form.tipoRegistrante === 'INVITADOR' && (
-                  <>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Campo
-                        label="Nombre de quien realiza la inscripción"
-                        value={form.nombreRegistrante}
-                        onChange={(valor) => cambiar('nombreRegistrante', valor)}
-                        required
-                        error={errorObligatorio('nombreRegistrante')}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Campo
-                        label="Teléfono de quien realiza la inscripción"
-                        value={form.telefonoRegistrante}
-                        onChange={(valor) => cambiar('telefonoRegistrante', normalizarCelular(valor).slice(0, 10))}
-                        required
-                        error={errorCelular('telefonoRegistrante')}
-                        helperText={ayudaCelular('telefonoRegistrante')}
-                      />
-                    </Grid>
-                  </>
-                )}
-
                 <Grid size={12}>
                   <Campo
                     label="Nombre completo"

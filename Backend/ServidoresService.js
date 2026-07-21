@@ -24,6 +24,34 @@ function obtenerServidores(filtros) {
     });
 }
 
+
+function obtenerMiCuentaServidor(token) {
+  const sesion = obtenerSesion(token);
+  const nombreSesion = normalizarTexto(sesion.nombre);
+  const usuarioSesion = normalizarTexto(sesion.usuario);
+
+  const coincidencias = obtenerServidores({}).filter(function(item) {
+    return normalizarTexto(item.nombre) === nombreSesion ||
+      normalizarTexto(item.correo) === usuarioSesion;
+  });
+
+  if (!coincidencias.length) {
+    throw crearErrorAplicacion(
+      'SERVIDOR_SESION_NO_ENCONTRADO',
+      'No fue posible relacionar el usuario autenticado con un servidor.'
+    );
+  }
+
+  if (coincidencias.length > 1) {
+    throw crearErrorAplicacion(
+      'SERVIDOR_SESION_AMBIGUO',
+      'Existe más de un servidor relacionado con este usuario. Revise los nombres o correos registrados.'
+    );
+  }
+
+  return coincidencias[0];
+}
+
 function obtenerServidorPorId(id) {
   const servidor = obtenerServidores({}).find(function(item) {
     return String(item.id) === String(id);

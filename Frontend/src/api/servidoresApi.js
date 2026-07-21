@@ -39,3 +39,8 @@ export async function asignarHabitacionServidorApi(token, id, habitacion) {
   const response = await postAction('asignarHabitacionServidor', { token, id, habitacion });
   return response.datos;
 }
+
+export async function obtenerMiCuentaServidorApi(token) {
+  const response = await postAction('obtenerMiCuentaServidor', { token });
+  return response.datos;
+}

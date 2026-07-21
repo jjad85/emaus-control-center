@@ -91,7 +91,7 @@ function normalizarPagoRespuesta(p, caminante) {
   };
 }
 
-function guardarComprobantePago(archivo, caminanteId) {
+function guardarComprobantePago(archivo, caminante) {
   if (!archivo || !archivo.base64 || !archivo.nombre || !archivo.tipo) throw crearErrorAplicacion('COMPROBANTE_REQUERIDO', 'Adjunte el comprobante de pago.');
   if (!TIPOS_COMPROBANTE.includes(String(archivo.tipo).toLowerCase())) throw crearErrorAplicacion('TIPO_COMPROBANTE_INVALIDO', 'Solo se permiten PDF, JPG, JPEG y PNG.');
   const bytes = Utilities.base64Decode(String(archivo.base64).replace(/^data:[^;]+;base64,/, ''));
@@ -100,7 +100,12 @@ function guardarComprobantePago(archivo, caminanteId) {
   const carpetaId = props.getProperty('CARPETA_COMPROBANTES_PAGOS_ID');
   if (!carpetaId) throw crearErrorAplicacion('CARPETA_PAGOS_NO_CONFIGURADA', 'Ejecute instalarModuloPagos antes de recibir pagos.');
   const carpeta = DriveApp.getFolderById(carpetaId);
-  const nombre = 'PAGO_' + caminanteId + '_' + new Date().getTime() + '_' + String(archivo.nombre).replace(/[^a-zA-Z0-9._-]/g,'_');
+    const extension = (String(archivo.nombre).match(/\.([^.]+)$/) || [,'bin'])[1].toLowerCase();
+  const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMddHHmmss');
+  const codigo = String(caminante.numeroInscripcion || 'SINCODIGO').replace(/[^A-Za-z0-9-]/g,'');
+  const documento = String(caminante.documentoIdentidad || 'SINDOC').replace(/[^0-9A-Za-z]/g,'');
+  const valor = String(caminante.valorReportado || '').replace(/[^0-9]/g,'');
+  const nombre = codigo + '_' + documento + '_' + fecha + '_' + valor + '.' + extension;
   const blob = Utilities.newBlob(bytes, archivo.tipo, nombre);
   const file = carpeta.createFile(blob);
   return { id:file.getId(), url:file.getUrl(), nombre:nombre, tipo:archivo.tipo, tamano:bytes.length };
@@ -111,7 +116,8 @@ function reportarPagoPublico(datos) {
   const resumen = buscarCaminantePago(entrada.criterio);
   const valor = Number(entrada.valorReportado);
   if (!valor || valor <= 0) throw crearErrorAplicacion('VALOR_PAGO_INVALIDO', 'Ingrese un valor de pago mayor a cero.');
-  const comprobante = guardarComprobantePago(entrada.archivo, resumen.id);
+  resumen.valorReportado = valor;
+  const comprobante = guardarComprobantePago(entrada.archivo, resumen);
   const registro = {
     caminanteId: resumen.id, retiroId:'RETIRO_ACTUAL', valorReportado:valor, valorAprobado:'', fechaPago:String(entrada.fechaPago||''),
     medioPago:String(entrada.medioPago||''), entidadPago:String(entrada.entidadPago||''), referenciaPago:String(entrada.referenciaPago||''),

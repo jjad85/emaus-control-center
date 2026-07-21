@@ -13,6 +13,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Snackbar,
   Stack,
   Toolbar,
@@ -38,6 +40,8 @@ import CloseRounded from '@mui/icons-material/CloseRounded';
 import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
 import ExpandLessRounded from '@mui/icons-material/ExpandLessRounded';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
+import CheckroomRounded from '@mui/icons-material/CheckroomRounded';
 
 import {
   Outlet,
@@ -667,6 +671,12 @@ export default function MainLayout() {
   const [logoutMessageOpen, setLogoutMessageOpen] =
     useState(false);
 
+  const [menuCuentaAnchor, setMenuCuentaAnchor] = useState(null);
+
+  function abrirMenuCuenta(event) { setMenuCuentaAnchor(event.currentTarget); }
+  function cerrarMenuCuenta() { setMenuCuentaAnchor(null); }
+  function irCuenta(path) { cerrarMenuCuenta(); navigate(path); cerrarMenuMovil(); }
+
   const configuracion =
     configuracionApi.data || {};
 
@@ -801,6 +811,7 @@ export default function MainLayout() {
           )}
 
           {autenticado && (
+            <IconButton onClick={abrirMenuCuenta} aria-label="Abrir menú de cuenta" sx={{ ml: 0.5, p: 0.25 }}>
             <Avatar
               sx={{
                 width: 34,
@@ -814,6 +825,7 @@ export default function MainLayout() {
             >
               {inicial}
             </Avatar>
+            </IconButton>
           )}
         </Toolbar>
       </AppBar>
@@ -911,7 +923,16 @@ export default function MainLayout() {
               mb: 3,
             }}
           >
-            <NotificationBell modo="desktop" />
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <NotificationBell modo="desktop" />
+              {autenticado && (
+                <IconButton onClick={abrirMenuCuenta} aria-label="Abrir menú de cuenta" sx={{ p: 0.25 }}>
+                  <Avatar sx={{ width: 38, height: 38, bgcolor: '#9fd0c3', color: '#173b34', fontWeight: 850 }}>
+                    {inicial}
+                  </Avatar>
+                </IconButton>
+              )}
+            </Stack>
           </Box>
         )}
 
@@ -942,6 +963,23 @@ export default function MainLayout() {
           anio={configuracion.anioRetiro}
         />
       </Box>
+
+      <Menu
+        anchorEl={menuCuentaAnchor}
+        open={Boolean(menuCuentaAnchor)}
+        onClose={cerrarMenuCuenta}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={() => irCuenta('/mi-cuenta')}>
+          <ListItemIcon><AccountCircleRounded fontSize="small" /></ListItemIcon>
+          <ListItemText>Mi cuenta</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => irCuenta('/codigo-vestuario')}>
+          <ListItemIcon><CheckroomRounded fontSize="small" /></ListItemIcon>
+          <ListItemText>Código de vestuario</ListItemText>
+        </MenuItem>
+      </Menu>
 
       <LoginDialog />
 

@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -41,6 +42,8 @@ export default function PasswordRecoveryDialog({
   open,
   onClose,
   onSuccess,
+  initialUsuario = '',
+  initialCorreo = '',
 }) {
   const [paso, setPaso] =
     useState(1);
@@ -70,6 +73,18 @@ export default function PasswordRecoveryDialog({
 
   const [mensaje, setMensaje] =
     useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setPaso(1);
+    setUsuario(initialUsuario || '');
+    setCorreo(initialCorreo || '');
+    setCodigo('');
+    setNuevaClave('');
+    setConfirmarClave('');
+    setError('');
+    setMensaje('');
+  }, [open, initialUsuario, initialCorreo]);
 
   const reglas = useMemo(
     () =>

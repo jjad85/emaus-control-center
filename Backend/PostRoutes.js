@@ -64,6 +64,12 @@ function routePost(contenido) {
           'Contraseña restablecida correctamente'
       };
 
+    case 'obtenermicuentaservidor':
+      return {
+        datos: obtenerMiCuentaServidor(contenido.token),
+        mensaje: 'Cuenta del servidor consultada correctamente'
+      };
+
     case 'obteneropcionesregistrocaminante':
       return {
         datos:

@@ -31,6 +31,8 @@ import Configuracion from './pages/Configuracion';
 import Administracion from './pages/Administracion';
 import NotificacionesWhatsApp from './pages/NotificacionesWhatsApp';
 import Temas from './pages/Temas';
+import MiCuenta from './pages/MiCuenta';
+import CodigoVestuario from './pages/CodigoVestuario';
 
 export default function App() {
   return (
@@ -122,6 +124,9 @@ export default function App() {
             path="/configuracion"
             element={<Configuracion />}
           />
+
+          <Route path="/mi-cuenta" element={<MiCuenta />} />
+          <Route path="/codigo-vestuario" element={<CodigoVestuario />} />
 
           <Route
             path="/notificaciones-whatsapp"
