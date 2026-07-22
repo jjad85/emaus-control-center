@@ -25,3 +25,13 @@ export async function registrarAspirantePublico(
 
   return response.datos;
 }
+
+export async function consultarAutorizacionesCaminantePublico(tokenAutorizacion) {
+  const response = await getResource('autorizacionescaminante', { tokenAutorizacion });
+  return response.datos;
+}
+
+export async function responderAutorizacionesCaminantePublico(tokenAutorizacion, decision) {
+  const response = await postAction('responderAutorizacionesCaminantePublico', { tokenAutorizacion, decision });
+  return response.datos;
+}

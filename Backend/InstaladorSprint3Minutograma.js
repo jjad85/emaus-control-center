@@ -34,7 +34,7 @@ function instalarColumnasAlertasMinutograma_() {
 }
 
 function instalarPermisosAlertasMinutograma_() {
-  const permiso = 'REGISTRAR_ALERTA_MINUTOGRAMA';
+  const permiso = 'REGISTRAR_ALERTA_PASO_A_PASO';
 
   ['Administrador', 'Campanero'].forEach(function(rol) {
     asegurarRegistroSeguridadSprint3_('PermisosRol', {

@@ -75,3 +75,20 @@ export async function restablecerClaveConCodigoApi(
 
   return response.datos;
 }
+
+export async function cambiarPrimerPasswordApi(
+  token,
+  passwordActual,
+  passwordNueva
+) {
+  const response = await postAction(
+    'cambiarPrimerPassword',
+    {
+      token,
+      passwordActual,
+      passwordNueva,
+    }
+  );
+
+  return response.datos;
+}

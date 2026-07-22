@@ -4,9 +4,7 @@ import {
   Card,
   CardContent,
   Container,
-  Divider,
   Stack,
-  Tooltip,
   Typography,
 } from '@mui/material';
 
@@ -77,9 +75,13 @@ export default function PublicHome() {
       sx={{
         minHeight: '100dvh',
         bgcolor: 'background.default',
-        py: {
+        pt: {
           xs: 2,
           md: 4,
+        },
+        pb: {
+          xs: 14,
+          sm: 12,
         },
       }}
     >
@@ -87,13 +89,6 @@ export default function PublicHome() {
         <Stack spacing={3}>
           <Stack
             component="header"
-            sx={{
-              position: 'relative',
-              pr: {
-                xs: 0,
-                md: 28,
-              },
-            }}
             spacing={2}
           >
             <Box sx={{ minWidth: 0 }}>
@@ -131,65 +126,6 @@ export default function PublicHome() {
               </Typography>
             </Box>
 
-            <Tooltip
-              title="Solo para el equipo organizador del retiro"
-              arrow
-            >
-              <Button
-                variant="outlined"
-                size="medium"
-                startIcon={<LoginRounded />}
-                onClick={() =>
-                  solicitarAutenticacion()
-                }
-                sx={{
-                  position: {
-                    xs: 'static',
-                    md: 'absolute',
-                  },
-                  top: {
-                    md: 0,
-                  },
-                  right: {
-                    md: 0,
-                  },
-
-                  alignSelf: {
-                    xs: 'flex-start',
-                    md: 'auto',
-                  },
-
-                  flexShrink: 0,
-                  minHeight: 46,
-                  px: 2.75,
-                  borderRadius: 3,
-
-                  bgcolor: '#E8F5E9',
-                  color: '#1B5E20',
-                  border: '1px solid #A5D6A7',
-
-                  fontWeight: 800,
-                  textTransform: 'none',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 2px 8px rgba(27,94,32,.08)',
-
-                  transition: 'all .2s ease',
-
-                  '&:hover': {
-                    bgcolor: '#DCEFD9',
-                    borderColor: '#81C784',
-                    boxShadow: '0 6px 18px rgba(27,94,32,.18)',
-                    transform: 'translateY(-1px)',
-                  },
-
-                  '&:active': {
-                    transform: 'translateY(0)',
-                  },
-                }}
-              >
-                {textoAccesoServidores}
-              </Button>
-            </Tooltip>
           </Stack>
 
           <Card
@@ -231,57 +167,6 @@ export default function PublicHome() {
                 }}
               />
 
-              <Divider sx={{ my: 3 }} />
-
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1.5}
-                alignItems={{ xs: 'stretch', sm: 'center' }}
-              >
-                {registroActivo ? (
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<HowToRegRounded />}
-                    onClick={() => navigate('/registro')}
-                    sx={{
-                      minHeight: 52,
-                      borderRadius: 3,
-                      px: 3,
-                      fontWeight: 850,
-                      textTransform: 'none',
-                    }}
-                  >
-                    {portal.textoBotonRegistro ||
-                      'Registrarme al retiro'}
-                  </Button>
-                ) : (
-                  <Typography
-                    color="warning.main"
-                    fontWeight={800}
-                    sx={{ py: 1 }}
-                  >
-                    {portal.mensajeRegistroCerrado ||
-                      'Las inscripciones se encuentran cerradas.'}
-                  </Typography>
-                )}
-
-                <Button
-                  variant="outlined"
-                  size="large"
-                  startIcon={<PaymentsRounded />}
-                  onClick={() => navigate('/reportar-pago')}
-                  sx={{
-                    minHeight: 52,
-                    borderRadius: 3,
-                    px: 3,
-                    fontWeight: 850,
-                    textTransform: 'none',
-                  }}
-                >
-                  Reportar pago
-                </Button>
-              </Stack>
             </CardContent>
           </Card>
 
@@ -295,6 +180,145 @@ export default function PublicHome() {
           </Typography>
         </Stack>
       </Container>
+
+      <Box
+        component="nav"
+        aria-label="Acciones principales"
+        sx={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: (theme) => theme.zIndex.appBar + 1,
+          px: { xs: 1, sm: 2 },
+          py: { xs: 1, sm: 1.25 },
+          bgcolor: 'rgba(255,255,255,.96)',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          boxShadow: '0 -8px 28px rgba(35,40,38,.14)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <Container maxWidth="md" disableGutters>
+          <Stack
+            direction="row"
+            spacing={{ xs: 0.75, sm: 1.25 }}
+            sx={{ width: '100%' }}
+          >
+            <Button
+              fullWidth
+              variant="contained"
+              startIcon={<HowToRegRounded />}
+              disabled={!registroActivo}
+              onClick={() => navigate('/registro')}
+              sx={{
+                minWidth: 0,
+                minHeight: { xs: 48, sm: 52 },
+                borderRadius: 999,
+                px: { xs: 0.75, sm: 2 },
+                fontSize: { xs: '0.72rem', sm: '0.9rem' },
+                fontWeight: 850,
+                lineHeight: 1.15,
+                textTransform: 'none',
+                whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                transition:
+                  'transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease',
+                '& .MuiButton-startIcon': {
+                  mr: { xs: 0.4, sm: 1 },
+                },
+                boxShadow:
+                  '0 4px 12px rgba(23,59,52,.20)',
+                '&:hover': {
+                  bgcolor: '#215148',
+                  transform: 'translateY(-3px)',
+                  boxShadow:
+                    '0 10px 22px rgba(23,59,52,.34)',
+                },
+              }}
+            >
+              {registroActivo
+                ? portal.textoBotonRegistro || 'Inscribirse'
+                : 'Inscripciones cerradas'}
+            </Button>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<PaymentsRounded />}
+              onClick={() => navigate('/reportar-pago')}
+              sx={{
+                minWidth: 0,
+                minHeight: { xs: 48, sm: 52 },
+                borderRadius: 999,
+                px: { xs: 0.75, sm: 2 },
+                bgcolor: '#FFFFFF',
+                color: '#173B34',
+                borderColor: '#173B34',
+                fontSize: { xs: '0.72rem', sm: '0.9rem' },
+                fontWeight: 850,
+                lineHeight: 1.15,
+                textTransform: 'none',
+                whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                transition:
+                  'transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease',
+                boxShadow:
+                  '0 2px 8px rgba(23,59,52,.10)',
+                '& .MuiButton-startIcon': {
+                  mr: { xs: 0.4, sm: 1 },
+                },
+                '&:hover': {
+                  bgcolor: '#E7F1ED',
+                  color: '#0F2F29',
+                  borderColor: '#0F2F29',
+                  transform: 'translateY(-3px)',
+                  boxShadow:
+                    '0 10px 22px rgba(23,59,52,.24)',
+                },
+              }}
+            >
+              Reportar pago
+            </Button>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<LoginRounded />}
+              onClick={() => solicitarAutenticacion()}
+              sx={{
+                minWidth: 0,
+                minHeight: { xs: 48, sm: 52 },
+                borderRadius: 999,
+                px: { xs: 0.75, sm: 2 },
+                bgcolor: '#FFFFFF',
+                color: '#173B34',
+                borderColor: '#173B34',
+                fontSize: { xs: '0.72rem', sm: '0.9rem' },
+                fontWeight: 850,
+                lineHeight: 1.15,
+                textTransform: 'none',
+                whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                transition:
+                  'transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease',
+                boxShadow:
+                  '0 2px 8px rgba(23,59,52,.10)',
+                '& .MuiButton-startIcon': {
+                  mr: { xs: 0.4, sm: 1 },
+                },
+                '&:hover': {
+                  bgcolor: '#E7F1ED',
+                  color: '#0F2F29',
+                  borderColor: '#0F2F29',
+                  transform: 'translateY(-3px)',
+                  boxShadow:
+                    '0 10px 22px rgba(23,59,52,.24)',
+                },
+              }}
+            >
+              {textoAccesoServidores}
+            </Button>
+          </Stack>
+        </Container>
+      </Box>
 
       <LoginDialog />
     </Box>

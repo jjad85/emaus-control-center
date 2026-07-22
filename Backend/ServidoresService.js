@@ -27,29 +27,20 @@ function obtenerServidores(filtros) {
 
 function obtenerMiCuentaServidor(token) {
   const sesion = obtenerSesion(token);
-  const nombreSesion = normalizarTexto(sesion.nombre);
-  const usuarioSesion = normalizarTexto(sesion.usuario);
+  const servidorId = String(
+    sesion.servidorId || ''
+  ).trim();
 
-  const coincidencias = obtenerServidores({}).filter(function(item) {
-    return normalizarTexto(item.nombre) === nombreSesion ||
-      normalizarTexto(item.correo) === usuarioSesion;
-  });
-
-  if (!coincidencias.length) {
+  if (!servidorId) {
     throw crearErrorAplicacion(
-      'SERVIDOR_SESION_NO_ENCONTRADO',
-      'No fue posible relacionar el usuario autenticado con un servidor.'
+      'SERVIDOR_USUARIO_NO_CONFIGURADO',
+      'El usuario no tiene un Servidor ID asociado en la hoja Usuarios.'
     );
   }
 
-  if (coincidencias.length > 1) {
-    throw crearErrorAplicacion(
-      'SERVIDOR_SESION_AMBIGUO',
-      'Existe más de un servidor relacionado con este usuario. Revise los nombres o correos registrados.'
-    );
-  }
-
-  return coincidencias[0];
+  // Se consulta nuevamente la hoja para mostrar siempre la información
+  // actualizada del servidor, aunque la sesión tenga una copia anterior.
+  return obtenerServidorPorId(servidorId);
 }
 
 function obtenerServidorPorId(id) {

@@ -90,9 +90,11 @@ function buscarUsuarioPorUsuario(usuarioIngresado) {
           )
           .getValues()[0];
 
-      return convertirFilaUsuario(
-        encabezados,
-        valores
+      return completarUsuarioConServidor_(
+        convertirFilaUsuario(
+          encabezados,
+          valores
+        )
       );
 
     }
@@ -166,6 +168,18 @@ function convertirEncabezadoUsuario(
 
     'activo':'activo',
 
+    'correo':'correo',
+
+    'celular':'celular',
+
+    'servidor id':'servidorId',
+
+    'servidorid':'servidorId',
+
+    'version sesion':'versionSesion',
+
+    'versionsesion':'versionSesion',
+
     'intentos fallidos':'intentosFallidos',
 
     'intentosfallidos':'intentosFallidos',
@@ -178,12 +192,53 @@ function convertirEncabezadoUsuario(
 
     'bloqueado hasta':'bloqueadoHasta',
 
-    'bloqueadohasta':'bloqueadoHasta'
+    'bloqueadohasta':'bloqueadoHasta',
+
+    'debe cambiar password':'debeCambiarPassword',
+
+    'debe cambiar contraseña':'debeCambiarPassword',
+
+    'debecambiarpassword':'debeCambiarPassword',
+
+    'debecambiarcontrasena':'debeCambiarPassword'
 
   };
 
   return mapa[texto] || '';
 
+}
+
+
+/**
+ * Completa el registro de usuario con la información del servidor
+ * relacionado mediante Usuarios.Servidor ID -> Servidores.ID.
+ *
+ * No lanza error cuando la relación aún no está configurada, para que
+ * procesos administrativos y de recuperación de contraseña puedan seguir
+ * consultando el usuario. El inicio de sesión valida la relación.
+ */
+function completarUsuarioConServidor_(usuario) {
+  if (!usuario) {
+    return null;
+  }
+
+  const servidorId = String(
+    usuario.servidorId || ''
+  ).trim();
+
+  if (!servidorId) {
+    usuario.servidor = null;
+    return usuario;
+  }
+
+  const servidor = obtenerServidores({}).find(
+    function(item) {
+      return String(item.id || '').trim() === servidorId;
+    }
+  );
+
+  usuario.servidor = servidor || null;
+  return usuario;
 }
 
 /**

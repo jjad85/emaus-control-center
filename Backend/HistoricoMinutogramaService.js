@@ -32,7 +32,7 @@ function obtenerComparativoRetiros(parametros) {
 
 function cerrarRetiroMinutograma(token, datos) {
   const sesion = validarToken(token);
-  validarPermisoMinutograma_(sesion, 'ACTUALIZAR_ESTADO_MINUTOGRAMA');
+  validarPermisoMinutograma_(sesion, 'ACTUALIZAR_ESTADO_PASO_A_PASO');
 
   const entrada = datos || {};
   const nombreRetiro = String(entrada.nombreRetiro || '').trim();

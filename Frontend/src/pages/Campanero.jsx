@@ -22,7 +22,7 @@ export default function Campanero() {
   console.log("Actividad actual:", vivo.actual);
   const estado = normalizar(vivo.actual?.estadoEjecucion || vivo.actual?.estado);
   const pausada = estado === 'pausada';
-  const puedeOperar = autenticado && tienePermiso('ACTUALIZAR_ESTADO_MINUTOGRAMA');
+  const puedeOperar = autenticado && tienePermiso('ACTUALIZAR_ESTADO_PASO_A_PASO');
 
   async function ejecutar(accion) {
     if (!vivo.actual) return;
@@ -48,7 +48,7 @@ export default function Campanero() {
             <Stack direction="row" gap={1}><Button color="inherit" variant="outlined" onClick={api.reload} startIcon={<RefreshRounded />}>Actualizar</Button><Button color="inherit" variant="outlined" onClick={pantallaCompleta} startIcon={<FullscreenRounded />}>Pantalla completa</Button></Stack>
           </Stack>
           {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-          {!vivo.actual ? <Alert severity="info">No hay una actividad activa para {vivo.dia}. Revisa el minutograma o inicia una actividad.</Alert> : <>
+          {!vivo.actual ? <Alert severity="info">No hay una actividad activa para {vivo.dia}. Revisa el paso a paso o inicia una actividad.</Alert> : <>
             <ActividadActual actividad={vivo.actual} />
             <CronometroGigante restantes={vivo.ejecucion.restantes} pausada={pausada} />
             <BarraProgreso porcentaje={vivo.ejecucion.porcentaje} retraso={vivo.ejecucion.retraso} />

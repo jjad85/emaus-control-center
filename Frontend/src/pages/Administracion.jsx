@@ -37,6 +37,18 @@ import {
   obtenerAdministracionSistemaApi,
 } from '../api/administracionApi';
 
+
+const ETIQUETAS_PERMISOS = {
+  IMPORTAR_ACTIVIDADES_PASO_A_PASO: 'Importar actividades del paso a paso',
+  CREAR_ACTIVIDADES_PASO_A_PASO: 'Crear actividades del paso a paso',
+  EXPORTAR_ACTIVIDADES_PASO_A_PASO: 'Exportar tabla y cronograma del paso a paso',
+  MOVER_ACTIVIDADES_PASO_A_PASO: 'Mover actividades en modo acordeón',
+};
+
+function etiquetaPermiso(permiso) {
+  return ETIQUETAS_PERMISOS[permiso] || permiso;
+}
+
 function esAdministrador(
   rol
 ) {
@@ -474,7 +486,7 @@ export default function Administracion() {
                           }
                         />
                       }
-                      label={permiso}
+                      label={etiquetaPermiso(permiso)}
                     />
                   </Grid>
                 )

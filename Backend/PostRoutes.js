@@ -39,6 +39,17 @@ function routePost(contenido) {
           'Sesión cerrada correctamente'
       };
 
+    case 'cambiarprimerpassword':
+      return {
+        datos: cambiarPrimerPassword(
+          contenido.token,
+          contenido.passwordActual,
+          contenido.passwordNueva
+        ),
+        mensaje:
+          'Contraseña actualizada correctamente'
+      };
+
 
     case 'solicitarrecuperacionclave':
       return {
@@ -174,6 +185,18 @@ function routePost(contenido) {
           ),
         mensaje:
           'Participación cancelada correctamente'
+      };
+
+    case 'enviarautorizacionescaminante':
+      return {
+        datos: enviarAutorizacionesCaminante(contenido.token, contenido.id),
+        mensaje: 'Enlace de autorizaciones generado correctamente'
+      };
+
+    case 'responderautorizacionescaminantepublico':
+      return {
+        datos: responderAutorizacionesCaminantePublico(contenido.tokenAutorizacion, contenido.decision),
+        mensaje: 'Respuesta registrada correctamente'
       };
 
 
@@ -343,6 +366,18 @@ function routePost(contenido) {
           ),
         mensaje:
           'Notificación confirmada correctamente'
+      };
+
+    case 'omitirnotificacionwhatsapp':
+      return {
+        datos:
+          omitirNotificacionWhatsapp(
+            contenido.token,
+            contenido.id,
+            contenido.motivo
+          ),
+        mensaje:
+          'Notificación omitida correctamente'
       };
 
     case 'obteneropcionesgestionservidor':

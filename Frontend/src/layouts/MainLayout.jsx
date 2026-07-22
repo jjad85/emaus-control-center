@@ -140,8 +140,8 @@ const menuGroups = [
     icon: <AccessTimeRounded />,
     items: [
       {
-        label: 'Minutograma',
-        path: '/minutograma',
+        label: 'Paso a paso',
+        path: '/paso-a-paso',
         icon: <AccessTimeRounded />,
       },
     ],
@@ -978,6 +978,10 @@ export default function MainLayout() {
         <MenuItem onClick={() => irCuenta('/codigo-vestuario')}>
           <ListItemIcon><CheckroomRounded fontSize="small" /></ListItemIcon>
           <ListItemText>Código de vestuario</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => irCuenta('/reportar-pago?tipo=servidor&miCuenta=1')}>
+          <ListItemIcon><PaymentsRounded fontSize="small" /></ListItemIcon>
+          <ListItemText>Reportar pago</ListItemText>
         </MenuItem>
       </Menu>
 

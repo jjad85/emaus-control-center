@@ -70,7 +70,7 @@ export function construirRecomendaciones(resumen, actividades = []) {
     recomendaciones.push({
       nivel: 'Baja',
       titulo: 'Mantener el esquema operativo',
-      detalle: 'Los indicadores actuales son estables. Documentar las prácticas que permitieron cumplir el minutograma.',
+      detalle: 'Los indicadores actuales son estables. Documentar las prácticas que permitieron cumplir el paso a paso.',
     });
   }
   return recomendaciones;

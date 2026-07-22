@@ -139,7 +139,7 @@ function instalarMinutograma() {
     hoja:
       HOJAS.MINUTOGRAMA,
     mensaje:
-      'Minutograma instalado correctamente.'
+      'Paso a paso instalado correctamente.'
   };
 }
 
@@ -157,57 +157,57 @@ function instalarPermisosMinutograma() {
   const permisos = [
     [
       'Administrador',
-      'CONSULTAR_MINUTOGRAMA',
+      'CONSULTAR_PASO_A_PASO',
       'Sí'
     ],
     [
       'Administrador',
-      'REGISTRAR_ACTIVIDAD_MINUTOGRAMA',
+      'REGISTRAR_ACTIVIDAD_PASO_A_PASO',
       'Sí'
     ],
     [
       'Administrador',
-      'EDITAR_ACTIVIDAD_MINUTOGRAMA',
+      'EDITAR_ACTIVIDAD_PASO_A_PASO',
       'Sí'
     ],
     [
       'Administrador',
-      'ACTUALIZAR_ESTADO_MINUTOGRAMA',
+      'ACTUALIZAR_ESTADO_PASO_A_PASO',
       'Sí'
     ],
     [
       'Administrador',
-      'ELIMINAR_ACTIVIDAD_MINUTOGRAMA',
+      'ELIMINAR_ACTIVIDAD_PASO_A_PASO',
       'Sí'
     ],
     [
       'Logística',
-      'CONSULTAR_MINUTOGRAMA',
+      'CONSULTAR_PASO_A_PASO',
       'Sí'
     ],
     [
       'Logística',
-      'ACTUALIZAR_ESTADO_MINUTOGRAMA',
+      'ACTUALIZAR_ESTADO_PASO_A_PASO',
       'Sí'
     ],
     [
       'Registro',
-      'CONSULTAR_MINUTOGRAMA',
+      'CONSULTAR_PASO_A_PASO',
       'Sí'
     ],
     [
       'Tesorería',
-      'CONSULTAR_MINUTOGRAMA',
+      'CONSULTAR_PASO_A_PASO',
       'Sí'
     ],
     [
       'Entregables',
-      'CONSULTAR_MINUTOGRAMA',
+      'CONSULTAR_PASO_A_PASO',
       'Sí'
     ],
     [
       'Consulta',
-      'CONSULTAR_MINUTOGRAMA',
+      'CONSULTAR_PASO_A_PASO',
       'Sí'
     ]
   ];

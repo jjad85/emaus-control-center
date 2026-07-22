@@ -169,3 +169,8 @@ export async function desactivarCaminanteApi(
 
   return response.datos;
 }
+
+export async function enviarAutorizacionesCaminanteApi(token, id) {
+  const response = await postAction('enviarAutorizacionesCaminante', { token, id });
+  return response.datos;
+}

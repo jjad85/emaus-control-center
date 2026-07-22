@@ -146,12 +146,13 @@ function ordenarMinutograma(a, b) {
 
   if (diaA !== diaB) return diaA - diaB;
 
+  const ordenA = convertirNumero(a.orden, 9999);
+  const ordenB = convertirNumero(b.orden, 9999);
+  if (ordenA !== ordenB) return ordenA - ordenB;
+
   const horaA = convertirHoraAMinutos(a.horaInicio) || 0;
   const horaB = convertirHoraAMinutos(b.horaInicio) || 0;
-
-  if (horaA !== horaB) return horaA - horaB;
-
-  return convertirNumero(a.orden, 9999) - convertirNumero(b.orden, 9999);
+  return horaA - horaB;
 }
 
 function coincideMinutograma(valor, filtro) {

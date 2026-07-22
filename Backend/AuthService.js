@@ -208,6 +208,24 @@ function iniciarSesion(
       registro.rol
     );
 
+    const servidorId = String(
+      registro.servidorId || ''
+    ).trim();
+
+    if (!servidorId) {
+      throw crearErrorAplicacion(
+        'SERVIDOR_USUARIO_NO_CONFIGURADO',
+        'El usuario no tiene un Servidor ID asociado en la hoja Usuarios.'
+      );
+    }
+
+    if (!registro.servidor) {
+      throw crearErrorAplicacion(
+        'SERVIDOR_USUARIO_NO_ENCONTRADO',
+        'El Servidor ID asociado al usuario no existe en la hoja Servidores.'
+      );
+    }
+
     const permisos =
       obtenerPermisosPorRol(
         registro.rol
@@ -239,6 +257,12 @@ function iniciarSesion(
       rol:
         registro.rol,
 
+      servidorId:
+        servidorId,
+
+      servidor:
+        registro.servidor,
+
       permisos:
         permisos,
 
@@ -249,7 +273,12 @@ function iniciarSesion(
         fechaExpiracion.toISOString(),
 
       duracionSesionSegundos:
-        duracionSesionSegundos
+        duracionSesionSegundos,
+
+      debeCambiarPassword:
+        convertirBooleano(
+          registro.debeCambiarPassword
+        )
     };
 
     guardarSesion(
@@ -292,6 +321,12 @@ function iniciarSesion(
       rol:
         sesion.rol,
 
+      servidorId:
+        sesion.servidorId,
+
+      servidor:
+        sesion.servidor,
+
       permisos:
         sesion.permisos,
 
@@ -305,7 +340,10 @@ function iniciarSesion(
         duracionSesionSegundos,
 
       segundosRestantes:
-        duracionSesionSegundos
+        duracionSesionSegundos,
+
+      debeCambiarPassword:
+        sesion.debeCambiarPassword
     };
   } finally {
     if (bloqueo.hasLock()) {
@@ -928,6 +966,12 @@ function consultarSesion(token) {
     rol:
       sesion.rol,
 
+    servidorId:
+      sesion.servidorId || '',
+
+    servidor:
+      sesion.servidor || null,
+
     permisos:
       permisosActuales,
 
@@ -941,7 +985,12 @@ function consultarSesion(token) {
       sesion.duracionSesionSegundos,
 
     segundosRestantes:
-      segundosRestantes
+      segundosRestantes,
+
+    debeCambiarPassword:
+      convertirBooleano(
+        sesion.debeCambiarPassword
+      )
   };
 }
 

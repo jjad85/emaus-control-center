@@ -31,6 +31,12 @@ function routeRequest(parametros) {
           'Portal público consultado correctamente'
       };
 
+    case 'autorizacionescaminante':
+      return {
+        datos: consultarAutorizacionesCaminantePublico(parametros.tokenAutorizacion || parametros.token),
+        mensaje: 'Autorizaciones consultadas correctamente'
+      };
+
     case 'configuraciones':
       return {
         datos:
@@ -71,8 +77,14 @@ function routeRequest(parametros) {
     case 'buscarcaminantepago':
       return { datos: buscarCaminantePago(parametros.criterio), mensaje: 'Caminante consultado correctamente' };
 
+    case 'buscarpersonapago':
+      return { datos: buscarPersonaPago(parametros.tipo, parametros.criterio, parametros.id), mensaje: 'Persona consultada correctamente' };
+
     case 'pagos':
       return { datos: obtenerPagos(parametros.token, parametros), mensaje: 'Pagos consultados correctamente' };
+
+    case 'reportepagos':
+      return { datos: obtenerReportePagos(parametros.token, parametros), mensaje: 'Reporte de pagos consultado correctamente' };
 
     case 'pagoscaminante':
       return { datos: obtenerPagosCaminante(parametros.token, parametros.caminanteId), mensaje: 'Pagos del caminante consultados correctamente' };

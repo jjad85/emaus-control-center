@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import {
+  cambiarPrimerPasswordApi,
   cerrarSesionApi,
   consultarSesionApi,
   iniciarSesionApi,
@@ -89,12 +90,7 @@ export function AuthProvider({
   const timerAvisoRef =
     useRef(null);
 
-  /*
-   * Evita que respuestas pendientes o el endpoint de cierre
-   * disparen el evento global de "sesión expirada" después
-   * de que el usuario cerró la sesión voluntariamente.
-   */
-  const cierreManualRef =
+  const cerrandoSesionRef =
     useRef(false);
 
   const limpiarTemporizadores =
@@ -199,9 +195,7 @@ export function AuthProvider({
   useEffect(() => {
     return escucharSesionExpirada(
       (event) => {
-        if (
-          cierreManualRef.current
-        ) {
+        if (cerrandoSesionRef.current) {
           return;
         }
 
@@ -322,6 +316,11 @@ export function AuthProvider({
 
         duracionSesionSegundos:
           datos.duracionSesionSegundos,
+
+        debeCambiarPassword:
+          Boolean(
+            datos.debeCambiarPassword
+          ),
       };
 
       guardarSesionLocal(
@@ -342,7 +341,10 @@ export function AuthProvider({
 
       setPendingAction(null);
 
-      if (accion) {
+      if (
+        accion &&
+        !nuevaSesion.debeCambiarPassword
+      ) {
         window.setTimeout(
           () => accion(),
           0
@@ -357,21 +359,52 @@ export function AuthProvider({
     ]
   );
 
+  const completarCambioPassword =
+    useCallback(
+      async (
+        passwordActual,
+        passwordNueva
+      ) => {
+        if (!sesion?.token) {
+          throw new Error(
+            'Debe iniciar sesión nuevamente.'
+          );
+        }
+
+        const datos =
+          await cambiarPrimerPasswordApi(
+            sesion.token,
+            passwordActual,
+            passwordNueva
+          );
+
+        const sesionActualizada = {
+          ...sesion,
+          debeCambiarPassword: false,
+        };
+
+        guardarSesionLocal(
+          sesionActualizada
+        );
+
+        setSesion(
+          sesionActualizada
+        );
+
+        return datos;
+      },
+      [sesion]
+    );
+
   const logout = useCallback(
     async () => {
       const token =
         sesion?.token;
 
-      /*
-       * Se marca antes de limpiar la sesión porque pueden existir
-       * consultas pendientes que respondan con SESION_EXPIRADA.
-       */
-      cierreManualRef.current =
-        true;
-
-      cerrarSesionLocal();
-      setMensajeSesion('');
+      cerrandoSesionRef.current = true;
       setLoginOpen(false);
+      setMensajeSesion('');
+      cerrarSesionLocal();
 
       try {
         if (token) {
@@ -380,19 +413,11 @@ export function AuthProvider({
           );
         }
       } catch {
-        // La sesión local ya quedó cerrada voluntariamente.
+        // La sesión local ya quedó cerrada.
       } finally {
-        /*
-         * Se deja una ventana corta para ignorar respuestas
-         * tardías que pertenecían a la sesión cerrada.
-         */
-        window.setTimeout(
-          () => {
-            cierreManualRef.current =
-              false;
-          },
-          1500
-        );
+        window.setTimeout(() => {
+          cerrandoSesionRef.current = false;
+        }, 0);
       }
     },
     [
@@ -431,19 +456,11 @@ export function AuthProvider({
       (
         accionPosterior = null
       ) => {
-        /*
-         * Abrir el login manualmente nunca debe mostrar
-         * un mensaje de expiración anterior.
-         */
-        cierreManualRef.current =
-          false;
-
         setPendingAction(
           accionPosterior
         );
 
         setMensajeSesion('');
-        setAvisoSesion('');
         setLoginOpen(true);
       },
       []
@@ -518,6 +535,11 @@ export function AuthProvider({
         sesion?.fechaExpiracion ||
         null,
 
+      debeCambiarPassword:
+        Boolean(
+          sesion?.debeCambiarPassword
+        ),
+
       autenticado:
         Boolean(
           sesion?.token
@@ -529,6 +551,7 @@ export function AuthProvider({
       avisoSesion,
 
       login,
+      completarCambioPassword,
       logout,
       expirarSesion,
       tienePermiso,
@@ -544,6 +567,7 @@ export function AuthProvider({
       mensajeSesion,
       avisoSesion,
       login,
+      completarCambioPassword,
       logout,
       expirarSesion,
       tienePermiso,

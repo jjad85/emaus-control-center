@@ -14,13 +14,15 @@ const TIPOS_NOTIFICACION_WHATSAPP = {
   INSCRIPCION: 'INSCRIPCION',
   APROBACION: 'APROBACION',
   CANCELACION: 'CANCELACION',
-  PAGO_RECHAZADO: 'PAGO_RECHAZADO'
+  PAGO_RECHAZADO: 'PAGO_RECHAZADO',
+  AUTORIZACIONES: 'AUTORIZACIONES'
 };
 
 const ESTADOS_NOTIFICACION_WHATSAPP = {
   PENDIENTE: 'Pendiente',
   ABIERTA: 'Abierta',
-  CONFIRMADA: 'Confirmada'
+  CONFIRMADA: 'Confirmada',
+  OMITIDA: 'Omitida'
 };
 
 function crearNotificacionWhatsappPendiente(datos) {
@@ -69,27 +71,15 @@ function crearNotificacionWhatsappPendiente(datos) {
     fechaCreacion: ahora,
     fechaApertura: '',
     fechaConfirmacion: '',
+    fechaOmitision: '',
     abiertoPor: '',
     confirmadoPor: '',
+    omitidoPor: '',
+    motivoOmitision: '',
     activo: 'Sí'
   };
 
-  obtenerHojaNotificacionesWhatsapp_().appendRow([
-    registro.id,
-    registro.tipo,
-    registro.entidad,
-    registro.entidadId,
-    registro.nombre,
-    registro.telefono,
-    registro.motivo,
-    registro.estado,
-    registro.fechaCreacion,
-    registro.fechaApertura,
-    registro.fechaConfirmacion,
-    registro.abiertoPor,
-    registro.confirmadoPor,
-    registro.activo
-  ]);
+  agregarNotificacionWhatsapp_(registro);
 
   return registro;
 }
@@ -113,7 +103,9 @@ function obtenerNotificacionesWhatsapp(token, filtros) {
   }
 
   const parametros = filtros || {};
-  const incluirConfirmadas = convertirBooleano(parametros.incluirConfirmadas);
+  const incluirGestionadas =
+    convertirBooleano(parametros.incluirGestionadas) ||
+    convertirBooleano(parametros.incluirConfirmadas);
 
   const items = leerNotificacionesWhatsapp_()
     .filter(function(item) {
@@ -122,8 +114,11 @@ function obtenerNotificacionesWhatsapp(token, filtros) {
       }
 
       if (
-        !incluirConfirmadas &&
-        normalizarTexto(item.estado) === 'confirmada'
+        !incluirGestionadas &&
+        (
+          normalizarTexto(item.estado) === 'confirmada' ||
+          normalizarTexto(item.estado) === 'omitida'
+        )
       ) {
         return false;
       }
@@ -157,6 +152,16 @@ function obtenerNotificacionesWhatsapp(token, filtros) {
     abiertas: items.filter(function(item) {
       return normalizarTexto(item.estado) === 'abierta';
     }).length,
+    confirmadas: items.filter(function(item) {
+      return normalizarTexto(item.estado) === 'confirmada';
+    }).length,
+    omitidas: items.filter(function(item) {
+      return normalizarTexto(item.estado) === 'omitida';
+    }).length,
+    pendientesGestion: items.filter(function(item) {
+      const estado = normalizarTexto(item.estado);
+      return estado !== 'confirmada' && estado !== 'omitida';
+    }).length,
     items: items
   };
 }
@@ -173,18 +178,26 @@ function prepararNotificacionWhatsapp(token, id) {
     );
   }
 
-  if (normalizarTexto(notificacion.estado) === 'confirmada') {
+  if (
+    normalizarTexto(notificacion.estado) === 'confirmada' ||
+    normalizarTexto(notificacion.estado) === 'omitida'
+  ) {
     throw crearErrorAplicacion(
-      'NOTIFICACION_YA_CONFIRMADA',
-      'La notificación ya fue confirmada como enviada.'
+      'NOTIFICACION_YA_GESTIONADA',
+      'La notificación ya fue gestionada.'
     );
   }
 
   const configuracion = obtenerConfiguraciones();
   const plantilla = obtenerPlantillaWhatsapp_(notificacion.tipo, configuracion);
+  let detalleMotivo = {};
+  try { detalleMotivo = JSON.parse(String(notificacion.motivo || '{}')); } catch (error) { detalleMotivo = {}; }
+
   const mensaje = reemplazarVariablesWhatsapp_(plantilla, {
     nombre: notificacion.nombre,
     motivo: notificacion.motivo,
+    link: detalleMotivo.link || '',
+    minutos: detalleMotivo.minutos || '',
     tipoRetiro: configuracion.tipoRetiro || '',
     anioRetiro: configuracion.anioRetiro || '',
     numeroInscripcion: obtenerNumeroInscripcionWhatsapp_(notificacion)
@@ -265,6 +278,61 @@ function confirmarNotificacionWhatsapp(token, id) {
   return actualizado;
 }
 
+
+function omitirNotificacionWhatsapp(token, id, motivo) {
+  const sesion = obtenerSesion(token);
+  const permisos = obtenerPermisosPorRol(sesion.rol);
+  const notificacion = obtenerNotificacionWhatsappPorId_(id);
+  const razon = String(motivo || '').trim();
+
+  if (!puedeGestionarTipoWhatsapp_(permisos, notificacion.tipo)) {
+    throw crearErrorAplicacion(
+      'PERMISO_DENEGADO',
+      'No tiene permiso para omitir esta notificación.'
+    );
+  }
+
+  if (!razon) {
+    throw crearErrorAplicacion(
+      'MOTIVO_OMISION_REQUERIDO',
+      'Debe indicar por qué no se enviará la notificación.'
+    );
+  }
+
+  if (
+    normalizarTexto(notificacion.estado) === 'confirmada' ||
+    normalizarTexto(notificacion.estado) === 'omitida'
+  ) {
+    throw crearErrorAplicacion(
+      'NOTIFICACION_YA_GESTIONADA',
+      'La notificación ya fue gestionada.'
+    );
+  }
+
+  const actualizado = actualizarNotificacionWhatsapp_(id, {
+    estado: ESTADOS_NOTIFICACION_WHATSAPP.OMITIDA,
+    fechaOmitision: new Date(),
+    omitidoPor: sesion.usuario || '',
+    motivoOmitision: razon
+  });
+
+  registrarAuditoria({
+    usuario: sesion.usuario,
+    nombre: sesion.nombre,
+    accion: 'OMITIR_NOTIFICACION_WHATSAPP',
+    entidad: 'NotificacionesWhatsApp',
+    idRegistro: id,
+    detalle: JSON.stringify({
+      tipo: notificacion.tipo,
+      entidad: notificacion.entidad,
+      entidadId: notificacion.entidadId,
+      motivo: razon
+    })
+  });
+
+  return actualizado;
+}
+
 function obtenerResumenNotificacionesWhatsappParaCampana(token) {
   sincronizarNotificacionesWhatsappPendientes_();
 
@@ -311,7 +379,7 @@ function obtenerNotificacionWhatsappPendienteEntidad(entidad, entidadId) {
       convertirBooleano(item.activo) &&
       normalizarTexto(item.entidad) === normalizarTexto(entidad) &&
       String(item.entidadId) === String(entidadId) &&
-      normalizarTexto(item.estado) !== 'confirmada'
+      (normalizarTexto(item.estado) !== 'confirmada' && normalizarTexto(item.estado) !== 'omitida')
     );
   }) || null;
 }
@@ -327,7 +395,7 @@ function enriquecerConWhatsapp(items, entidad) {
           normalizarTexto(notificacion.entidad) ===
             normalizarTexto(entidad) &&
           String(notificacion.entidadId) === String(item.id) &&
-          normalizarTexto(notificacion.estado) !== 'confirmada'
+          (normalizarTexto(notificacion.estado) !== 'confirmada' && normalizarTexto(notificacion.estado) !== 'omitida')
         );
       })
       .map(function(notificacion) {
@@ -422,6 +490,10 @@ function puedeGestionarTipoWhatsapp_(permisos, tipo) {
     );
   }
 
+  if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.AUTORIZACIONES) {
+    return permisos.includes('ENVIAR_AUTORIZACIONES_CAMINANTE');
+  }
+
   if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.CANCELACION || tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.PAGO_RECHAZADO) {
     return (
       permisos.includes('NOTIFICAR_CAMINANTE') ||
@@ -446,6 +518,9 @@ function obtenerPlantillaWhatsapp_(tipo, configuracion) {
   plantillas[TIPOS_NOTIFICACION_WHATSAPP.PAGO_RECHAZADO] =
     configuracion.whatsappMensajePagoRechazado ||
     'Hola {{nombre}}. El comprobante de pago fue rechazado. Motivo: {{motivo}}. Por favor ingresa nuevamente a Reportar pago y carga un nuevo comprobante.';
+  plantillas[TIPOS_NOTIFICACION_WHATSAPP.AUTORIZACIONES] =
+    configuracion.whatsappMensajeAutorizaciones ||
+    'Hola {{nombre}}. Para finalizar tu inscripción, responde las autorizaciones aquí: {{link}}. El enlace estará disponible durante {{minutos}} minutos.';
 
   return plantillas[String(tipo || '').toUpperCase()] || '';
 }
@@ -496,6 +571,25 @@ function obtenerNumeroInscripcionWhatsapp_(notificacion) {
   } catch (error) {
     return '';
   }
+}
+
+
+function agregarNotificacionWhatsapp_(registro) {
+  const hoja = obtenerHojaNotificacionesWhatsapp_();
+  const encabezados = hoja
+    .getRange(1, 1, 1, hoja.getLastColumn())
+    .getValues()[0]
+    .map(function(valor) {
+      return String(valor || '').trim();
+    });
+
+  const fila = encabezados.map(function(encabezado) {
+    return registro[encabezado] === undefined
+      ? ''
+      : registro[encabezado];
+  });
+
+  hoja.appendRow(fila);
 }
 
 function obtenerHojaNotificacionesWhatsapp_() {

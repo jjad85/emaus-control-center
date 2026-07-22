@@ -12,10 +12,12 @@ import { useAuth } from './AuthContext';
 
 export default function PrivateRoute({
   children,
+  permitirCambioPassword = false,
 }) {
   const {
     autenticado,
     loading,
+    debeCambiarPassword,
   } = useAuth();
 
   const location =
@@ -44,6 +46,30 @@ export default function PrivateRoute({
           from:
             location.pathname,
         }}
+      />
+    );
+  }
+
+  if (
+    debeCambiarPassword &&
+    !permitirCambioPassword
+  ) {
+    return (
+      <Navigate
+        to="/cambiar-password-inicial"
+        replace
+      />
+    );
+  }
+
+  if (
+    !debeCambiarPassword &&
+    permitirCambioPassword
+  ) {
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
       />
     );
   }

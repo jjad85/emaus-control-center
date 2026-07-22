@@ -37,6 +37,7 @@ import {
   SearchRounded,
   TableRestaurantRounded,
   TaskAltRounded,
+  LinkRounded,
 } from "@mui/icons-material";
 
 import { useEffect, useMemo, useState } from "react";
@@ -46,11 +47,11 @@ import {
   asignarMesaCaminanteApi,
   actualizarCartaCaminanteApi,
   actualizarFotoCaminanteApi,
-  actualizarPagoCaminanteApi,
   editarCaminanteApi,
   obtenerCaminantes,
   obtenerOpcionesRegistroCaminante,
   registrarCaminanteApi,
+  enviarAutorizacionesCaminanteApi,
 } from "../api/caminantesApi";
 import { obtenerPagosCaminante } from "../api/pagosApi";
 
@@ -66,9 +67,20 @@ import ProtectedButton from "../components/ProtectedButton";
 import CaminanteFormDialog from "../components/caminantes/CaminanteFormDialog";
 import CaminanteActionDialog from "../components/caminantes/CaminanteActionDialog";
 
+const ESTADOS_ENTREGABLES = ["Pendiente", "En Proceso", "Completado"];
 const ESTADOS_PAGO = ["Pendiente", "Pago Parcial", "Pago Total"];
 
-const ESTADOS_ENTREGABLES = ["Pendiente", "En Proceso", "Completado"];
+function autorizacionEstaAceptada(valor) {
+  const estado = normalizar(valor);
+  return ["aceptada", "aceptado", "si", "sí", "true", "1"].includes(estado);
+}
+
+function caminanteTieneAutorizaciones(caminante) {
+  return (
+    autorizacionEstaAceptada(caminante?.autorizaTratamientoDatos) &&
+    autorizacionEstaAceptada(caminante?.autorizaFotografias)
+  );
+}
 
 function normalizar(valor) {
   return String(valor || "")
@@ -372,14 +384,27 @@ export default function Caminantes() {
     }
   }
 
+  async function enviarAutorizaciones(caminante) {
+    setGuardando(true);
+    try {
+      const resultado = await enviarAutorizacionesCaminanteApi(token, caminante.id);
+      const url = resultado?.whatsapp?.url;
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      setMensaje('Enlace generado. Se abrió WhatsApp con el mensaje listo para enviar.');
+      await api.reload();
+    } catch (err) {
+      setMensaje(err.message || 'No fue posible generar el enlace de autorizaciones.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   async function guardarAccion(valor) {
     setGuardando(true);
 
     try {
-      if (actionDialog === "pago") {
-        await actualizarPagoCaminanteApi(token, selected.id, valor);
-      }
-
       if (actionDialog === "mesa") {
         await asignarMesaCaminanteApi(token, selected.id, valor);
       }
@@ -575,7 +600,12 @@ export default function Caminantes() {
                     </Box>
 
                     <Stack direction="row" gap={1} flexWrap="wrap">
-                      <StatusChip value={caminante.estadoPago} />
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                          Pago:
+                        </Typography>
+                        <StatusChip value={caminante.estadoPago || "Pendiente"} />
+                      </Stack>
 
                       <Chip
                         size="small"
@@ -593,6 +623,25 @@ export default function Caminantes() {
                             : "Sin habitación"
                         }
                         variant="outlined"
+                      />
+
+                      <Chip
+                        size="small"
+                        label={
+                          caminanteTieneAutorizaciones(caminante)
+                            ? "Con autorizaciones"
+                            : "Sin autorizaciones"
+                        }
+                        color={
+                          caminanteTieneAutorizaciones(caminante)
+                            ? "success"
+                            : "warning"
+                        }
+                        variant={
+                          caminanteTieneAutorizaciones(caminante)
+                            ? "filled"
+                            : "outlined"
+                        }
                       />
                     </Stack>
 
@@ -648,16 +697,6 @@ export default function Caminantes() {
                     </Button>
                   )}
 
-                  {puede("ACTUALIZAR_PAGO") && (
-                    <Button
-                      size="small"
-                      startIcon={<PaymentsRounded />}
-                      onClick={() => abrirAccion("pago", caminante)}
-                    >
-                      Pago
-                    </Button>
-                  )}
-
                   {puede("ASIGNAR_MESA") && (
                     <Button
                       size="small"
@@ -697,6 +736,17 @@ export default function Caminantes() {
                       Foto
                     </Button>
                   )}
+
+                  {puede("ENVIAR_AUTORIZACIONES_CAMINANTE") && (
+                    <Button
+                      size="small"
+                      startIcon={<LinkRounded />}
+                      disabled={guardando}
+                      onClick={() => enviarAutorizaciones(caminante)}
+                    >
+                      Enviar autorizaciones
+                    </Button>
+                  )}
                 </CardActions>
               </Card>
             </Grid>
@@ -733,7 +783,12 @@ export default function Caminantes() {
             </Box>
 
             <Stack direction="row" gap={1} flexWrap="wrap">
-              <StatusChip value={detalleCaminante?.estadoPago || "Pendiente"} />
+              <Stack direction="row" spacing={0.75} alignItems="center">
+                <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                  Pago:
+                </Typography>
+                <StatusChip value={detalleCaminante?.estadoPago || "Pendiente"} />
+              </Stack>
               <Chip
                 size="small"
                 icon={<TableRestaurantRounded />}
@@ -1042,7 +1097,12 @@ export default function Caminantes() {
               />
               <CampoDetalle
                 etiqueta="Estado de pago"
-                valor={obtenerDatoDetalle(detalleCaminante, "estadoPago")}
+                valor={(() => {
+                  const estado = normalizar(obtenerDatoDetalle(detalleCaminante, "estadoPago"));
+                  if (estado === "pago parcial") return "Parcial";
+                  if (estado === "pago total") return "Total";
+                  return "Pendiente";
+                })()}
               />
               <CampoDetalle
                 etiqueta="Estado de la carta"
@@ -1160,9 +1220,7 @@ export default function Caminantes() {
         onSubmit={guardarAccion}
         loading={guardando}
         titulo={
-          actionDialog === "pago"
-            ? "Actualizar pago"
-            : actionDialog === "mesa"
+          actionDialog === "mesa"
               ? "Asignar mesa"
               : actionDialog === "habitacion"
                 ? "Asignar habitación"
@@ -1172,9 +1230,7 @@ export default function Caminantes() {
         }
         descripcion={selected ? selected.nombre : ""}
         label={
-          actionDialog === "pago"
-            ? "Estado del pago"
-            : actionDialog === "mesa"
+          actionDialog === "mesa"
               ? "Mesa"
               : actionDialog === "habitacion"
                 ? "Habitación"
@@ -1183,9 +1239,7 @@ export default function Caminantes() {
                   : "Estado de la foto"
         }
         valorInicial={
-          actionDialog === "pago"
-            ? selected?.estadoPago
-            : actionDialog === "mesa"
+          actionDialog === "mesa"
               ? selected?.mesa
               : actionDialog === "habitacion"
                 ? selected?.habitacion
@@ -1194,9 +1248,7 @@ export default function Caminantes() {
                   : selected?.entregables?.foto
         }
         opciones={
-          actionDialog === "pago"
-            ? ESTADOS_PAGO
-            : actionDialog === "mesa"
+          actionDialog === "mesa"
               ? mesasOpciones
               : actionDialog === "habitacion"
                 ? habitacionesOpciones

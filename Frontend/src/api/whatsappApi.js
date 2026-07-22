@@ -41,3 +41,17 @@ export async function confirmarNotificacionWhatsapp(
 
   return response.datos;
 }
+
+
+export async function omitirNotificacionWhatsapp(
+  token,
+  id,
+  motivo
+) {
+  const response = await postAction(
+    'omitirNotificacionWhatsapp',
+    { token, id, motivo }
+  );
+
+  return response.datos;
+}

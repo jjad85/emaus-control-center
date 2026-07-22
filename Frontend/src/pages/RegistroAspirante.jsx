@@ -555,8 +555,10 @@ export default function RegistroAspirante() {
             form.celularPersonaInvito
           )
         ) &&
-        form.autorizaTratamientoDatos ===
-          'Sí'
+        (
+          form.tipoRegistrante === 'INVITADOR' ||
+          form.autorizaTratamientoDatos === 'Sí'
+        )
       );
     }, [
       paso,
@@ -606,6 +608,10 @@ export default function RegistroAspirante() {
 
     try {
       const datosFormulario = { ...form };
+      if (form.tipoRegistrante === 'INVITADOR') {
+        datosFormulario.autorizaTratamientoDatos = 'Pendiente';
+        datosFormulario.autorizaFotografias = 'Pendiente';
+      }
       delete datosFormulario.edad;
 
       const datos =
@@ -1819,6 +1825,8 @@ export default function RegistroAspirante() {
                   />
                 )}
 
+                {form.tipoRegistrante !== 'INVITADOR' && (
+                  <>
                 <Paper
                   variant="outlined"
                   sx={{
@@ -1971,6 +1979,8 @@ export default function RegistroAspirante() {
                     />
                   </Stack>
                 </Paper>
+                  </>
+                )}
               </Stack>
             )}
 

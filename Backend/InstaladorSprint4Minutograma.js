@@ -9,7 +9,7 @@ function instalarSprint4BackendMinutograma() {
 
   return {
     ok: true,
-    mensaje: 'Sprint 4 Backend del Minutograma instalado correctamente.',
+    mensaje: 'Sprint 4 Backend del Paso a paso instalado correctamente.',
     fecha: new Date().toISOString()
   };
 }
@@ -38,32 +38,32 @@ function instalarColumnasSprint4Minutograma_() {
 function instalarPermisosSprint4Minutograma_() {
   const permisosPorRol = {
     Administrador: [
-      'REGISTRAR_ACTIVIDAD_MINUTOGRAMA',
-      'EDITAR_ACTIVIDAD_MINUTOGRAMA',
-      'ELIMINAR_ACTIVIDAD_MINUTOGRAMA',
-      'ACTUALIZAR_ESTADO_MINUTOGRAMA',
-      'INICIAR_ACTIVIDAD_MINUTOGRAMA',
-      'PAUSAR_ACTIVIDAD_MINUTOGRAMA',
-      'REANUDAR_ACTIVIDAD_MINUTOGRAMA',
-      'FINALIZAR_ACTIVIDAD_MINUTOGRAMA',
-      'REGISTRAR_ALERTA_MINUTOGRAMA'
+      'REGISTRAR_ACTIVIDAD_PASO_A_PASO',
+      'EDITAR_ACTIVIDAD_PASO_A_PASO',
+      'ELIMINAR_ACTIVIDAD_PASO_A_PASO',
+      'ACTUALIZAR_ESTADO_PASO_A_PASO',
+      'INICIAR_ACTIVIDAD_PASO_A_PASO',
+      'PAUSAR_ACTIVIDAD_PASO_A_PASO',
+      'REANUDAR_ACTIVIDAD_PASO_A_PASO',
+      'FINALIZAR_ACTIVIDAD_PASO_A_PASO',
+      'REGISTRAR_ALERTA_PASO_A_PASO'
     ],
     Campanero: [
-      'ACTUALIZAR_ESTADO_MINUTOGRAMA',
-      'INICIAR_ACTIVIDAD_MINUTOGRAMA',
-      'PAUSAR_ACTIVIDAD_MINUTOGRAMA',
-      'REANUDAR_ACTIVIDAD_MINUTOGRAMA',
-      'FINALIZAR_ACTIVIDAD_MINUTOGRAMA',
-      'REGISTRAR_ALERTA_MINUTOGRAMA'
+      'ACTUALIZAR_ESTADO_PASO_A_PASO',
+      'INICIAR_ACTIVIDAD_PASO_A_PASO',
+      'PAUSAR_ACTIVIDAD_PASO_A_PASO',
+      'REANUDAR_ACTIVIDAD_PASO_A_PASO',
+      'FINALIZAR_ACTIVIDAD_PASO_A_PASO',
+      'REGISTRAR_ALERTA_PASO_A_PASO'
     ],
     Coordinador: [
-      'REGISTRAR_ACTIVIDAD_MINUTOGRAMA',
-      'EDITAR_ACTIVIDAD_MINUTOGRAMA',
-      'ACTUALIZAR_ESTADO_MINUTOGRAMA',
-      'INICIAR_ACTIVIDAD_MINUTOGRAMA',
-      'PAUSAR_ACTIVIDAD_MINUTOGRAMA',
-      'REANUDAR_ACTIVIDAD_MINUTOGRAMA',
-      'FINALIZAR_ACTIVIDAD_MINUTOGRAMA'
+      'REGISTRAR_ACTIVIDAD_PASO_A_PASO',
+      'EDITAR_ACTIVIDAD_PASO_A_PASO',
+      'ACTUALIZAR_ESTADO_PASO_A_PASO',
+      'INICIAR_ACTIVIDAD_PASO_A_PASO',
+      'PAUSAR_ACTIVIDAD_PASO_A_PASO',
+      'REANUDAR_ACTIVIDAD_PASO_A_PASO',
+      'FINALIZAR_ACTIVIDAD_PASO_A_PASO'
     ]
   };
 
@@ -180,7 +180,7 @@ function validarEstructuraSprint4Minutograma_() {
 
   if (faltantes.length > 0) {
     throw crearErrorAplicacion(
-      'ESTRUCTURA_MINUTOGRAMA_INCOMPLETA',
+      'ESTRUCTURA_PASO_A_PASO_INCOMPLETA',
       'Faltan columnas obligatorias en Minutograma: ' + faltantes.join(', ')
     );
   }

@@ -52,7 +52,7 @@ export default function ReportesMinutograma() {
   useEffect(() => { cargar(); }, []);
 
   function exportarDetalle() {
-    descargarCsv(`minutograma_${fechaRetiro}.csv`, actividades.map((a) => ({
+    descargarCsv(`paso_a_paso_${fechaRetiro}.csv`, actividades.map((a) => ({
       Día: a.dia, Inicio: a.horaInicio, Actividad: a.actividad, Responsable: a.responsable,
       Equipo: a.equipo, Lugar: a.lugar, Estado: a.estado,
       'Duración programada': a.duracionMinutos, 'Duración real': a.duracionRealMinutos,
@@ -76,7 +76,7 @@ export default function ReportesMinutograma() {
   return (
     <Box sx={{ p: { xs: 1.5, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
       <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2} mb={2.5} className="no-print">
-        <Box><Typography variant="h4" fontWeight={900}>Reportes del minutograma</Typography><Typography color="text.secondary">Cierre, exportación y comparación histórica del retiro.</Typography></Box>
+        <Box><Typography variant="h4" fontWeight={900}>Reportes del paso a paso</Typography><Typography color="text.secondary">Cierre, exportación y comparación histórica del retiro.</Typography></Box>
         <Stack direction="row" flexWrap="wrap" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={cargar}>Actualizar</Button>
           <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportarDetalle}>Exportar CSV</Button>
@@ -123,7 +123,7 @@ export default function ReportesMinutograma() {
 
       <Dialog open={dialogo} onClose={() => !guardando && setDialogo(false)} fullWidth maxWidth="sm">
         <DialogTitle>Cerrar y archivar retiro</DialogTitle>
-        <DialogContent><Alert severity="info" sx={{ mb: 2 }}>Se guardará una fotografía histórica de los indicadores y de cada actividad. El minutograma actual no se elimina.</Alert><Stack spacing={2}><TextField label="Nombre del retiro" value={nombreRetiro} onChange={(e) => setNombreRetiro(e.target.value)} fullWidth /><TextField label="Fecha del retiro" type="date" value={fechaRetiro} onChange={(e) => setFechaRetiro(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth /></Stack></DialogContent>
+        <DialogContent><Alert severity="info" sx={{ mb: 2 }}>Se guardará una fotografía histórica de los indicadores y de cada actividad. El paso a paso actual no se elimina.</Alert><Stack spacing={2}><TextField label="Nombre del retiro" value={nombreRetiro} onChange={(e) => setNombreRetiro(e.target.value)} fullWidth /><TextField label="Fecha del retiro" type="date" value={fechaRetiro} onChange={(e) => setFechaRetiro(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth /></Stack></DialogContent>
         <DialogActions><Button onClick={() => setDialogo(false)} disabled={guardando}>Cancelar</Button><Button variant="contained" onClick={cerrarRetiro} disabled={guardando || !nombreRetiro.trim()}>{guardando ? 'Guardando...' : 'Cerrar retiro'}</Button></DialogActions>
       </Dialog>
 

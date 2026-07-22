@@ -1,6 +1,6 @@
 import ReportesMinutograma from '../pages/ReportesMinutograma';
 
 export const rutaReportesMinutograma = {
-  path: '/minutograma/reportes',
+  path: '/paso-a-paso/reportes',
   element: <ReportesMinutograma />,
 };

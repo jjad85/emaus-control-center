@@ -7,7 +7,7 @@
 function instalarSprint1Minutograma() {
   instalarColumnasEjecucionMinutograma_();
   instalarRolCampaneroYPermisos_();
-  return 'Sprint 1 del Minutograma instalado correctamente.';
+  return 'Sprint 1 del Paso a paso instalado correctamente.';
 }
 
 function instalarColumnasEjecucionMinutograma_() {
@@ -35,27 +35,27 @@ function instalarColumnasEjecucionMinutograma_() {
 
 function instalarRolCampaneroYPermisos_() {
   const permisosAdministrador = [
-    'VER_MINUTOGRAMA',
-    'VER_DASHBOARD_MINUTOGRAMA',
-    'REGISTRAR_ACTIVIDAD_MINUTOGRAMA',
-    'EDITAR_ACTIVIDAD_MINUTOGRAMA',
-    'ELIMINAR_ACTIVIDAD_MINUTOGRAMA',
-    'ACTUALIZAR_ESTADO_MINUTOGRAMA',
-    'INICIAR_ACTIVIDAD_MINUTOGRAMA',
-    'FINALIZAR_ACTIVIDAD_MINUTOGRAMA'
+    'VER_PASO_A_PASO',
+    'VER_DASHBOARD_PASO_A_PASO',
+    'REGISTRAR_ACTIVIDAD_PASO_A_PASO',
+    'EDITAR_ACTIVIDAD_PASO_A_PASO',
+    'ELIMINAR_ACTIVIDAD_PASO_A_PASO',
+    'ACTUALIZAR_ESTADO_PASO_A_PASO',
+    'INICIAR_ACTIVIDAD_PASO_A_PASO',
+    'FINALIZAR_ACTIVIDAD_PASO_A_PASO'
   ];
 
   const permisosCampanero = [
-    'VER_MINUTOGRAMA',
-    'VER_DASHBOARD_MINUTOGRAMA',
-    'INICIAR_ACTIVIDAD_MINUTOGRAMA',
-    'FINALIZAR_ACTIVIDAD_MINUTOGRAMA'
+    'VER_PASO_A_PASO',
+    'VER_DASHBOARD_PASO_A_PASO',
+    'INICIAR_ACTIVIDAD_PASO_A_PASO',
+    'FINALIZAR_ACTIVIDAD_PASO_A_PASO'
   ];
 
   asegurarRegistroSeguridad_('Roles', {
     rol: 'Campanero',
     nombre: 'Campanero',
-    descripcion: 'Responsable del control operativo y del tiempo del minutograma.',
+    descripcion: 'Responsable del control operativo y del tiempo del paso a paso.',
     activo: 'Sí'
   });
 

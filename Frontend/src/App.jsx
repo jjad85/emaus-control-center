@@ -33,6 +33,8 @@ import NotificacionesWhatsApp from './pages/NotificacionesWhatsApp';
 import Temas from './pages/Temas';
 import MiCuenta from './pages/MiCuenta';
 import CodigoVestuario from './pages/CodigoVestuario';
+import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
+import AutorizacionesCaminante from './pages/AutorizacionesCaminante';
 
 export default function App() {
   return (
@@ -47,11 +49,21 @@ export default function App() {
 
         <Route path="/registro" element={<RegistroAspirante />} />
         <Route path="/reportar-pago" element={<ReportarPago />} />
+        <Route path="/autorizaciones" element={<AutorizacionesCaminante />} />
 
         {/* Pantalla pública sin menú lateral ni autenticación */}
         <Route
           path="/pantalla-publica"
           element={<PantallaPublica />}
+        />
+
+        <Route
+          path="/cambiar-password-inicial"
+          element={
+            <PrivateRoute permitirCambioPassword>
+              <CambiarPasswordInicial />
+            </PrivateRoute>
+          }
         />
 
         {/* Rutas privadas dentro del layout principal */}

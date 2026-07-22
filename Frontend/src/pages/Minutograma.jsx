@@ -26,6 +26,11 @@ import {
   ViewListRounded,
   SwapHorizRounded,
   ExpandMoreRounded,
+  UploadFileRounded,
+  DownloadRounded,
+  DragIndicatorRounded,
+  KeyboardArrowUpRounded,
+  KeyboardArrowDownRounded,
 } from '@mui/icons-material';
 
 import {
@@ -34,6 +39,7 @@ import {
   AccordionSummary,
   Alert,
   Box,
+  Backdrop,
   Button,
   Card,
   CardContent,
@@ -71,6 +77,8 @@ import {
   obtenerMinutograma,
   registrarActividadMinutogramaApi,
   registrarAlertaMinutogramaApi,
+  importarActividadesMinutogramaApi,
+  reordenarActividadesMinutogramaApi,
 } from '../api/minutogramaApi';
 
 import { useApi } from '../hooks/useApi';
@@ -80,13 +88,13 @@ import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import DashboardMinutograma from '../components/minutograma/DashboardMinutograma';
 import EstadisticasMinutograma from '../components/minutograma/EstadisticasMinutograma';
+import { descargarPlantillaPasoAPaso, exportarTablaPasoAPaso, exportarCronogramaPasoAPaso, leerExcelPasoAPaso } from '../utils/excelPasoAPaso';
 
 const DIAS = ['Viernes', 'Sábado', 'Domingo'];
 const ESTADOS = ['Pendiente', 'En curso', 'Finalizada', 'Cancelada'];
 const PRIORIDADES = ['Alta', 'Media', 'Baja'];
 
 const FORM_INICIAL = {
-  orden: '',
   dia: 'Viernes',
   horaInicio: '13:00',
   duracionMinutos: 30,
@@ -510,7 +518,6 @@ function ActividadDialog({ open, onClose, onSubmit, actividad, loading }) {
       await onSubmit({
         ...form,
         duracionMinutos: Number(form.duracionMinutos),
-        orden: form.orden === '' ? '' : Number(form.orden),
       });
     } catch (err) {
       setError(err.message || 'No fue posible guardar.');
@@ -543,11 +550,8 @@ function ActividadDialog({ open, onClose, onSubmit, actividad, loading }) {
             <Grid size={{ xs: 6, sm: 4 }}>
               <TextField label="Duración (min)" type="number" value={form.duracionMinutos} onChange={(e) => cambiar('duracionMinutos', e.target.value)} inputProps={{ min: 1 }} fullWidth />
             </Grid>
-            <Grid size={{ xs: 12, sm: 8 }}>
+            <Grid size={{ xs: 12 }}>
               <TextField label="Actividad" value={form.actividad} onChange={(e) => cambiar('actividad', e.target.value)} fullWidth required />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField label="Orden" type="number" value={form.orden} onChange={(e) => cambiar('orden', e.target.value)} fullWidth />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField label="Responsable" value={form.responsable} onChange={(e) => cambiar('responsable', e.target.value)} fullWidth required />
@@ -781,10 +785,26 @@ function MenuEstado({
 
 function TarjetaActividad({
   actividad,
+  draggable = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
   puedeEditar,
   puedeEstado,
+  puedeIniciar,
+  puedePausar,
+  puedeReanudar,
+  puedeFinalizar,
   onEditar,
   onEstado,
+  onIniciar,
+  onPausar,
+  onReanudar,
+  onFinalizar,
+  onSubir,
+  onBajar,
+  puedeSubir = false,
+  puedeBajar = false,
   loading,
 }) {
   const estado = normalizar(
@@ -819,6 +839,10 @@ function TarjetaActividad({
   return (
     <Paper
       variant="outlined"
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       sx={{
         p: 2,
         borderRadius: 2.5,
@@ -838,7 +862,9 @@ function TarjetaActividad({
         justifyContent="space-between"
         gap={2}
       >
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+          {draggable && <DragIndicatorRounded sx={{ color: 'text.disabled', mt: 0.5, cursor: 'grab' }} />}
+          <Box sx={{ minWidth: 0, flex: 1 }}>
           <Stack
             direction="row"
             gap={1}
@@ -934,6 +960,7 @@ function TarjetaActividad({
               {actividad.observaciones}
             </Typography>
           )}
+          </Box>
         </Box>
 
         <Stack
@@ -949,22 +976,45 @@ function TarjetaActividad({
             flexShrink: 0,
           }}
         >
-          {puedeEditar && (
-            <Button
-              size="small"
-              startIcon={<EditRounded />}
-              onClick={() =>
-                onEditar(actividad)
-              }
-              disabled={loading}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 800,
-              }}
-            >
-              Editar
-            </Button>
+          {draggable && (
+            <Stack direction="row" gap={0.5}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => onSubir?.(actividad)}
+                disabled={loading || !puedeSubir}
+                aria-label="Subir actividad"
+                sx={{ minWidth: 38, px: 0.5 }}
+              >
+                <KeyboardArrowUpRounded />
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => onBajar?.(actividad)}
+                disabled={loading || !puedeBajar}
+                aria-label="Bajar actividad"
+                sx={{ minWidth: 38, px: 0.5 }}
+              >
+                <KeyboardArrowDownRounded />
+              </Button>
+            </Stack>
           )}
+
+          <BotonesOperacion
+            actividad={actividad}
+            puedeEditar={puedeEditar}
+            puedeIniciar={puedeIniciar}
+            puedePausar={puedePausar}
+            puedeReanudar={puedeReanudar}
+            puedeFinalizar={puedeFinalizar}
+            onEditar={onEditar}
+            onIniciar={onIniciar}
+            onPausar={onPausar}
+            onReanudar={onReanudar}
+            onFinalizar={onFinalizar}
+            loading={loading}
+          />
 
           <MenuEstado
             actividad={actividad}
@@ -1078,117 +1128,118 @@ function AcordeonActividades({
 }
 
 function VistaTabla(props) {
-  const { actividades } = props;
+  const { actividades, onReordenar, puedeReordenar, loading, onError } = props;
+  const [arrastrada, setArrastrada] = useState(null);
+  const ordenadas = useMemo(
+    () => [...actividades].sort((a, b) => Number(a.orden || 9999) - Number(b.orden || 9999)),
+    [actividades]
+  );
 
-  const grupos = useMemo(() => {
-    const ordenadas = [...actividades].sort(
-      (a, b) =>
-        minutosDesdeHora(a.horaInicio) -
-        minutosDesdeHora(b.horaInicio)
-    );
+  const ultimoIndiceBloqueado = useMemo(() => {
+    let ultimo = -1;
+    ordenadas.forEach((actividad, indice) => {
+      if (normalizar(actividad.estado) !== 'pendiente') ultimo = indice;
+    });
+    return ultimo;
+  }, [ordenadas]);
 
-    return {
-      enCurso: ordenadas.filter(
-        (item) =>
-          normalizar(item.estado) === 'en curso'
-      ),
-      pendientes: ordenadas.filter(
-        (item) =>
-          normalizar(item.estado) === 'pendiente'
-      ),
-      finalizadas: ordenadas.filter(
-        (item) =>
-          normalizar(item.estado) === 'finalizada'
-      ),
-      canceladas: ordenadas.filter(
-        (item) =>
-          normalizar(item.estado) === 'cancelada'
-      ),
-    };
-  }, [actividades]);
+  function sePuedeMover(indice) {
+    return indice > ultimoIndiceBloqueado && normalizar(ordenadas[indice]?.estado) === 'pendiente';
+  }
 
-  const [acordeones, setAcordeones] = useState({
-    enCurso: true,
-    pendientes: true,
-    finalizadas: false,
-    canceladas: false,
-  });
+  function informarBloqueo() {
+    onError?.('No puedes insertar ni mover actividades antes o entre actividades que ya fueron ejecutadas. Solo puedes ordenar las pendientes posteriores.');
+  }
 
-  useEffect(() => {
-    if (grupos.enCurso.length > 0) {
-      setAcordeones((actual) => ({
-        ...actual,
-        enCurso: true,
-      }));
+  async function soltar(destino, event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!arrastrada || arrastrada.id === destino.id || !puedeReordenar || loading) return;
+
+    const lista = [...ordenadas];
+    const desde = lista.findIndex((item) => item.id === arrastrada.id);
+    const hasta = lista.findIndex((item) => item.id === destino.id);
+
+    if (!sePuedeMover(desde) || hasta <= ultimoIndiceBloqueado) {
+      setArrastrada(null);
+      informarBloqueo();
       return;
     }
 
-    if (grupos.pendientes.length > 0) {
-      setAcordeones((actual) => ({
-        ...actual,
-        pendientes: true,
-      }));
+    const [movida] = lista.splice(desde, 1);
+    lista.splice(hasta, 0, movida);
+    setArrastrada(null);
+    await onReordenar(lista.map((item) => item.id));
+  }
+
+  async function mover(actividad, desplazamiento) {
+    if (!puedeReordenar || loading) return;
+    const lista = [...ordenadas];
+    const desde = lista.findIndex((item) => item.id === actividad.id);
+    const hasta = desde + desplazamiento;
+    if (desde < 0 || hasta < 0 || hasta >= lista.length) return;
+
+    if (!sePuedeMover(desde) || hasta <= ultimoIndiceBloqueado) {
+      informarBloqueo();
+      return;
     }
-  }, [
-    grupos.enCurso.length,
-    grupos.pendientes.length,
-  ]);
 
-  function cambiarAcordeon(nombre) {
-    return (_event, expandido) => {
-      setAcordeones((actual) => ({
-        ...actual,
-        [nombre]: expandido,
-      }));
-    };
+    const [movida] = lista.splice(desde, 1);
+    lista.splice(hasta, 0, movida);
+    await onReordenar(lista.map((item) => item.id));
   }
 
-  if (!actividades.length) {
-    return (
-      <Alert severity="info">
-        No hay actividades para mostrar.
-      </Alert>
-    );
-  }
+  if (!ordenadas.length) return <Alert severity="info">No hay actividades para mostrar.</Alert>;
 
   return (
-    <Stack spacing={1.5}>
-      <AcordeonActividades
-        {...props}
-        titulo="En curso"
-        color="warning"
-        actividades={grupos.enCurso}
-        expandido={acordeones.enCurso}
-        onCambiar={cambiarAcordeon('enCurso')}
-      />
-
-      <AcordeonActividades
-        {...props}
-        titulo="Por iniciar"
-        color="primary"
-        actividades={grupos.pendientes}
-        expandido={acordeones.pendientes}
-        onCambiar={cambiarAcordeon('pendientes')}
-      />
-
-      <AcordeonActividades
-        {...props}
-        titulo="Finalizadas"
-        color="success"
-        actividades={grupos.finalizadas}
-        expandido={acordeones.finalizadas}
-        onCambiar={cambiarAcordeon('finalizadas')}
-      />
-
-      <AcordeonActividades
-        {...props}
-        titulo="Canceladas"
-        color="error"
-        actividades={grupos.canceladas}
-        expandido={acordeones.canceladas}
-        onCambiar={cambiarAcordeon('canceladas')}
-      />
-    </Stack>
+    <Accordion defaultExpanded disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: '12px !important', '&::before': { display: 'none' } }}>
+      <AccordionSummary expandIcon={<ExpandMoreRounded />}>
+        <Typography fontWeight={900} sx={{ flexGrow: 1 }}>Orden del día</Typography>
+        <Chip size="small" label={ordenadas.length} />
+      </AccordionSummary>
+      <AccordionDetails sx={{ bgcolor: 'background.default' }}>
+        {puedeReordenar && (
+          <Alert severity="info" sx={{ mb: 1.5 }}>
+            Puedes ordenar únicamente las actividades pendientes posteriores a la última actividad ejecutada. Las horas se recalculan automáticamente.
+          </Alert>
+        )}
+        <Stack spacing={1.25}>
+          {ordenadas.map((actividad, indice) => {
+            const movible = puedeReordenar && !loading && sePuedeMover(indice);
+            return (
+              <TarjetaActividad
+                key={actividad.id}
+                actividad={actividad}
+                {...props}
+                draggable={movible}
+                puedeSubir={movible && indice > ultimoIndiceBloqueado + 1}
+                puedeBajar={movible && indice < ordenadas.length - 1}
+                onSubir={() => mover(actividad, -1)}
+                onBajar={() => mover(actividad, 1)}
+                onDragStart={(event) => {
+                  if (!movible) {
+                    event.preventDefault();
+                    informarBloqueo();
+                    return;
+                  }
+                  event.dataTransfer.effectAllowed = 'move';
+                  event.dataTransfer.setData('text/plain', String(actividad.id));
+                  setArrastrada(actividad);
+                }}
+                onDragEnd={() => setArrastrada(null)}
+                onDragOver={(event) => {
+                  if (movible || indice > ultimoIndiceBloqueado) {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                  }
+                }}
+                onDrop={(event) => soltar(actividad, event)}
+              />
+            );
+          })}
+        </Stack>
+      </AccordionDetails>
+    </Accordion>
   );
 }
 
@@ -1750,6 +1801,8 @@ export default function Minutograma() {
   const [vista, setVista] = useState('tabla');
   const [dia, setDia] = useState('Viernes');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [archivoImport, setArchivoImport] = useState(null);
   const [seleccionada, setSeleccionada] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
@@ -1761,6 +1814,7 @@ export default function Minutograma() {
   const [modoCampanero, setModoCampanero] = useState(false);
   const [alertaVisible, setAlertaVisible] = useState(null);
   const [alertaProcesando, setAlertaProcesando] = useState(false);
+  const [actividadesLocales, setActividadesLocales] = useState(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setAhoraMs(Date.now()), 1000);
@@ -1778,7 +1832,11 @@ export default function Minutograma() {
     }
   }, [configuracionAlertas]);
 
-  const actividades = api.data?.items || [];
+  useEffect(() => {
+    if (api.data?.items) setActividadesLocales(api.data.items);
+  }, [api.data]);
+
+  const actividades = actividadesLocales || api.data?.items || [];
   const actividadEnCurso = actividades.find((item) => {
     const estado = normalizar(item.estado);
     return item.dia === dia && (estado === 'en curso' || estado === 'pausada');
@@ -1794,13 +1852,16 @@ export default function Minutograma() {
     return !authLoading && autenticado && tienePermiso(permiso);
   }
 
-  const puedeRegistrar = puede('REGISTRAR_ACTIVIDAD_MINUTOGRAMA');
-  const puedeEditar = puede('EDITAR_ACTIVIDAD_MINUTOGRAMA');
-  const puedeEstado = puede('ACTUALIZAR_ESTADO_MINUTOGRAMA');
-  const puedeIniciar = puede('INICIAR_ACTIVIDAD_MINUTOGRAMA');
-  const puedePausar = puede('PAUSAR_ACTIVIDAD_MINUTOGRAMA');
-  const puedeReanudar = puede('REANUDAR_ACTIVIDAD_MINUTOGRAMA');
-  const puedeFinalizar = puede('FINALIZAR_ACTIVIDAD_MINUTOGRAMA');
+  const puedeRegistrar = puede('CREAR_ACTIVIDADES_PASO_A_PASO');
+  const puedeEditar = puede('EDITAR_ACTIVIDAD_PASO_A_PASO');
+  const puedeEstado = puede('ACTUALIZAR_ESTADO_PASO_A_PASO');
+  const puedeIniciar = puede('INICIAR_ACTIVIDAD_PASO_A_PASO');
+  const puedePausar = puede('PAUSAR_ACTIVIDAD_PASO_A_PASO');
+  const puedeReanudar = puede('REANUDAR_ACTIVIDAD_PASO_A_PASO');
+  const puedeFinalizar = puede('FINALIZAR_ACTIVIDAD_PASO_A_PASO');
+  const puedeImportar = puede('IMPORTAR_ACTIVIDADES_PASO_A_PASO');
+  const puedeExportar = puede('EXPORTAR_ACTIVIDADES_PASO_A_PASO');
+  const puedeReordenar = puede('MOVER_ACTIVIDADES_PASO_A_PASO');
 
   async function ejecutarAccion(accion, mensajeOk) {
     setGuardando(true);
@@ -1829,6 +1890,37 @@ export default function Minutograma() {
       setDialogOpen(false);
       setSeleccionada(null);
     }, seleccionada ? 'Actividad actualizada correctamente.' : 'Actividad registrada correctamente.');
+  }
+
+  async function importarExcel() {
+    if (!archivoImport) { setErrorAccion('Selecciona un archivo Excel.'); return; }
+    await ejecutarAccion(async () => {
+      const filas = await leerExcelPasoAPaso(archivoImport);
+      await importarActividadesMinutogramaApi(token, filas);
+      setImportOpen(false);
+      setArchivoImport(null);
+    }, 'Paso a paso importado correctamente.');
+  }
+
+  async function reordenarActividades(ids) {
+    setGuardando(true);
+    setErrorAccion('');
+    try {
+      const actualizadas = await reordenarActividadesMinutogramaApi(token, dia, ids);
+      setActividadesLocales((actuales) => {
+        const otrosDias = (actuales || actividades).filter((item) => item.dia !== dia);
+        return [...otrosDias, ...(Array.isArray(actualizadas) ? actualizadas : [])];
+      });
+      setMensaje('Orden y horarios actualizados correctamente.');
+      await api.reload();
+      return true;
+    } catch (error) {
+      setErrorAccion(error.message || 'No fue posible actualizar el orden.');
+      await api.reload();
+      return false;
+    } finally {
+      setGuardando(false);
+    }
   }
 
   async function cambiarEstado(
@@ -1931,6 +2023,14 @@ export default function Minutograma() {
   const propsOperacion = {
     puedeEditar,
     puedeEstado,
+    puedeIniciar,
+    puedePausar,
+    puedeReanudar,
+    puedeFinalizar,
+    onIniciar: iniciarActividad,
+    onPausar: pausarActividad,
+    onReanudar: reanudarActividad,
+    onFinalizar: solicitarFinalizacion,
     onEditar: (actividad) => {
       setSeleccionada(actividad);
       setDialogOpen(true);
@@ -1943,7 +2043,7 @@ export default function Minutograma() {
     <>
       <PageHeader
         eyebrow="Operación del retiro"
-        title="Minutograma"
+        title="Paso a paso"
         subtitle="Programación, consulta y seguimiento de las actividades del retiro"
         onRefresh={api.reload}
         loading={api.loading}
@@ -1976,22 +2076,21 @@ export default function Minutograma() {
             <Tab value="gantt" icon={<TimelineRounded />} iconPosition="start" label="Cronograma" />
           </Tabs>
 
-          {puedeRegistrar && (
-            <Button
-              variant="contained"
-              startIcon={<AddRounded />}
-              onClick={() => {
-                setSeleccionada(null);
-                setDialogOpen(true);
-              }}
-              sx={{ alignSelf: { xs: 'stretch', md: 'center' }, borderRadius: 2.5, minHeight: 42, textTransform: 'none', fontWeight: 800 }}
-            >
-              Registrar actividad
-            </Button>
-          )}
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1} flexWrap="wrap">
+            {puedeExportar && (
+              <>
+                <Button variant="outlined" startIcon={<DownloadRounded />} onClick={() => exportarTablaPasoAPaso(actividades)}>Exportar tabla PDF</Button>
+                <Button variant="outlined" startIcon={<DownloadRounded />} onClick={() => exportarCronogramaPasoAPaso(actividades)}>Exportar cronograma</Button>
+              </>
+            )}
+            {puedeImportar && <Button variant="outlined" startIcon={<UploadFileRounded />} onClick={() => setImportOpen(true)}>Importar Excel</Button>}
+            {puedeRegistrar && (
+              <Button variant="contained" startIcon={<AddRounded />} onClick={() => { setSeleccionada(null); setDialogOpen(true); }}>Registrar actividad</Button>
+            )}
+          </Stack>
         </Stack>
 
-        {vista === 'tabla' && <VistaTabla actividades={filtradas} {...propsOperacion} />}
+        {vista === 'tabla' && <VistaTabla actividades={filtradas} {...propsOperacion} puedeReordenar={puedeReordenar} onReordenar={reordenarActividades} onError={setErrorAccion} />}
         {vista === 'gantt' && <VistaGantt actividades={actividades} dia={dia} />}
       </Stack>
 
@@ -2005,6 +2104,35 @@ export default function Minutograma() {
         actividad={seleccionada}
         loading={guardando}
       />
+
+      <Dialog open={importOpen} onClose={() => setImportOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Importar paso a paso desde Excel</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <Alert severity="info">El orden de las filas del Excel define el orden de las actividades. La primera hora de cada día se conserva y las demás se calculan con la duración.</Alert>
+            <Button variant="outlined" startIcon={<DownloadRounded />} onClick={descargarPlantillaPasoAPaso}>Descargar formato Excel</Button>
+            <Button variant="outlined" component="label" startIcon={<UploadFileRounded />}>
+              {archivoImport ? archivoImport.name : 'Seleccionar archivo'}
+              <input hidden type="file" accept=".xlsx,.xls" onChange={(e) => setArchivoImport(e.target.files?.[0] || null)} />
+            </Button>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportOpen(false)} disabled={guardando}>Cancelar</Button>
+          <Button variant="contained" onClick={importarExcel} disabled={guardando || !archivoImport}>Importar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Backdrop
+        open={guardando}
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.modal + 10 }}
+      >
+        <Paper sx={{ px: 3, py: 2.5, borderRadius: 3, textAlign: 'center', minWidth: 240 }}>
+          <CircularProgress size={34} />
+          <Typography fontWeight={800} mt={1.5}>Actualizando paso a paso...</Typography>
+          <Typography variant="body2" color="text.secondary">Guardando el orden y recalculando las horas.</Typography>
+        </Paper>
+      </Backdrop>
 
       <Snackbar open={Boolean(mensaje)} autoHideDuration={3500} onClose={() => setMensaje('')}>
         <Alert severity="success" variant="filled" onClose={() => setMensaje('')}>{mensaje}</Alert>

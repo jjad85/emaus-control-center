@@ -398,10 +398,18 @@ function prepararAspirante(
   const entrada =
     datos || {};
 
+  const tipoRegistrantePreparado =
+    limpiarTextoAspirante(entrada.tipoRegistrante) || 'ASPIRANTE';
+
+  const esRegistroPorTercero =
+    ['invitador', 'otra persona'].indexOf(
+      normalizarTexto(tipoRegistrantePreparado)
+    ) >= 0;
+
   return {
     numeroInscripcion: '',
     tipoRegistrante:
-      limpiarTextoAspirante(entrada.tipoRegistrante) || 'ASPIRANTE',
+      tipoRegistrantePreparado,
     nombreRegistrante:
       limpiarTextoAspirante(entrada.nombreRegistrante),
     telefonoRegistrante:
@@ -544,17 +552,23 @@ function prepararAspirante(
         entrada.nombrePersonaConocida
       ),
     autorizaTratamientoDatos:
-      limpiarTextoAspirante(
-        entrada.autorizaTratamientoDatos
-      ),
+      esRegistroPorTercero
+        ? 'Pendiente'
+        : limpiarTextoAspirante(
+            entrada.autorizaTratamientoDatos
+          ),
     versionAutorizacionDatos: '',
     fechaAceptacionDatos: '',
     textoAutorizacionDatos: '',
 
     autorizaFotografias:
-      limpiarTextoAspirante(
-        entrada.autorizaFotografias
-      ) || 'No',
+      esRegistroPorTercero
+        ? 'Pendiente'
+        : (
+            limpiarTextoAspirante(
+              entrada.autorizaFotografias
+            ) || 'No'
+          ),
     versionAutorizacionFotografias: '',
     fechaAceptacionFotografias: '',
     textoAutorizacionFotografias: '',
@@ -816,6 +830,7 @@ function validarAspirante(
   );
 
   if (
+    !esInvitador &&
     normalizarTexto(
       registro.autorizaTratamientoDatos
     ) !== 'si'
@@ -862,6 +877,26 @@ function validarAspirante(
 function completarEvidenciaConsentimientos(
   registro
 ) {
+  const tipoRegistrante = normalizarTexto(
+    registro.tipoRegistrante || 'ASPIRANTE'
+  );
+
+  const esRegistroPorTercero =
+    tipoRegistrante === 'invitador' ||
+    tipoRegistrante === 'otra persona';
+
+  if (esRegistroPorTercero) {
+    registro.autorizaTratamientoDatos = 'Pendiente';
+    registro.autorizaFotografias = 'Pendiente';
+    registro.versionAutorizacionDatos = '';
+    registro.fechaAceptacionDatos = '';
+    registro.textoAutorizacionDatos = '';
+    registro.versionAutorizacionFotografias = '';
+    registro.fechaAceptacionFotografias = '';
+    registro.textoAutorizacionFotografias = '';
+    return;
+  }
+
   const configuracion =
     obtenerConfiguraciones();
 

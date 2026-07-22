@@ -297,6 +297,10 @@ function convertirCaminante(registro) {
 
     telefono: registro.telefono || '',
 
+    autorizaTratamientoDatos: registro.autorizaTratamientoDatos || 'Pendiente',
+
+    autorizaFotografias: registro.autorizaFotografias || 'Pendiente',
+
     tallaCamiseta:
       registro.tallaCamiseta || '',
 

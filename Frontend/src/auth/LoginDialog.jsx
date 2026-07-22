@@ -12,10 +12,12 @@ import {
 } from '@mui/material';
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import PasswordRecoveryDialog from './PasswordRecoveryDialog';
 
 export default function LoginDialog() {
+  const navigate = useNavigate();
   const {
     loginOpen,
     cerrarLogin,
@@ -66,10 +68,19 @@ export default function LoginDialog() {
     setLoading(true);
 
     try {
-      await login(
+      const sesion = await login(
         usuario.trim(),
         clave
       );
+
+      if (
+        sesion.debeCambiarPassword
+      ) {
+        navigate(
+          '/cambiar-password-inicial',
+          { replace: true }
+        );
+      }
 
       setUsuario('');
       setClave('');

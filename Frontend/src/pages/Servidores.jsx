@@ -31,18 +31,19 @@ import {
   TableRestaurantRounded,
 } from '@mui/icons-material';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../auth/AuthContext';
 import {
   asignarHabitacionServidorApi,
   asignarMesaServidorApi,
   asignarTemaServidorApi,
-  actualizarPagoServidorApi,
   editarServidorApi,
   obtenerOpcionesGestionServidorApi,
   obtenerServidores,
 } from '../api/servidoresApi';
+import { buscarPersonaPago } from '../api/pagosApi';
 
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
@@ -51,11 +52,18 @@ import StatusChip from '../components/StatusChip';
 import ProtectedButton from '../components/ProtectedButton';
 
 const CONFIG_ACCIONES = {
-  pago: { titulo: 'Registrar pago', permiso: 'ACTUALIZAR_PAGO_SERVIDOR' },
   tema: { titulo: 'Asignar tema', permiso: 'EDITAR_SERVIDOR' },
-  mesa: { titulo: 'Asignación', permiso: 'EDITAR_SERVIDOR' },
+  mesa: { titulo: 'Asignar equipo', permiso: 'EDITAR_SERVIDOR' },
   habitacion: { titulo: 'Asignar habitación', permiso: 'EDITAR_SERVIDOR' },
 };
+
+function moneda(valor) {
+  return Number(valor || 0).toLocaleString('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+  });
+}
 
 function normalizar(valor) {
   return String(valor || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -91,6 +99,7 @@ function descripcionAsignacion(servidor) {
 
 export default function Servidores() {
   const api = useApi(() => obtenerServidores(), []);
+  const navigate = useNavigate();
   const { token, autenticado } = useAuth();
   const [busqueda, setBusqueda] = useState('');
   const [selected, setSelected] = useState(null);
@@ -101,6 +110,38 @@ export default function Servidores() {
   const [mensaje, setMensaje] = useState('');
   const [form, setForm] = useState({});
   const [detalleServidor, setDetalleServidor] = useState(null);
+  const [resumenPagos, setResumenPagos] = useState(null);
+  const [cargandoPagos, setCargandoPagos] = useState(false);
+  const [errorPagos, setErrorPagos] = useState('');
+
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarHistorialPagos() {
+      if (!detalleServidor?.id) {
+        setResumenPagos(null);
+        setErrorPagos('');
+        return;
+      }
+
+      try {
+        setCargandoPagos(true);
+        setErrorPagos('');
+        const datos = await buscarPersonaPago('servidor', '', detalleServidor.id);
+        if (activo) setResumenPagos(datos);
+      } catch (error) {
+        if (activo) {
+          setResumenPagos(null);
+          setErrorPagos(error.message || 'No fue posible consultar el historial de pagos.');
+        }
+      } finally {
+        if (activo) setCargandoPagos(false);
+      }
+    }
+
+    cargarHistorialPagos();
+    return () => { activo = false; };
+  }, [detalleServidor?.id]);
 
   const items = api.data?.items || [];
   const filtrados = useMemo(() => items.filter((item) => {
@@ -211,7 +252,6 @@ export default function Servidores() {
     setGuardando(true);
     try {
       if (dialogo === 'editar') await editarServidorApi(token, selected.id, form);
-      if (dialogo === 'pago') await actualizarPagoServidorApi(token, selected.id, form.estadoPago);
       if (dialogo === 'tema') await asignarTemaServidorApi(token, selected.id, form.temaId);
       if (dialogo === 'mesa') await asignarMesaServidorApi(
         token,
@@ -312,7 +352,12 @@ export default function Servidores() {
                     </Box>
 
                     <Stack direction="row" gap={1} flexWrap="wrap">
-                      <StatusChip value={servidor.estadoPago} />
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                          Pago:
+                        </Typography>
+                        <StatusChip value={servidor.estadoPago || 'Pendiente'} />
+                      </Stack>
                       <Badge
                         color="error"
                         badgeContent={servidor.temas?.length > 1 ? `+${servidor.temas.length - 1}` : 0}
@@ -350,9 +395,8 @@ export default function Servidores() {
 
                 <CardActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
                   <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<EditRounded />} onClick={() => abrirAccion('editar', servidor)}>Editar</ProtectedButton>
-                  <ProtectedButton permiso="ACTUALIZAR_PAGO_SERVIDOR" size="small" startIcon={<PaymentsRounded />} onClick={() => abrirAccion('pago', servidor)}>Pago</ProtectedButton>
                   <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<MenuBookRounded />} onClick={() => abrirTema(servidor)}>Tema</ProtectedButton>
-                  <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<TableRestaurantRounded />} onClick={() => abrirAsignacion(servidor)}>Asignación</ProtectedButton>
+                  <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<TableRestaurantRounded />} onClick={() => abrirAsignacion(servidor)}>Asignar equipo</ProtectedButton>
                   <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<BedRounded />} onClick={() => abrirHabitacion(servidor)}>Habitación</ProtectedButton>
                 </CardActions>
               </Card>
@@ -443,11 +487,100 @@ export default function Servidores() {
                     <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>
                       Estado del pago
                     </Typography>
-                    <StatusChip value={detalleServidor?.estadoPago || 'Pendiente'} />
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                        Pago:
+                      </Typography>
+                      <StatusChip value={detalleServidor?.estadoPago || 'Pendiente'} />
+                    </Stack>
                   </CardContent>
                 </Card>
               </Grid>
             </Grid>
+
+            <Card variant="outlined">
+              <CardContent>
+                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1.5 }}>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={800}>
+                      Historial de pagos
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Pagos reportados específicamente para este servidor.
+                    </Typography>
+                  </Box>
+                  {resumenPagos && (
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <Typography variant="body2" color="text.secondary" fontWeight={700}>Pago:</Typography>
+                      <StatusChip value={resumenPagos.estadoPago || 'Pendiente'} />
+                    </Stack>
+                  )}
+                </Stack>
+
+                {cargandoPagos && <Alert severity="info">Consultando pagos del servidor…</Alert>}
+                {errorPagos && <Alert severity="error">{errorPagos}</Alert>}
+
+                {resumenPagos && (
+                  <Stack spacing={1.5}>
+                    <Grid container spacing={1.5}>
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Valor retiro</Typography>
+                        <Typography fontWeight={800}>{moneda(resumenPagos.valorRetiro)}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Total aprobado</Typography>
+                        <Typography fontWeight={800}>{moneda(resumenPagos.totalAprobado)}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Saldo pendiente</Typography>
+                        <Typography fontWeight={800}>{moneda(resumenPagos.saldoPendiente)}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Excedente</Typography>
+                        <Typography fontWeight={800}>{moneda(resumenPagos.excedente)}</Typography>
+                      </Grid>
+                    </Grid>
+
+                    {!resumenPagos.pagos?.length ? (
+                      <Alert severity="info">Este servidor no tiene pagos registrados.</Alert>
+                    ) : (
+                      <Stack spacing={1}>
+                        {resumenPagos.pagos.map((pago, index) => (
+                          <Box key={pago.id || index} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+                            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1}>
+                              <Box>
+                                <Typography fontWeight={800}>{moneda(pago.valorReportado)}</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {pago.fechaPago || pago.fechaRegistro || 'Fecha no informada'}
+                                  {pago.medioPago ? ` · ${pago.medioPago}` : ''}
+                                </Typography>
+                              </Box>
+                              <StatusChip value={pago.estado || 'Pendiente'} />
+                            </Stack>
+                            {pago.estado === 'Aprobado' && (
+                              <Typography variant="body2" sx={{ mt: 1 }}>
+                                <strong>Valor aprobado:</strong> {moneda(pago.valorAprobado ?? pago.valorReportado)}
+                              </Typography>
+                            )}
+                            {pago.referenciaPago && (
+                              <Typography variant="body2"><strong>Referencia:</strong> {pago.referenciaPago}</Typography>
+                            )}
+                            {pago.observacionesTesoreria && (
+                              <Typography variant="body2"><strong>Observación:</strong> {pago.observacionesTesoreria}</Typography>
+                            )}
+                            {pago.comprobanteUrl && (
+                              <Button size="small" href={pago.comprobanteUrl} target="_blank" rel="noopener noreferrer" sx={{ mt: 0.5, px: 0 }}>
+                                Ver comprobante
+                              </Button>
+                            )}
+                          </Box>
+                        ))}
+                      </Stack>
+                    )}
+                  </Stack>
+                )}
+              </CardContent>
+            </Card>
 
             <Card variant="outlined">
               <CardContent>
@@ -503,7 +636,7 @@ export default function Servidores() {
       </Dialog>
 
       <Dialog open={Boolean(dialogo)} onClose={cerrarDialogo} fullWidth maxWidth="sm">
-        <DialogTitle>{dialogo === 'editar' ? 'Editar servidor' : dialogo === 'asignacionExistente' ? 'Asignación existente' : dialogo === 'habitacionExistente' ? 'Habitación existente' : CONFIG_ACCIONES[dialogo]?.titulo}</DialogTitle>
+        <DialogTitle>{dialogo === 'editar' ? 'Editar servidor' : dialogo === 'asignacionExistente' ? 'Equipo asignado' : dialogo === 'habitacionExistente' ? 'Habitación existente' : CONFIG_ACCIONES[dialogo]?.titulo}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {cargandoOpciones && <Alert severity="info">Cargando opciones disponibles…</Alert>}
@@ -511,11 +644,11 @@ export default function Servidores() {
             {dialogo === 'asignacionExistente' && (
               <Alert severity="warning">
                 <Typography fontWeight={800} sx={{ mb: 0.5 }}>
-                  Este servidor ya tiene una asignación.
+                  Este servidor ya tiene un equipo o mesa asignado.
                 </Typography>
                 <Typography variant="body2">
                   Asignación actual: <strong>{descripcionAsignacion(selected)}</strong>.
-                  Para realizar una nueva asignación, primero debes liberar la actual.
+                  Para asignarlo a otro equipo o mesa, primero debes liberar la asignación actual.
                 </Typography>
               </Alert>
             )}
@@ -540,12 +673,6 @@ export default function Servidores() {
                 <TextField label="Celular" value={form.celular || ''} onChange={(e) => setForm({ ...form, celular: e.target.value })} />
                 <TextField label="Contacto" value={form.contacto || ''} onChange={(e) => setForm({ ...form, contacto: e.target.value })} />
               </>
-            )}
-
-            {dialogo === 'pago' && (
-              <TextField select label="Estado de pago" value={form.estadoPago || ''} onChange={(e) => setForm({ ...form, estadoPago: e.target.value })}>
-                {(opciones?.estadosPago || []).map((estado) => <MenuItem key={estado} value={estado}>{estado}</MenuItem>)}
-              </TextField>
             )}
 
             {dialogo === 'tema' && (
@@ -658,10 +785,23 @@ export default function Servidores() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          {dialogo === 'editar' && selected && (
+            <Button
+              startIcon={<PaymentsRounded />}
+              onClick={() => {
+                const servidorId = selected.id;
+                cerrarDialogo();
+                navigate(`/reportar-pago?tipo=servidor&id=${encodeURIComponent(servidorId)}`);
+              }}
+              disabled={guardando}
+            >
+              Registrar pago
+            </Button>
+          )}
           <Button onClick={cerrarDialogo} disabled={guardando}>Cancelar</Button>
           {dialogo === 'asignacionExistente' ? (
             <Button color="error" variant="contained" onClick={liberarAsignacion} disabled={guardando}>
-              Liberar asignación
+              Liberar equipo
             </Button>
           ) : dialogo === 'habitacionExistente' ? (
             <Button color="error" variant="contained" onClick={liberarHabitacion} disabled={guardando}>

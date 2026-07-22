@@ -64,3 +64,13 @@ export async function registrarAlertaMinutogramaApi(
   });
   return response.datos;
 }
+
+export async function importarActividadesMinutogramaApi(token, actividades) {
+  const response = await postAction('importarActividadesMinutograma', { token, actividades });
+  return response.datos;
+}
+
+export async function reordenarActividadesMinutogramaApi(token, dia, ids) {
+  const response = await postAction('reordenarActividadesMinutograma', { token, dia, ids });
+  return response.datos;
+}

@@ -8,6 +8,17 @@ const RECUPERACION_MINUTOS_VIGENCIA = 15;
 const RECUPERACION_MAX_INTENTOS = 5;
 const RECUPERACION_MAX_SOLICITUDES_HORA = 3;
 
+/**
+ * Normaliza un correo para comparaciones internas.
+ * Conserva los caracteres del correo y solo elimina espacios externos
+ * y diferencias entre mayúsculas y minúsculas.
+ */
+function normalizarCorreoUsuario(valor) {
+  return String(valor || '')
+    .trim()
+    .toLowerCase();
+}
+
 function solicitarRecuperacionClave(
   usuarioIngresado,
   correoIngresado
@@ -168,6 +179,58 @@ function solicitarRecuperacionClave(
   });
 
   return respuestaExitosa;
+}
+
+
+/**
+ * Actualiza la contraseña de un usuario.
+ */
+function actualizarPasswordUsuario(
+  usuarioIngresado,
+  nuevaClave
+) {
+  const usuario =
+    buscarUsuarioPorUsuario(
+      usuarioIngresado
+    );
+
+  if (!usuario) {
+    throw crearErrorAplicacion(
+      'USUARIO_NO_ENCONTRADO',
+      'No existe el usuario indicado.'
+    );
+  }
+
+  validarPoliticaPassword(
+    nuevaClave
+  );
+
+  const credencial =
+    crearCredencialPassword(
+      nuevaClave
+    );
+
+  actualizarSeguridadUsuario_(
+    usuario.usuario,
+    {
+      salt:
+        credencial.salt,
+      claveHash:
+        credencial.claveHash,
+      intentosFallidos:
+        0,
+      ultimoIntentoFallido:
+        '',
+      bloqueadoHasta:
+        ''
+    }
+  );
+
+  return {
+    actualizado: true,
+    usuario:
+      usuario.usuario
+  };
 }
 
 function restablecerClaveConCodigo(
