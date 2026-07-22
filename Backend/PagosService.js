@@ -48,11 +48,20 @@ function buscarPersonaPago(tipo, criterio, personaId) {
     const servidores = obtenerServidores({}).filter(function(x) { return x.activo !== false; });
     const coincidencias = servidores.filter(function(s) {
       if (id) return String(s.id) === id;
-      return [s.nombre, s.correo, s.celular, s.id].some(function(v) {
+      return [
+        s.numeroInscripcion,
+        s.documentoIdentidad,
+        s.nombre,
+        s.nombreCompleto,
+        s.correo,
+        s.celular,
+        s.telefono,
+        s.id
+      ].some(function(v) {
         return normalizarTexto(v).indexOf(consulta) >= 0;
       });
     });
-    if (!id && !consulta) throw crearErrorAplicacion('CRITERIO_REQUERIDO', 'Ingrese el nombre, correo o celular del servidor.');
+    if (!id && !consulta) throw crearErrorAplicacion('CRITERIO_REQUERIDO', 'Ingrese el documento o número de inscripción del servidor.');
     if (!coincidencias.length) throw crearErrorAplicacion('SERVIDOR_NO_ENCONTRADO', 'No encontramos un servidor con ese criterio.');
     if (coincidencias.length > 1) throw crearErrorAplicacion('SERVIDOR_AMBIGUO', 'La búsqueda coincide con varios servidores. Ingrese un dato más específico.');
     return completarResumenPagosPersona_(coincidencias[0], 'Servidor');

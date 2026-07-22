@@ -11,35 +11,89 @@
  * Obtiene todos los equipos.
  */
 function obtenerEquipos() {
-  const servidores =
-    obtenerServidores({});
-
+  const servidores = obtenerServidores({});
   const grupos = {};
 
-  servidores.forEach(
-    function(servidor) {
-      const nombreEquipo =
-        servidor.equipo ||
-        'Sin equipo';
+  servidores.forEach(function(servidor) {
+    const nombreEquipo = servidor.equipo || 'Sin equipo';
 
-      if (!grupos[nombreEquipo]) {
-        grupos[nombreEquipo] = [];
-      }
-
-      grupos[nombreEquipo].push(
-        servidor
-      );
+    if (!grupos[nombreEquipo]) {
+      grupos[nombreEquipo] = [];
     }
-  );
 
-  return Object.keys(grupos)
-    .sort()
+    grupos[nombreEquipo].push(servidor);
+  });
+
+  const principales = Object.keys(grupos)
+    .sort(function(a, b) {
+      return String(a).localeCompare(String(b), 'es');
+    })
     .map(function(nombreEquipo) {
-      return construirEquipo(
-        nombreEquipo,
-        grupos[nombreEquipo]
+      return Object.assign(
+        construirEquipo(nombreEquipo, grupos[nombreEquipo]),
+        {
+          id: '',
+          tipo: 'Principal',
+          activo: true,
+          descripcion: ''
+        }
       );
     });
+
+  if (typeof leerHojaAdministracionEquipos_ !== 'function') {
+    return principales;
+  }
+
+  const administrables = leerHojaAdministracionEquipos_();
+  const asignaciones = typeof leerAsignacionesEquiposApoyo_ === 'function'
+    ? leerAsignacionesEquiposApoyo_()
+    : [];
+  const servidorPorId = {};
+
+  servidores.forEach(function(servidor) {
+    servidorPorId[String(servidor.id)] = servidor;
+  });
+
+  const apoyos = administrables
+    .filter(function(equipo) {
+      return normalizarTexto(equipo.tipo) === 'apoyo';
+    })
+    .map(function(equipo) {
+      const integrantes = asignaciones
+        .filter(function(asignacion) {
+          return (
+            asignacion.activo &&
+            String(asignacion.equipoId) === String(equipo.id)
+          );
+        })
+        .map(function(asignacion) {
+          return servidorPorId[String(asignacion.servidorId)];
+        })
+        .filter(Boolean);
+
+      return Object.assign(
+        construirEquipo(equipo.nombre, integrantes),
+        {
+          id: equipo.id,
+          tipo: 'Apoyo',
+          activo: equipo.activo,
+          descripcion: equipo.descripcion || '',
+          orden: equipo.orden || 0
+        }
+      );
+    })
+    .sort(function(a, b) {
+      const ordenA = Number(a.orden) || 9999;
+      const ordenB = Number(b.orden) || 9999;
+
+      if (ordenA !== ordenB) {
+        return ordenA - ordenB;
+      }
+
+      return String(a.nombre).localeCompare(String(b.nombre), 'es');
+    });
+
+  return principales.concat(apoyos);
 }
 
 /**

@@ -1,44 +1,46 @@
 import {
   Alert,
   Box,
-  Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Divider,
   Grid,
   Stack,
   Typography,
 } from '@mui/material';
-import LockResetRounded from '@mui/icons-material/LockResetRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
+import BadgeRounded from '@mui/icons-material/BadgeRounded';
+import GroupsRounded from '@mui/icons-material/GroupsRounded';
+import BedRounded from '@mui/icons-material/BedRounded';
+import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
+import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import PasswordRecoveryDialog from '../auth/PasswordRecoveryDialog';
-import { obtenerMiCuentaServidorApi } from '../api/servidoresApi';
 import { useApi } from '../hooks/useApi';
-import LoadingState from '../components/LoadingState';
-import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
+import LoadingState from '../components/LoadingState';
+import FotoPerfilServidor from '../components/servidores/FotoPerfilServidor';
+import { obtenerMiCuentaServidorApi } from '../api/miCuentaApi';
 
-function Dato({ label, value }) {
+function Campo({ etiqueta, valor }) {
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" fontWeight={800}>
-        {label}
+        {etiqueta}
       </Typography>
-      <Typography fontWeight={700}>{value || 'Sin información'}</Typography>
+      <Typography fontWeight={700}>{valor || 'Sin información'}</Typography>
     </Box>
   );
 }
 
 export default function MiCuenta() {
-  const { token, usuario } = useAuth();
+  const { token } = useAuth();
   const api = useApi(() => obtenerMiCuentaServidorApi(token), [token]);
-  const [cambiarClave, setCambiarClave] = useState(false);
+  const [fotoLocal, setFotoLocal] = useState('');
 
   if (api.loading && !api.data) return <LoadingState />;
-  if (api.error) return <ErrorState message={api.error} onRetry={api.reload} />;
 
   const servidor = api.data || {};
 
@@ -46,53 +48,94 @@ export default function MiCuenta() {
     <Stack spacing={3}>
       <PageHeader
         title="Mi cuenta"
-        subtitle="Consulta la información registrada para tu servicio en el retiro."
+        subtitle="Consulta tu información y administra tu fotografía de perfil"
+        onRefresh={api.reload}
+        loading={api.loading}
       />
 
-      <Card sx={{ borderRadius: 4 }}>
-        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
-          <Stack spacing={3}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
-              <Box sx={{ width: 64, height: 64, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: 'primary.main', color: 'primary.contrastText' }}>
-                <PersonRounded sx={{ fontSize: 36 }} />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h5" fontWeight={900}>{servidor.nombre}</Typography>
-                <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
-                  <Chip label={servidor.activo === false ? 'Inactivo' : 'Activo'} color={servidor.activo === false ? 'default' : 'success'} size="small" />
-                  <Chip label={servidor.estadoPago || 'Pago pendiente'} variant="outlined" size="small" />
+      {api.error && (
+        <Alert severity="error">
+          {api.error?.message || api.error || 'No fue posible consultar tu cuenta.'}
+        </Alert>
+      )}
+
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Card sx={{ borderRadius: 4, height: '100%' }}>
+            <CardContent sx={{ p: 3 }}>
+              <FotoPerfilServidor
+                token={token}
+                nombre={servidor.nombre || ''}
+                fotoPerfilUrl={fotoLocal || servidor.fotoPerfilUrl || ''}
+                onActualizada={(foto) => {
+                  setFotoLocal(foto?.fotoPerfilUrl || '');
+                  api.reload();
+                }}
+              />
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Card sx={{ borderRadius: 4 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Stack spacing={2.5}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <PersonRounded color="primary" />
+                  <Box>
+                    <Typography variant="h5" fontWeight={900}>
+                      {servidor.nombre || 'Servidor'}
+                    </Typography>
+                    <Typography color="text.secondary">
+                      Información registrada para el retiro
+                    </Typography>
+                  </Box>
                 </Stack>
-              </Box>
-              <Button variant="outlined" startIcon={<LockResetRounded />} onClick={() => setCambiarClave(true)}>
-                Cambiar contraseña
-              </Button>
-            </Stack>
 
-            <Divider />
+                <Divider />
 
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, sm: 6 }}><Dato label="Correo" value={servidor.correo} /></Grid>
-              <Grid size={{ xs: 12, sm: 6 }}><Dato label="Celular" value={servidor.celular} /></Grid>
-              <Grid size={{ xs: 12, sm: 6 }}><Dato label="Contacto" value={servidor.contacto} /></Grid>
-              <Grid size={{ xs: 12, sm: 6 }}><Dato label="Equipo" value={servidor.equipo} /></Grid>
-              <Grid size={{ xs: 12, sm: 6 }}><Dato label="Rol" value={servidor.rolEquipo || servidor.rolMesa || servidor.rol} /></Grid>
-              <Grid size={{ xs: 12, sm: 6 }}><Dato label="Mesa" value={servidor.mesa} /></Grid>
-              <Grid size={{ xs: 12, sm: 6 }}><Dato label="Habitación" value={servidor.habitacion} /></Grid>
-              <Grid size={12}><Dato label="Temas asignados" value={(servidor.temas || []).join(' · ')} /></Grid>
-            </Grid>
+                <Grid container spacing={2.5}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Campo etiqueta="Documento de identidad" valor={servidor.documentoIdentidad} />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Campo etiqueta="Correo" valor={servidor.correo} />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Campo etiqueta="Celular" valor={servidor.celular} />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Campo etiqueta="Contacto" valor={servidor.contacto} />
+                  </Grid>
+                </Grid>
 
-            <Alert severity="info">Los cambios sobre esta información deben ser realizados por el equipo administrador.</Alert>
-          </Stack>
-        </CardContent>
-      </Card>
+                <Divider />
 
-      <PasswordRecoveryDialog
-        open={cambiarClave}
-        onClose={() => setCambiarClave(false)}
-        onSuccess={() => setCambiarClave(false)}
-        initialUsuario={usuario || ''}
-        initialCorreo={servidor.correo || ''}
-      />
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Chip icon={<PaymentsRounded />} label={`Pago: ${servidor.estadoPago || 'Pendiente'}`} />
+                  <Chip icon={<GroupsRounded />} label={servidor.equipo || 'Sin equipo'} />
+                  <Chip icon={<BadgeRounded />} label={servidor.rol || servidor.rolEquipo || servidor.rolMesa || 'Sin rol'} />
+                  <Chip icon={<TableRestaurantRounded />} label={servidor.mesa ? `Mesa ${servidor.mesa}` : 'Sin mesa'} />
+                  <Chip icon={<BedRounded />} label={servidor.habitacion ? `Habitación ${servidor.habitacion}` : 'Sin habitación'} />
+                </Stack>
+
+                {servidor.temas?.length > 0 && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" fontWeight={800}>
+                      Temas asignados
+                    </Typography>
+                    <Typography fontWeight={700}>
+                      {servidor.temas.map((tema) => typeof tema === 'object' ? tema.nombre || tema.titulo : tema).filter(Boolean).join(', ')}
+                    </Typography>
+                  </Box>
+                )}
+
+                {api.loading && <CircularProgress size={24} />}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </Stack>
   );
 }

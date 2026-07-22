@@ -303,7 +303,9 @@ function atenderMesas(parametros) {
       indicadores:
         obtenerIndicadoresMesas(
           items
-        )
+        ),
+      sincronizacion:
+        obtenerEstadoSincronizacionMesas()
     },
     totalRegistros:
       items.length

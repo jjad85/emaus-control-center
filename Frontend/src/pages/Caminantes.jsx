@@ -23,37 +23,29 @@ import {
 import {
   AddRounded,
   BedRounded,
-  ContactEmergencyRounded,
-  ContactPhoneRounded,
-  FavoriteRounded,
-  HomeRounded,
-  InfoRounded,
-  ChurchRounded,
   EditRounded,
   MailRounded,
   PaymentsRounded,
-  PersonRounded,
   PhotoRounded,
   SearchRounded,
+  FilterAltRounded,
+  RestartAltRounded,
   TableRestaurantRounded,
-  TaskAltRounded,
-  LinkRounded,
 } from "@mui/icons-material";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   asignarHabitacionCaminanteApi,
   asignarMesaCaminanteApi,
   actualizarCartaCaminanteApi,
   actualizarFotoCaminanteApi,
+  actualizarPagoCaminanteApi,
   editarCaminanteApi,
   obtenerCaminantes,
   obtenerOpcionesRegistroCaminante,
   registrarCaminanteApi,
-  enviarAutorizacionesCaminanteApi,
 } from "../api/caminantesApi";
-import { obtenerPagosCaminante } from "../api/pagosApi";
 
 import { useApi } from "../hooks/useApi";
 import { useAuth } from "../auth/AuthContext";
@@ -67,20 +59,44 @@ import ProtectedButton from "../components/ProtectedButton";
 import CaminanteFormDialog from "../components/caminantes/CaminanteFormDialog";
 import CaminanteActionDialog from "../components/caminantes/CaminanteActionDialog";
 
-const ESTADOS_ENTREGABLES = ["Pendiente", "En Proceso", "Completado"];
 const ESTADOS_PAGO = ["Pendiente", "Pago Parcial", "Pago Total"];
 
-function autorizacionEstaAceptada(valor) {
-  const estado = normalizar(valor);
-  return ["aceptada", "aceptado", "si", "sí", "true", "1"].includes(estado);
-}
+const ESTADOS_ENTREGABLES = ["Pendiente", "En Proceso", "Completado"];
 
-function caminanteTieneAutorizaciones(caminante) {
-  return (
-    autorizacionEstaAceptada(caminante?.autorizaTratamientoDatos) &&
-    autorizacionEstaAceptada(caminante?.autorizaFotografias)
-  );
-}
+const CRITERIOS_FILTRO = [
+  {
+    valor: "mesa",
+    etiqueta: "Mesa",
+  },
+  {
+    valor: "estadoPago",
+    etiqueta: "Estado de pago",
+  },
+  {
+    valor: "habitacion",
+    etiqueta: "Habitación",
+  },
+  {
+    valor: "carta",
+    etiqueta: "Estado de carta",
+  },
+  {
+    valor: "foto",
+    etiqueta: "Estado de foto",
+  },
+  {
+    valor: "nombre",
+    etiqueta: "Nombre",
+  },
+  {
+    valor: "numeroInscripcion",
+    etiqueta: "Número de inscripción",
+  },
+  {
+    valor: "documento",
+    etiqueta: "Documento",
+  },
+];
 
 function normalizar(valor) {
   return String(valor || "")
@@ -113,35 +129,8 @@ function formatearFechaDetalle(valor) {
   }).format(fecha);
 }
 
-function calcularEdad(fechaNacimiento) {
-  if (!tieneValor(fechaNacimiento)) return null;
-
-  const texto = String(fechaNacimiento).trim();
-  const coincidencia = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  const nacimiento = coincidencia
-    ? new Date(Number(coincidencia[1]), Number(coincidencia[2]) - 1, Number(coincidencia[3]))
-    : new Date(texto);
-
-  if (Number.isNaN(nacimiento.getTime())) return null;
-
-  const hoy = new Date();
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const noHaCumplido =
-    hoy.getMonth() < nacimiento.getMonth() ||
-    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate());
-
-  if (noHaCumplido) edad -= 1;
-  return edad >= 0 && edad <= 120 ? edad : null;
-}
-
 function CampoDetalle({ etiqueta, valor, anchoCompleto = false }) {
-  const valorVisible = Array.isArray(valor)
-    ? valor.length
-      ? valor.join(", ")
-      : "Pendiente"
-    : tieneValor(valor)
-      ? String(valor)
-      : "Pendiente";
+  if (!tieneValor(valor)) return null;
 
   return (
     <Grid size={{ xs: 12, sm: anchoCompleto ? 12 : 6 }}>
@@ -149,79 +138,28 @@ function CampoDetalle({ etiqueta, valor, anchoCompleto = false }) {
         {etiqueta}
       </Typography>
       <Typography fontWeight={700} sx={{ whiteSpace: "pre-wrap" }}>
-        {valorVisible}
+        {String(valor)}
       </Typography>
     </Grid>
   );
 }
 
-function primerValor(...valores) {
-  return valores.find((valor) => tieneValor(valor));
-}
+function SeccionDetalle({ titulo, children }) {
+  const elementos = Array.isArray(children)
+    ? children.filter(Boolean)
+    : children;
 
-function obtenerDatoDetalle(datos, ...claves) {
-  const fuentes = [datos?.aspirante, datos?.caminante, datos].filter(Boolean);
-
-  for (const clave of claves) {
-    for (const fuente of fuentes) {
-      const partes = clave.split(".");
-      let valor = fuente;
-
-      for (const parte of partes) {
-        valor = valor?.[parte];
-      }
-
-      if (tieneValor(valor) || (Array.isArray(valor) && valor.length)) {
-        return valor;
-      }
-    }
+  if (Array.isArray(elementos) && elementos.length === 0) {
+    return null;
   }
 
-  return undefined;
-}
-
-function SeccionDetalle({ titulo, icono, children }) {
   return (
-    <Card
-      variant="outlined"
-      sx={{
-        borderRadius: 3,
-        overflow: "hidden",
-        borderColor: "divider",
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.25,
-          px: 2.25,
-          py: 1.5,
-          bgcolor: "action.hover",
-          borderBottom: 1,
-          borderColor: "divider",
-        }}
-      >
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 2,
-            display: "grid",
-            placeItems: "center",
-            bgcolor: "primary.main",
-            color: "primary.contrastText",
-          }}
-        >
-          {icono}
-        </Box>
-        <Typography variant="subtitle1" fontWeight={900}>
+    <Card variant="outlined">
+      <CardContent>
+        <Typography variant="subtitle1" fontWeight={850} sx={{ mb: 1.75 }}>
           {titulo}
         </Typography>
-      </Box>
-
-      <CardContent sx={{ p: 2.25 }}>
-        <Grid container spacing={2.25}>
+        <Grid container spacing={2}>
           {children}
         </Grid>
       </CardContent>
@@ -236,7 +174,9 @@ export default function Caminantes() {
 
   const [busqueda, setBusqueda] = useState("");
 
-  const [filtroPago, setFiltroPago] = useState("");
+  const [criterioFiltro, setCriterioFiltro] = useState("mesa");
+
+  const [valorFiltro, setValorFiltro] = useState("");
 
   const [opciones, setOpciones] = useState(null);
 
@@ -255,30 +195,199 @@ export default function Caminantes() {
   const [mensaje, setMensaje] = useState("");
 
   const [detalleCaminante, setDetalleCaminante] = useState(null);
-  const [resumenPagos, setResumenPagos] = useState(null);
-
-  useEffect(() => {
-    if (!detalleCaminante?.id || !token) { setResumenPagos(null); return; }
-    obtenerPagosCaminante(token, detalleCaminante.id).then(setResumenPagos).catch(() => setResumenPagos(null));
-  }, [detalleCaminante?.id, token]);
 
   const items = api.data?.items || [];
+
+  const opcionesFiltro = useMemo(() => {
+    function unicosOrdenados(valores) {
+      return Array.from(
+        new Set(
+          valores
+            .map((valor) => String(valor || "").trim())
+            .filter(Boolean),
+        ),
+      ).sort((a, b) =>
+        a.localeCompare(b, "es", {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
+    }
+
+    if (criterioFiltro === "mesa") {
+      return [
+        {
+          valor: "__SIN_VALOR__",
+          etiqueta: "Sin mesa",
+        },
+        ...unicosOrdenados(items.map((item) => item.mesa)).map((mesa) => ({
+          valor: mesa,
+          etiqueta: `Mesa ${mesa}`,
+        })),
+      ];
+    }
+
+    if (criterioFiltro === "estadoPago") {
+      const estados = unicosOrdenados(
+        items.map((item) => item.estadoPago),
+      );
+
+      return (estados.length ? estados : ESTADOS_PAGO).map((estado) => ({
+        valor: estado,
+        etiqueta: estado,
+      }));
+    }
+
+    if (criterioFiltro === "habitacion") {
+      return [
+        {
+          valor: "__SIN_VALOR__",
+          etiqueta: "Sin habitación",
+        },
+        ...unicosOrdenados(items.map((item) => item.habitacion)).map(
+          (habitacion) => ({
+            valor: habitacion,
+            etiqueta: `Habitación ${habitacion}`,
+          }),
+        ),
+      ];
+    }
+
+    if (criterioFiltro === "carta") {
+      const estados = unicosOrdenados(
+        items.map((item) => item.entregables?.carta),
+      );
+
+      return (estados.length ? estados : ESTADOS_ENTREGABLES).map(
+        (estado) => ({
+          valor: estado,
+          etiqueta: estado,
+        }),
+      );
+    }
+
+    if (criterioFiltro === "foto") {
+      const estados = unicosOrdenados(
+        items.map((item) => item.entregables?.foto),
+      );
+
+      return (estados.length ? estados : ESTADOS_ENTREGABLES).map(
+        (estado) => ({
+          valor: estado,
+          etiqueta: estado,
+        }),
+      );
+    }
+
+    return [];
+  }, [items, criterioFiltro]);
+
+  const criterioEsTexto = [
+    "nombre",
+    "numeroInscripcion",
+    "documento",
+  ].includes(criterioFiltro);
+
+  const etiquetaValorFiltro = {
+    mesa: "Seleccione una mesa",
+    estadoPago: "Seleccione un estado",
+    habitacion: "Seleccione una habitación",
+    carta: "Seleccione un estado",
+    foto: "Seleccione un estado",
+    nombre: "Escriba el nombre",
+    numeroInscripcion: "Escriba el número de inscripción",
+    documento: "Escriba el documento",
+  }[criterioFiltro];
 
   const filtrados = useMemo(
     () =>
       items.filter((item) => {
+        const textoBusqueda = normalizar(busqueda);
+
         const coincideBusqueda =
-          !busqueda ||
-          normalizar(item.nombre).includes(normalizar(busqueda)) ||
-          String(item.telefono || "").includes(busqueda);
+          !textoBusqueda ||
+          [
+            item.nombre,
+            item.telefono,
+            item.celular,
+            item.documentoIdentidad,
+            item.documento,
+            item.numeroInscripcion,
+          ].some((valor) =>
+            normalizar(valor).includes(textoBusqueda),
+          );
 
-        const coincidePago =
-          !filtroPago || normalizar(item.estadoPago) === normalizar(filtroPago);
+        if (!coincideBusqueda) {
+          return false;
+        }
 
-        return coincideBusqueda && coincidePago;
+        if (!valorFiltro) {
+          return true;
+        }
+
+        let valorItem = "";
+
+        if (criterioFiltro === "mesa") {
+          valorItem = item.mesa;
+        } else if (criterioFiltro === "estadoPago") {
+          valorItem = item.estadoPago;
+        } else if (criterioFiltro === "habitacion") {
+          valorItem = item.habitacion;
+        } else if (criterioFiltro === "carta") {
+          valorItem = item.entregables?.carta;
+        } else if (criterioFiltro === "foto") {
+          valorItem = item.entregables?.foto;
+        } else if (criterioFiltro === "nombre") {
+          valorItem = item.nombre;
+        } else if (criterioFiltro === "numeroInscripcion") {
+          valorItem =
+            item.numeroInscripcion ||
+            item.numeroInscripcionCaminante;
+        } else if (criterioFiltro === "documento") {
+          valorItem =
+            item.documentoIdentidad ||
+            item.documento;
+        }
+
+        if (valorFiltro === "__SIN_VALOR__") {
+          return !String(valorItem || "").trim();
+        }
+
+        if (criterioEsTexto) {
+          return normalizar(valorItem).includes(
+            normalizar(valorFiltro),
+          );
+        }
+
+        return (
+          normalizar(valorItem) ===
+          normalizar(valorFiltro)
+        );
       }),
-    [items, busqueda, filtroPago],
+    [
+      items,
+      busqueda,
+      criterioFiltro,
+      valorFiltro,
+      criterioEsTexto,
+    ],
   );
+
+  function cambiarCriterioFiltro(event) {
+    setCriterioFiltro(event.target.value);
+    setValorFiltro("");
+  }
+
+  function limpiarFiltros() {
+    setBusqueda("");
+    setCriterioFiltro("mesa");
+    setValorFiltro("");
+  }
+
+  const hayFiltrosActivos =
+    Boolean(busqueda) ||
+    Boolean(valorFiltro) ||
+    criterioFiltro !== "mesa";
 
   function puede(permiso) {
     return !authLoading && autenticado && tienePermiso(permiso);
@@ -384,27 +493,14 @@ export default function Caminantes() {
     }
   }
 
-  async function enviarAutorizaciones(caminante) {
-    setGuardando(true);
-    try {
-      const resultado = await enviarAutorizacionesCaminanteApi(token, caminante.id);
-      const url = resultado?.whatsapp?.url;
-      if (url) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
-      setMensaje('Enlace generado. Se abrió WhatsApp con el mensaje listo para enviar.');
-      await api.reload();
-    } catch (err) {
-      setMensaje(err.message || 'No fue posible generar el enlace de autorizaciones.');
-    } finally {
-      setGuardando(false);
-    }
-  }
-
   async function guardarAccion(valor) {
     setGuardando(true);
 
     try {
+      if (actionDialog === "pago") {
+        await actualizarPagoCaminanteApi(token, selected.id, valor);
+      }
+
       if (actionDialog === "mesa") {
         await asignarMesaCaminanteApi(token, selected.id, valor);
       }
@@ -482,18 +578,24 @@ export default function Caminantes() {
           <Stack
             direction={{
               xs: "column",
-              sm: "row",
+              lg: "row",
             }}
             gap={1.5}
             flex={1}
+            alignItems={{
+              lg: "flex-start",
+            }}
           >
             <TextField
-              placeholder="Buscar por nombre o teléfono"
+              placeholder="Buscar por nombre, documento, inscripción o teléfono"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               sx={{
                 minWidth: {
-                  sm: 320,
+                  sm: 330,
+                },
+                flex: {
+                  lg: 1,
                 },
               }}
               InputProps={{
@@ -507,21 +609,94 @@ export default function Caminantes() {
 
             <TextField
               select
-              label="Estado de pago"
-              value={filtroPago}
-              onChange={(e) => setFiltroPago(e.target.value)}
+              label="Criterio"
+              value={criterioFiltro}
+              onChange={cambiarCriterioFiltro}
               sx={{
-                minWidth: 190,
+                minWidth: {
+                  xs: "100%",
+                  sm: 220,
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <FilterAltRounded />
+                  </InputAdornment>
+                ),
               }}
             >
-              <MenuItem value="">Todos</MenuItem>
-
-              {ESTADOS_PAGO.map((estado) => (
-                <MenuItem key={estado} value={estado}>
-                  {estado}
+              {CRITERIOS_FILTRO.map((criterio) => (
+                <MenuItem
+                  key={criterio.valor}
+                  value={criterio.valor}
+                >
+                  {criterio.etiqueta}
                 </MenuItem>
               ))}
             </TextField>
+
+            {criterioEsTexto ? (
+              <TextField
+                label="Valor"
+                placeholder={etiquetaValorFiltro}
+                value={valorFiltro}
+                onChange={(e) =>
+                  setValorFiltro(e.target.value)
+                }
+                sx={{
+                  minWidth: {
+                    xs: "100%",
+                    sm: 250,
+                  },
+                }}
+              />
+            ) : (
+              <TextField
+                select
+                label="Valor"
+                value={valorFiltro}
+                onChange={(e) =>
+                  setValorFiltro(e.target.value)
+                }
+                sx={{
+                  minWidth: {
+                    xs: "100%",
+                    sm: 240,
+                  },
+                }}
+              >
+                <MenuItem value="">
+                  {criterioFiltro === "mesa"
+                    ? "Todas las mesas"
+                    : "Todos"}
+                </MenuItem>
+
+                {opcionesFiltro.map((opcion) => (
+                  <MenuItem
+                    key={opcion.valor}
+                    value={opcion.valor}
+                  >
+                    {opcion.etiqueta}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+
+            <Button
+              variant="outlined"
+              startIcon={<RestartAltRounded />}
+              onClick={limpiarFiltros}
+              disabled={!hayFiltrosActivos}
+              sx={{
+                minHeight: 56,
+                whiteSpace: "nowrap",
+                textTransform: "none",
+                fontWeight: 750,
+              }}
+            >
+              Limpiar
+            </Button>
           </Stack>
 
           <ProtectedButton
@@ -539,6 +714,53 @@ export default function Caminantes() {
           >
             Registrar caminante
           </ProtectedButton>
+        </Stack>
+
+        <Stack
+          direction={{
+            xs: "column",
+            sm: "row",
+          }}
+          justifyContent="space-between"
+          alignItems={{
+            xs: "flex-start",
+            sm: "center",
+          }}
+          gap={1}
+        >
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Mostrando{" "}
+            <strong>{filtrados.length}</strong> de{" "}
+            <strong>{items.length}</strong> caminantes
+          </Typography>
+
+          {valorFiltro && (
+            <Chip
+              size="small"
+              color="primary"
+              variant="outlined"
+              label={`Filtro: ${
+                CRITERIOS_FILTRO.find(
+                  (criterio) =>
+                    criterio.valor === criterioFiltro,
+                )?.etiqueta || "Criterio"
+              } · ${
+                valorFiltro === "__SIN_VALOR__"
+                  ? criterioFiltro === "mesa"
+                    ? "Sin mesa"
+                    : "Sin habitación"
+                  : criterioEsTexto
+                    ? valorFiltro
+                    : opcionesFiltro.find(
+                        (opcion) =>
+                          opcion.valor === valorFiltro,
+                      )?.etiqueta || valorFiltro
+              }`}
+            />
+          )}
         </Stack>
 
         {!autenticado && (
@@ -600,12 +822,7 @@ export default function Caminantes() {
                     </Box>
 
                     <Stack direction="row" gap={1} flexWrap="wrap">
-                      <Stack direction="row" spacing={0.75} alignItems="center">
-                        <Typography variant="body2" color="text.secondary" fontWeight={700}>
-                          Pago:
-                        </Typography>
-                        <StatusChip value={caminante.estadoPago || "Pendiente"} />
-                      </Stack>
+                      <StatusChip value={caminante.estadoPago} />
 
                       <Chip
                         size="small"
@@ -623,25 +840,6 @@ export default function Caminantes() {
                             : "Sin habitación"
                         }
                         variant="outlined"
-                      />
-
-                      <Chip
-                        size="small"
-                        label={
-                          caminanteTieneAutorizaciones(caminante)
-                            ? "Con autorizaciones"
-                            : "Sin autorizaciones"
-                        }
-                        color={
-                          caminanteTieneAutorizaciones(caminante)
-                            ? "success"
-                            : "warning"
-                        }
-                        variant={
-                          caminanteTieneAutorizaciones(caminante)
-                            ? "filled"
-                            : "outlined"
-                        }
                       />
                     </Stack>
 
@@ -697,6 +895,16 @@ export default function Caminantes() {
                     </Button>
                   )}
 
+                  {puede("ACTUALIZAR_PAGO") && (
+                    <Button
+                      size="small"
+                      startIcon={<PaymentsRounded />}
+                      onClick={() => abrirAccion("pago", caminante)}
+                    >
+                      Pago
+                    </Button>
+                  )}
+
                   {puede("ASIGNAR_MESA") && (
                     <Button
                       size="small"
@@ -736,17 +944,6 @@ export default function Caminantes() {
                       Foto
                     </Button>
                   )}
-
-                  {puede("ENVIAR_AUTORIZACIONES_CAMINANTE") && (
-                    <Button
-                      size="small"
-                      startIcon={<LinkRounded />}
-                      disabled={guardando}
-                      onClick={() => enviarAutorizaciones(caminante)}
-                    >
-                      Enviar autorizaciones
-                    </Button>
-                  )}
                 </CardActions>
               </Card>
             </Grid>
@@ -775,7 +972,7 @@ export default function Caminantes() {
           >
             <Box>
               <Typography variant="h5" fontWeight={900}>
-                {obtenerDatoDetalle(detalleCaminante, "nombreCompleto", "nombre") || "Detalle del caminante"}
+                {detalleCaminante?.nombre || "Detalle del caminante"}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Información completa para la gestión del retiro
@@ -783,12 +980,7 @@ export default function Caminantes() {
             </Box>
 
             <Stack direction="row" gap={1} flexWrap="wrap">
-              <Stack direction="row" spacing={0.75} alignItems="center">
-                <Typography variant="body2" color="text.secondary" fontWeight={700}>
-                  Pago:
-                </Typography>
-                <StatusChip value={detalleCaminante?.estadoPago || "Pendiente"} />
-              </Stack>
+              <StatusChip value={detalleCaminante?.estadoPago || "Pendiente"} />
               <Chip
                 size="small"
                 icon={<TableRestaurantRounded />}
@@ -813,324 +1005,291 @@ export default function Caminantes() {
           </Stack>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ bgcolor: "background.default" }}>
-          <Stack spacing={2}>
-            <SeccionDetalle
-              titulo="Información personal"
-              icono={<PersonRounded fontSize="small" />}
-            >
+        <DialogContent dividers>
+          <Stack spacing={2.25}>
+            <SeccionDetalle titulo="Información personal">
               <CampoDetalle
-                etiqueta="Nombre completo"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "nombreCompleto",
-                  "nombre",
-                )}
-                anchoCompleto
+                etiqueta="Número de inscripción"
+                valor={detalleCaminante?.numeroInscripcion}
               />
-              <CampoDetalle
-                etiqueta="Inscripción diligenciada por"
-                valor={normalizar(obtenerDatoDetalle(detalleCaminante, "tipoRegistrante")) === "invitador" ? "Otra persona" : "El caminante"}
-              />
-              {normalizar(obtenerDatoDetalle(detalleCaminante, "tipoRegistrante")) === "invitador" && <>
-                <CampoDetalle etiqueta="Nombre del registrante" valor={obtenerDatoDetalle(detalleCaminante, "nombreRegistrante")} />
-                <CampoDetalle etiqueta="Teléfono del registrante" valor={obtenerDatoDetalle(detalleCaminante, "telefonoRegistrante")} />
-              </>}
               <CampoDetalle
                 etiqueta="Documento de identidad"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "documentoIdentidad",
-                  "numeroDocumento",
-                  "documento",
-                )}
+                valor={
+                  detalleCaminante?.documentoIdentidad ||
+                  detalleCaminante?.documento ||
+                  detalleCaminante?.numeroDocumento
+                }
               />
               <CampoDetalle
                 etiqueta="Fecha de nacimiento"
-                valor={formatearFechaDetalle(
-                  obtenerDatoDetalle(detalleCaminante, "fechaNacimiento"),
-                )}
+                valor={formatearFechaDetalle(detalleCaminante?.fechaNacimiento)}
               />
-              <CampoDetalle
-                etiqueta="Edad"
-                valor={(() => {
-                  const edad = calcularEdad(
-                    obtenerDatoDetalle(detalleCaminante, "fechaNacimiento"),
-                  );
-                  return edad !== null ? `${edad} años` : "Pendiente";
-                })()}
-              />
+              <CampoDetalle etiqueta="Edad" valor={detalleCaminante?.edad} />
               <CampoDetalle
                 etiqueta="Estado civil"
-                valor={obtenerDatoDetalle(detalleCaminante, "estadoCivil")}
+                valor={detalleCaminante?.estadoCivil}
+              />
+              <CampoDetalle
+                etiqueta="Profesión u ocupación"
+                valor={
+                  detalleCaminante?.profesionOcupacion ||
+                  detalleCaminante?.profesion ||
+                  detalleCaminante?.ocupacion
+                }
+              />
+              <CampoDetalle
+                etiqueta="Talla de camiseta"
+                valor={
+                  detalleCaminante?.tallaCamiseta ||
+                  detalleCaminante?.tallaCamisa ||
+                  detalleCaminante?.talla
+                }
+              />
+              <CampoDetalle
+                etiqueta="Parroquia"
+                valor={detalleCaminante?.parroquia || detalleCaminante?.iglesia}
+              />
+            </SeccionDetalle>
+
+            <SeccionDetalle titulo="Ubicación y contacto">
+              <CampoDetalle
+                etiqueta="Celular"
+                valor={detalleCaminante?.telefono || detalleCaminante?.celular}
+              />
+              <CampoDetalle
+                etiqueta="Teléfono fijo"
+                valor={detalleCaminante?.telefonoFijo}
+              />
+              <CampoDetalle
+                etiqueta="Correo electrónico"
+                valor={detalleCaminante?.correo}
               />
               <CampoDetalle
                 etiqueta="Dirección de residencia"
-                valor={obtenerDatoDetalle(detalleCaminante, "direccionResidencia")}
+                valor={
+                  detalleCaminante?.direccionResidencia ||
+                  detalleCaminante?.direccion
+                }
                 anchoCompleto
               />
               <CampoDetalle
                 etiqueta="Barrio"
-                valor={obtenerDatoDetalle(detalleCaminante, "barrio")}
+                valor={detalleCaminante?.barrio}
               />
               <CampoDetalle
-                etiqueta="Parroquia a la que asiste"
-                valor={obtenerDatoDetalle(detalleCaminante, "parroquia")}
-              />
-              <CampoDetalle
-                etiqueta="Teléfono"
-                valor={obtenerDatoDetalle(detalleCaminante, "telefono")}
-              />
-              <CampoDetalle
-                etiqueta="Celular"
-                valor={obtenerDatoDetalle(detalleCaminante, "celular")}
+                etiqueta="Ciudad o municipio"
+                valor={detalleCaminante?.ciudad || detalleCaminante?.municipio}
               />
             </SeccionDetalle>
 
-            <SeccionDetalle
-              titulo="Salud"
-              icono={<FavoriteRounded fontSize="small" />}
-            >
-              <CampoDetalle
-                etiqueta="¿Sufre alguna enfermedad?"
-                valor={obtenerDatoDetalle(detalleCaminante, "sufreEnfermedad")}
-              />
-              <CampoDetalle
-                etiqueta="¿Cuál enfermedad?"
-                valor={obtenerDatoDetalle(detalleCaminante, "enfermedadCual")}
-              />
-              <CampoDetalle
-                etiqueta="¿Toma algún medicamento?"
-                valor={obtenerDatoDetalle(detalleCaminante, "tomaMedicamento")}
-              />
-              <CampoDetalle
-                etiqueta="¿Cuál medicamento?"
-                valor={obtenerDatoDetalle(detalleCaminante, "medicamentoCual")}
-              />
-              <CampoDetalle
-                etiqueta="Horarios de los medicamentos"
-                valor={obtenerDatoDetalle(detalleCaminante, "horariosMedicamentos")}
-                anchoCompleto
-              />
+            <Card variant="outlined">
+              <CardContent>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight={850}
+                  sx={{ mb: 1.75 }}
+                >
+                  Información del retiro
+                </Typography>
+
+                <Stack spacing={2}>
+                  <Stack direction="row" gap={1} flexWrap="wrap">
+                    <StatusChip
+                      value={detalleCaminante?.estadoPago || "Pendiente"}
+                    />
+                    <Chip
+                      icon={<TableRestaurantRounded />}
+                      label={
+                        detalleCaminante?.mesa
+                          ? `Mesa ${detalleCaminante.mesa}`
+                          : "Sin mesa asignada"
+                      }
+                      variant="outlined"
+                    />
+                    <Chip
+                      icon={<BedRounded />}
+                      label={
+                        detalleCaminante?.habitacion
+                          ? `Habitación ${detalleCaminante.habitacion}`
+                          : "Sin habitación asignada"
+                      }
+                      variant="outlined"
+                    />
+                  </Stack>
+
+                  <Divider />
+
+                  <Grid container spacing={2}>
+                    <CampoDetalle
+                      etiqueta="Sacramentos recibidos"
+                      valor={detalleCaminante?.sacramentosRecibidos}
+                      anchoCompleto
+                    />
+                    <CampoDetalle
+                      etiqueta="Cómo se enteró del retiro"
+                      valor={detalleCaminante?.comoSeEntero}
+                    />
+                    <CampoDetalle
+                      etiqueta="Persona que lo invitó"
+                      valor={
+                        detalleCaminante?.nombrePersonaInvito ||
+                        detalleCaminante?.personaInvito ||
+                        detalleCaminante?.invitadoPor
+                      }
+                    />
+                    <CampoDetalle
+                      etiqueta="Celular de quien lo invitó"
+                      valor={detalleCaminante?.celularPersonaInvito}
+                    />
+                    <CampoDetalle
+                      etiqueta="Asistirá una persona conocida"
+                      valor={detalleCaminante?.personaConocidaAsistira}
+                    />
+                    <CampoDetalle
+                      etiqueta="Persona conocida"
+                      valor={detalleCaminante?.nombrePersonaConocida}
+                    />
+                    <CampoDetalle
+                      etiqueta="Autoriza tratamiento de datos"
+                      valor={detalleCaminante?.autorizaTratamientoDatos}
+                    />
+                    <CampoDetalle
+                      etiqueta="Autoriza fotografías"
+                      valor={detalleCaminante?.autorizaFotografias}
+                    />
+                  </Grid>
+
+                  <Divider />
+
+                  <Stack direction="row" gap={1} flexWrap="wrap">
+                    <Chip
+                      icon={<MailRounded />}
+                      label={`Carta: ${detalleCaminante?.entregables?.carta || "Pendiente"}`}
+                    />
+                    <Chip
+                      icon={<PhotoRounded />}
+                      label={`Foto: ${detalleCaminante?.entregables?.foto || "Pendiente"}`}
+                    />
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <SeccionDetalle titulo="Información de salud">
               <CampoDetalle
                 etiqueta="EPS"
-                valor={obtenerDatoDetalle(detalleCaminante, "eps")}
+                valor={detalleCaminante?.eps || detalleCaminante?.nombreEps}
               />
               <CampoDetalle
-                etiqueta="Profesión u ocupación"
-                valor={obtenerDatoDetalle(detalleCaminante, "profesionOcupacion")}
+                etiqueta="Sufre alguna enfermedad"
+                valor={detalleCaminante?.sufreEnfermedad}
               />
               <CampoDetalle
-                etiqueta="¿Tiene alguna limitación física?"
-                valor={obtenerDatoDetalle(detalleCaminante, "tieneLimitacionFisica")}
-              />
-              <CampoDetalle
-                etiqueta="¿Cuál limitación?"
-                valor={obtenerDatoDetalle(detalleCaminante, "limitacionCual")}
-              />
-            </SeccionDetalle>
-
-            <SeccionDetalle
-              titulo="Información general"
-              icono={<ChurchRounded fontSize="small" />}
-            >
-              <CampoDetalle
-                etiqueta="Sacramentos recibidos"
-                valor={obtenerDatoDetalle(detalleCaminante, "sacramentosRecibidos")}
+                etiqueta="Enfermedad o condición"
+                valor={
+                  detalleCaminante?.enfermedadCual ||
+                  detalleCaminante?.condicionMedica
+                }
                 anchoCompleto
               />
               <CampoDetalle
-                etiqueta="Talla de camisa tipo polo"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "tallaCamisa",
-                  "tallaCamiseta",
-                  "talla",
-                )}
-              />
-            </SeccionDetalle>
-
-            <SeccionDetalle
-              titulo="Emergencia"
-              icono={<ContactEmergencyRounded fontSize="small" />}
-            >
-              <CampoDetalle
-                etiqueta="Contacto de emergencia 1"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "contacto1Nombre",
-                  "contacto1.nombre",
-                  "nombreContacto1",
-                  "contactoEmergencia1",
-                )}
+                etiqueta="Toma medicamentos"
+                valor={detalleCaminante?.tomaMedicamento}
               />
               <CampoDetalle
-                etiqueta="Parentesco contacto 1"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "contacto1Parentesco",
-                  "contacto1.parentesco",
-                )}
+                etiqueta="Medicamento"
+                valor={
+                  detalleCaminante?.medicamentoCual ||
+                  detalleCaminante?.medicamentos
+                }
               />
               <CampoDetalle
-                etiqueta="Celular contacto 1"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "contacto1Celular",
-                  "contacto1.celular",
-                  "contacto1.telefono",
-                  "telefonoContacto1",
-                  "celularContacto1",
-                )}
-              />
-              <CampoDetalle
-                etiqueta="Contacto de emergencia 2"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "contacto2Nombre",
-                  "contacto2.nombre",
-                  "nombreContacto2",
-                  "contactoEmergencia2",
-                )}
-              />
-              <CampoDetalle
-                etiqueta="Parentesco contacto 2"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "contacto2Parentesco",
-                  "contacto2.parentesco",
-                )}
-              />
-              <CampoDetalle
-                etiqueta="Celular contacto 2"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "contacto2Celular",
-                  "contacto2.celular",
-                  "contacto2.telefono",
-                  "telefonoContacto2",
-                  "celularContacto2",
-                )}
-              />
-            </SeccionDetalle>
-
-            <SeccionDetalle
-              titulo="Pagos del retiro"
-              icono={<PaymentsRounded fontSize="small" />}
-            >
-              <CampoDetalle etiqueta="Valor del retiro" valor={resumenPagos ? `$${Number(resumenPagos.valorRetiro).toLocaleString("es-CO")}` : "Pendiente"} />
-              <CampoDetalle etiqueta="Total aprobado" valor={resumenPagos ? `$${Number(resumenPagos.totalAprobado).toLocaleString("es-CO")}` : "Pendiente"} />
-              <CampoDetalle etiqueta="Saldo pendiente" valor={resumenPagos ? `$${Number(resumenPagos.saldoPendiente).toLocaleString("es-CO")}` : "Pendiente"} />
-              <CampoDetalle etiqueta="Excedente" valor={resumenPagos ? `$${Number(resumenPagos.excedente).toLocaleString("es-CO")}` : "Pendiente"} />
-              {(resumenPagos?.pagos || []).map((pago) => (
-                <Box key={pago.id} sx={{ gridColumn: "1 / -1", border: 1, borderColor: "divider", borderRadius: 2, p: 1.5 }}>
-                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}>
-                    <Typography fontWeight={800}>{formatearFechaDetalle(pago.fechaPago)} · ${Number(pago.valorAprobado ?? pago.valorReportado).toLocaleString("es-CO")}</Typography>
-                    <StatusChip value={pago.estado} />
-                  </Stack>
-                  {pago.comprobanteUrl && <Button size="small" href={pago.comprobanteUrl} target="_blank" sx={{ mt: 1 }}>Ver o descargar comprobante</Button>}
-                </Box>
-              ))}
-              {resumenPagos && !resumenPagos.pagos?.length && <Typography sx={{ gridColumn: "1 / -1" }} color="text.secondary">No hay pagos registrados.</Typography>}
-            </SeccionDetalle>
-
-            <SeccionDetalle
-              titulo="Información del retiro"
-              icono={<InfoRounded fontSize="small" />}
-            >
-              <CampoDetalle
-                etiqueta="Código de inscripción"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "numeroInscripcion",
-                  "codigoInscripcion",
-                  "nroInscripcion",
-                  "aspirante.numeroInscripcion",
-                  "aspirante.codigoInscripcion",
-                )}
-              />
-              <CampoDetalle
-                etiqueta="¿Cómo se enteró del retiro?"
-                valor={obtenerDatoDetalle(detalleCaminante, "comoSeEntero")}
+                etiqueta="Horario de medicamentos"
+                valor={detalleCaminante?.horariosMedicamentos}
                 anchoCompleto
               />
               <CampoDetalle
-                etiqueta="Nombre de quien lo invitó"
-                valor={obtenerDatoDetalle(detalleCaminante, "nombrePersonaInvito")}
+                etiqueta="Tiene limitación física"
+                valor={detalleCaminante?.tieneLimitacionFisica}
               />
               <CampoDetalle
-                etiqueta="Celular de quien lo invitó"
-                valor={obtenerDatoDetalle(detalleCaminante, "celularPersonaInvito")}
+                etiqueta="Limitación física"
+                valor={detalleCaminante?.limitacionCual}
               />
               <CampoDetalle
-                etiqueta="¿Asistirá una persona conocida?"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "personaConocidaAsistira",
-                )}
+                etiqueta="Alergias"
+                valor={detalleCaminante?.alergias}
+                anchoCompleto
               />
               <CampoDetalle
-                etiqueta="Nombre de la persona conocida"
-                valor={obtenerDatoDetalle(detalleCaminante, "nombrePersonaConocida")}
+                etiqueta="Restricciones alimentarias"
+                valor={detalleCaminante?.restriccionesAlimentarias}
+                anchoCompleto
               />
               <CampoDetalle
-                etiqueta="Autoriza tratamiento de datos"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "autorizaTratamientoDatos",
-                )}
-              />
-              <CampoDetalle
-                etiqueta="Autoriza fotografías"
-                valor={obtenerDatoDetalle(detalleCaminante, "autorizaFotografias")}
-              />
-              <CampoDetalle
-                etiqueta="Fecha de registro"
-                valor={formatearFechaDetalle(
-                  obtenerDatoDetalle(
-                    detalleCaminante,
-                    "fechaRegistro",
-                    "fechaCreacion",
-                    "createdAt",
-                  ),
-                )}
-              />
-              <CampoDetalle
-                etiqueta="Estado de pago"
-                valor={(() => {
-                  const estado = normalizar(obtenerDatoDetalle(detalleCaminante, "estadoPago"));
-                  if (estado === "pago parcial") return "Parcial";
-                  if (estado === "pago total") return "Total";
-                  return "Pendiente";
-                })()}
-              />
-              <CampoDetalle
-                etiqueta="Estado de la carta"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "entregables.carta",
-                  "estadoCarta",
-                )}
-              />
-              <CampoDetalle
-                etiqueta="Estado de la foto"
-                valor={obtenerDatoDetalle(
-                  detalleCaminante,
-                  "entregables.foto",
-                  "entregables.fotos",
-                  "estadoFoto",
-                  "estadoFotos",
-                )}
-              />
-              <CampoDetalle
-                etiqueta="Mesa asignada"
-                valor={obtenerDatoDetalle(detalleCaminante, "mesa")}
-              />
-              <CampoDetalle
-                etiqueta="Habitación asignada"
-                valor={obtenerDatoDetalle(detalleCaminante, "habitacion")}
+                etiqueta="Tipo de sangre"
+                valor={detalleCaminante?.tipoSangre}
               />
             </SeccionDetalle>
+
+            <SeccionDetalle titulo="Contactos de emergencia">
+              <CampoDetalle
+                etiqueta="Contacto principal"
+                valor={detalleCaminante?.contacto?.nombre}
+              />
+              <CampoDetalle
+                etiqueta="Parentesco"
+                valor={detalleCaminante?.contacto?.parentesco}
+              />
+              <CampoDetalle
+                etiqueta="Celular principal"
+                valor={detalleCaminante?.contacto?.telefono}
+              />
+              <CampoDetalle
+                etiqueta="Contacto alterno"
+                valor={detalleCaminante?.contactoAlterno?.nombre}
+              />
+              <CampoDetalle
+                etiqueta="Parentesco del contacto alterno"
+                valor={detalleCaminante?.contactoAlterno?.parentesco}
+              />
+              <CampoDetalle
+                etiqueta="Celular alterno"
+                valor={detalleCaminante?.contactoAlterno?.telefono}
+              />
+            </SeccionDetalle>
+
+            {(tieneValor(detalleCaminante?.observaciones) ||
+              tieneValor(detalleCaminante?.observacionesGestion)) && (
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={850}
+                    sx={{ mb: 1.25 }}
+                  >
+                    Observaciones
+                  </Typography>
+                  {tieneValor(detalleCaminante?.observaciones) && (
+                    <Typography sx={{ whiteSpace: "pre-wrap" }}>
+                      {detalleCaminante.observaciones}
+                    </Typography>
+                  )}
+                  {tieneValor(detalleCaminante?.observacionesGestion) && (
+                    <Typography
+                      sx={{
+                        whiteSpace: "pre-wrap",
+                        mt: tieneValor(detalleCaminante?.observaciones)
+                          ? 1.5
+                          : 0,
+                      }}
+                    >
+                      {detalleCaminante.observacionesGestion}
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </Stack>
         </DialogContent>
 
@@ -1220,7 +1379,9 @@ export default function Caminantes() {
         onSubmit={guardarAccion}
         loading={guardando}
         titulo={
-          actionDialog === "mesa"
+          actionDialog === "pago"
+            ? "Actualizar pago"
+            : actionDialog === "mesa"
               ? "Asignar mesa"
               : actionDialog === "habitacion"
                 ? "Asignar habitación"
@@ -1230,7 +1391,9 @@ export default function Caminantes() {
         }
         descripcion={selected ? selected.nombre : ""}
         label={
-          actionDialog === "mesa"
+          actionDialog === "pago"
+            ? "Estado del pago"
+            : actionDialog === "mesa"
               ? "Mesa"
               : actionDialog === "habitacion"
                 ? "Habitación"
@@ -1239,7 +1402,9 @@ export default function Caminantes() {
                   : "Estado de la foto"
         }
         valorInicial={
-          actionDialog === "mesa"
+          actionDialog === "pago"
+            ? selected?.estadoPago
+            : actionDialog === "mesa"
               ? selected?.mesa
               : actionDialog === "habitacion"
                 ? selected?.habitacion
@@ -1248,7 +1413,9 @@ export default function Caminantes() {
                   : selected?.entregables?.foto
         }
         opciones={
-          actionDialog === "mesa"
+          actionDialog === "pago"
+            ? ESTADOS_PAGO
+            : actionDialog === "mesa"
               ? mesasOpciones
               : actionDialog === "habitacion"
                 ? habitacionesOpciones

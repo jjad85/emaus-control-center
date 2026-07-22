@@ -1,7 +1,12 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
+  Box,
   Card,
   CardActionArea,
+  CardActions,
   CardContent,
   Chip,
   Dialog,
@@ -12,102 +17,92 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import {
+  EditRounded,
+  ExpandMoreRounded,
+  HotelRounded,
+  PersonAddAltRounded,
+} from '@mui/icons-material';
+import {
+  useMemo,
+  useState,
+} from 'react';
 
-import { useMemo, useState } from 'react';
-
-import { obtenerHabitaciones } from '../api/habitacionesApi';
+import {
+  obtenerHabitaciones,
+} from '../api/habitacionesApi';
 import { useApi } from '../hooks/useApi';
+import { useAuth } from '../auth/AuthContext';
 
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
+import ProtectedButton from '../components/ProtectedButton';
+import AvatarServidor from '../components/servidores/AvatarServidor';
+import EditarHabitacionDialog from '../components/habitaciones/EditarHabitacionDialog';
+import AsignarPersonaHabitacionDialog from '../components/habitaciones/AsignarPersonaHabitacionDialog';
 
-function obtenerPiso(habitacion) {
-  const piso = String(
-    habitacion?.piso ?? ''
-  ).trim();
-
-  return piso || 'Sin piso';
-}
-
-function compararPisos(a, b) {
-  const numeroA = Number(a);
-  const numeroB = Number(b);
-
-  if (
-    Number.isFinite(numeroA) &&
-    Number.isFinite(numeroB)
-  ) {
-    return numeroA - numeroB;
-  }
-
+function compararTextoNumerico(
+  a,
+  b
+) {
   return String(a).localeCompare(
     String(b),
-    'es'
+    'es',
+    {
+      numeric: true,
+      sensitivity: 'base',
+    }
   );
 }
 
-function compararHabitaciones(a, b) {
-  const numeroA = Number(a.habitacion);
-  const numeroB = Number(b.habitacion);
-
-  if (
-    Number.isFinite(numeroA) &&
-    Number.isFinite(numeroB)
-  ) {
-    return numeroA - numeroB;
-  }
-
-  return String(
-    a.habitacion || ''
-  ).localeCompare(
-    String(b.habitacion || ''),
-    'es'
-  );
-}
-
-function obtenerDetallePersona(persona) {
-  if (!persona) {
-    return 'Sin asignar';
-  }
-
-  if (persona.tipoPersona === 'Servidor') {
-    const detalleServidor = [
-      persona.equipo,
-      persona.rol,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    return `Servidor - ${persona.equipo || 'Sin equipo'} ${persona.rol || 'Sin rol'}`;
-  }
-
-  if (persona.tipoPersona === 'Caminante') {
-    return persona.mesa
-      ? `Caminante - Mesa ${persona.mesa}`
-      : 'Caminante - Sin mesa';
-  }
-
-  return persona.tipoPersona || 'Sin definir';
-}
-
-function colorPersona(persona) {
-  if (!persona) {
-    return 'default';
-  }
-
-  if (persona.tipoPersona === 'Servidor') {
+function colorTipo(tipo) {
+  if (tipo === 'Servidor') {
     return 'primary';
   }
 
-  if (persona.tipoPersona === 'Caminante') {
+  if (tipo === 'Caminante') {
     return 'success';
+  }
+
+  if (tipo === 'Mixta') {
+    return 'error';
   }
 
   return 'default';
 }
 
+function detallePersona(persona) {
+  if (
+    persona?.tipoPersona ===
+    'Servidor'
+  ) {
+    return [
+      persona.equipo,
+      persona.rol,
+      persona.mesa
+        ? `Mesa ${persona.mesa}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  if (
+    persona?.tipoPersona ===
+    'Caminante'
+  ) {
+    return persona.mesa
+      ? `Mesa ${persona.mesa}`
+      : 'Sin mesa';
+  }
+
+  return '';
+}
+
 export default function Habitaciones() {
+  const { token } = useAuth();
+
   const api = useApi(
     () => obtenerHabitaciones(),
     []
@@ -116,48 +111,74 @@ export default function Habitaciones() {
   const [selected, setSelected] =
     useState(null);
 
+  const [editar, setEditar] =
+    useState(null);
+
+  const [asignar, setAsignar] =
+    useState(null);
+
   const habitaciones =
     api.data?.items || [];
 
-  const habitacionesPorPiso =
-    useMemo(() => {
-      const grupos = {};
+  const bloques = useMemo(() => {
+    const mapa = {};
 
-      habitaciones.forEach(
-        (habitacion) => {
-          const piso =
-            obtenerPiso(habitacion);
+    habitaciones.forEach(
+      (habitacion) => {
+        const bloque =
+          habitacion.bloque ||
+          'Sin bloque';
 
-          if (!grupos[piso]) {
-            grupos[piso] = [];
-          }
+        const piso =
+          habitacion.piso ||
+          'Sin piso';
 
-          grupos[piso].push(
-            habitacion
-          );
+        if (!mapa[bloque]) {
+          mapa[bloque] = {};
         }
-      );
 
-      return Object.entries(grupos)
-        .sort(([pisoA], [pisoB]) =>
-          compararPisos(
-            pisoA,
-            pisoB
-          )
-        )
-        .map(
-          ([
-            piso,
-            listaHabitaciones,
-          ]) => ({
-            piso,
-            habitaciones:
-              listaHabitaciones.sort(
-                compararHabitaciones
-              ),
-          })
+        if (!mapa[bloque][piso]) {
+          mapa[bloque][piso] = [];
+        }
+
+        mapa[bloque][piso].push(
+          habitacion
         );
-    }, [habitaciones]);
+      }
+    );
+
+    return Object.entries(mapa)
+      .sort(([a], [b]) =>
+        compararTextoNumerico(a, b)
+      )
+      .map(([bloque, pisos]) => ({
+        bloque,
+        pisos:
+          Object.entries(pisos)
+            .sort(([a], [b]) =>
+              compararTextoNumerico(
+                a,
+                b
+              )
+            )
+            .map(
+              ([
+                piso,
+                lista,
+              ]) => ({
+                piso,
+                habitaciones:
+                  lista.sort(
+                    (a, b) =>
+                      compararTextoNumerico(
+                        a.habitacion,
+                        b.habitacion
+                      )
+                  ),
+              })
+            ),
+      }));
+  }, [habitaciones]);
 
   if (
     api.loading &&
@@ -180,203 +201,384 @@ export default function Habitaciones() {
       <PageHeader
         eyebrow="Alojamiento"
         title="Habitaciones"
-        subtitle="Asignación de caminantes y servidores"
+        subtitle={`${habitaciones.length} habitaciones organizadas por bloque y piso`}
         onRefresh={api.reload}
         loading={api.loading}
       />
 
-      <Stack spacing={4}>
-        {habitacionesPorPiso.map(
-          (grupo) => (
-            <Stack
-              key={grupo.piso}
-              spacing={2}
+      <Stack spacing={2}>
+        {bloques.map((grupoBloque) => (
+          <Accordion
+            key={grupoBloque.bloque}
+            defaultExpanded
+            disableGutters
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: '16px !important',
+              overflow: 'hidden',
+              '&:before': {
+                display: 'none',
+              },
+            }}
+          >
+            <AccordionSummary
+              expandIcon={
+                <ExpandMoreRounded />
+              }
             >
               <Stack
-                direction={{
-                  xs: 'column',
-                  sm: 'row',
-                }}
-                justifyContent="space-between"
-                alignItems={{
-                  xs: 'flex-start',
-                  sm: 'center',
-                }}
-                gap={1}
+                direction="row"
+                spacing={1}
+                alignItems="center"
               >
-                <Typography
-                  variant="h5"
-                  fontWeight={900}
-                >
-                  Piso {grupo.piso}
-                </Typography>
+                <HotelRounded
+                  color="primary"
+                />
 
-                <Typography
-                  color="text.secondary"
-                >
-                  {
-                    grupo.habitaciones
-                      .length
-                  }{' '}
-                  {grupo.habitaciones
-                    .length === 1
-                    ? 'habitación'
-                    : 'habitaciones'}
-                </Typography>
+                <Box>
+                  <Typography
+                    variant="h5"
+                    fontWeight={900}
+                  >
+                    {grupoBloque.bloque}
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    {
+                      grupoBloque.pisos
+                        .length
+                    }{' '}
+                    {grupoBloque.pisos
+                      .length === 1
+                      ? 'piso'
+                      : 'pisos'}
+                  </Typography>
+                </Box>
               </Stack>
+            </AccordionSummary>
 
-              <Grid
-                container
-                spacing={2}
-              >
-                {grupo.habitaciones.map(
-                  (habitacion) => {
-                    const persona =
-                      habitacion.persona ||
-                      habitacion.personas?.[0] ||
-                      null;
-
-                    const asignada =
-                      Boolean(persona);
-
-                    return (
-                      <Grid
-                        key={
-                          habitacion.id ||
-                          habitacion.habitacion
+            <AccordionDetails>
+              <Stack spacing={1.5}>
+                {grupoBloque.pisos.map(
+                  (grupoPiso) => (
+                    <Accordion
+                      key={`${grupoBloque.bloque}-${grupoPiso.piso}`}
+                      defaultExpanded
+                      disableGutters
+                      variant="outlined"
+                      sx={{
+                        borderRadius:
+                          '12px !important',
+                        '&:before': {
+                          display: 'none',
+                        },
+                      }}
+                    >
+                      <AccordionSummary
+                        expandIcon={
+                          <ExpandMoreRounded />
                         }
-                        size={{
-                          xs: 12,
-                          sm: 6,
-                          lg: 4,
-                        }}
                       >
-                        <Card
-                          sx={{
-                            height: '100%',
-                          }}
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          width="100%"
+                          pr={1}
                         >
-                          <CardActionArea
-                            onClick={() =>
-                              setSelected(
-                                habitacion
-                              )
-                            }
-                            sx={{
-                              height: '100%',
-                            }}
+                          <Typography
+                            variant="h6"
+                            fontWeight={850}
                           >
-                            <CardContent>
-                              <Stack
-                                direction="row"
-                                justifyContent="space-between"
-                                alignItems="flex-start"
-                                gap={2}
-                              >
-                                <div>
-                                  <Typography
-                                    variant="h5"
-                                    fontWeight={900}
-                                  >
-                                    {
-                                      habitacion.habitacion
-                                    }
-                                  </Typography>
+                            Piso{' '}
+                            {grupoPiso.piso}
+                          </Typography>
 
-                                  <Typography
-                                    color="text.secondary"
-                                  >
-                                    Piso{' '}
-                                    {
-                                      habitacion.piso
-                                    }
-                                  </Typography>
-                                </div>
+                          <Chip
+                            size="small"
+                            label={`${grupoPiso.habitaciones.length} habitaciones`}
+                          />
+                        </Stack>
+                      </AccordionSummary>
 
-                                <Chip
-                                  size="small"
-                                  color={
-                                    asignada
-                                      ? colorPersona(
-                                          persona
-                                        )
-                                      : 'default'
-                                  }
-                                  label={
-                                    asignada
-                                      ? 'Asignada'
-                                      : 'Disponible'
-                                  }
-                                  variant={
-                                    asignada
-                                      ? 'filled'
-                                      : 'outlined'
-                                  }
-                                />
-                              </Stack>
-
-                              <LinearProgress
-                                variant="determinate"
-                                value={
-                                  asignada
-                                    ? 100
-                                    : 0
+                      <AccordionDetails>
+                        <Grid
+                          container
+                          spacing={2}
+                        >
+                          {grupoPiso.habitaciones.map(
+                            (habitacion) => (
+                              <Grid
+                                key={
+                                  habitacion.id ||
+                                  habitacion.habitacion
                                 }
-                                sx={{
-                                  my: 2,
-                                  height: 8,
-                                  borderRadius: 999,
+                                size={{
+                                  xs: 12,
+                                  sm: 6,
+                                  lg: 4,
                                 }}
-                              />
-
-                              <Typography
-                                fontWeight={
-                                  asignada
-                                    ? 850
-                                    : 600
-                                }
-                                color={
-                                  asignada
-                                    ? 'text.primary'
-                                    : 'text.secondary'
-                                }
                               >
-                                {persona?.nombre ||
-                                  'Sin asignar'}
-                              </Typography>
-
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                mt={0.5}
-                              >
-                                {obtenerDetallePersona(
-                                  persona
-                                )}
-                              </Typography>
-
-                              {habitacion
-                                .conflictoAsignacion && (
-                                <Alert
-                                  severity="error"
-                                  sx={{ mt: 2 }}
+                                <Card
+                                  variant="outlined"
+                                  sx={{
+                                    height:
+                                      '100%',
+                                    display:
+                                      'flex',
+                                    flexDirection:
+                                      'column',
+                                    opacity:
+                                      habitacion.activo
+                                        ? 1
+                                        : 0.65,
+                                  }}
                                 >
-                                  Hay más de una
-                                  persona asignada a
-                                  esta habitación.
-                                </Alert>
-                              )}
-                            </CardContent>
-                          </CardActionArea>
-                        </Card>
-                      </Grid>
-                    );
-                  }
+                                  <CardActionArea
+                                    onClick={() =>
+                                      setSelected(
+                                        habitacion
+                                      )
+                                    }
+                                    sx={{
+                                      flex: 1,
+                                    }}
+                                  >
+                                    <CardContent>
+                                      <Stack spacing={1.5}>
+                                        <Stack
+                                          direction="row"
+                                          justifyContent="space-between"
+                                          alignItems="flex-start"
+                                          gap={1}
+                                        >
+                                          <Box>
+                                            <Typography
+                                              variant="h5"
+                                              fontWeight={900}
+                                            >
+                                              Habitación{' '}
+                                              {
+                                                habitacion.habitacion
+                                              }
+                                            </Typography>
+
+                                            <Typography
+                                              variant="body2"
+                                              color="text.secondary"
+                                            >
+                                              Piso{' '}
+                                              {
+                                                habitacion.piso
+                                              }
+                                            </Typography>
+                                          </Box>
+
+                                          <Chip
+                                            size="small"
+                                            color={
+                                              habitacion.activo
+                                                ? 'success'
+                                                : 'default'
+                                            }
+                                            variant="outlined"
+                                            label={
+                                              habitacion.estado
+                                            }
+                                          />
+                                        </Stack>
+
+                                        <Stack
+                                          direction="row"
+                                          gap={0.75}
+                                          flexWrap="wrap"
+                                        >
+                                          <Chip
+                                            size="small"
+                                            color={colorTipo(
+                                              habitacion.tipo
+                                            )}
+                                            label={
+                                              habitacion.tipo
+                                            }
+                                          />
+
+                                          <Chip
+                                            size="small"
+                                            variant="outlined"
+                                            label={`${habitacion.ocupantes}/${habitacion.capacidad} personas`}
+                                          />
+                                        </Stack>
+
+                                        <LinearProgress
+                                          variant="determinate"
+                                          value={
+                                            habitacion.porcentajeOcupacion
+                                          }
+                                          sx={{
+                                            height: 8,
+                                            borderRadius:
+                                              999,
+                                          }}
+                                        />
+
+                                        <Stack spacing={1}>
+                                          {habitacion.personas
+                                            .length ? (
+                                            habitacion.personas.map(
+                                              (
+                                                persona,
+                                                indice
+                                              ) => (
+                                                <Stack
+                                                  key={`${persona.tipoPersona}-${persona.id || persona.nombre}-${indice}`}
+                                                  direction="row"
+                                                  spacing={1}
+                                                  alignItems="center"
+                                                >
+                                                  <AvatarServidor
+                                                    servidor={
+                                                      persona.tipoPersona ===
+                                                      'Servidor'
+                                                        ? persona
+                                                        : undefined
+                                                    }
+                                                    nombre={
+                                                      persona.nombre
+                                                    }
+                                                    fotoPerfilUrl={
+                                                      persona.fotoPerfilUrl
+                                                    }
+                                                    size={40}
+                                                  />
+
+                                                  <Box
+                                                    sx={{
+                                                      minWidth:
+                                                        0,
+                                                    }}
+                                                  >
+                                                    <Typography
+                                                      fontWeight={800}
+                                                      noWrap
+                                                    >
+                                                      {
+                                                        persona.nombre
+                                                      }
+                                                    </Typography>
+
+                                                    <Typography
+                                                      variant="caption"
+                                                      color="text.secondary"
+                                                    >
+                                                      {
+                                                        persona.tipoPersona
+                                                      }
+                                                      {detallePersona(
+                                                        persona
+                                                      )
+                                                        ? ` · ${detallePersona(
+                                                            persona
+                                                          )}`
+                                                        : ''}
+                                                    </Typography>
+                                                  </Box>
+                                                </Stack>
+                                              )
+                                            )
+                                          ) : (
+                                            <Typography
+                                              color="text.secondary"
+                                            >
+                                              Sin personas asignadas
+                                            </Typography>
+                                          )}
+                                        </Stack>
+
+                                        {habitacion.observaciones && (
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                          >
+                                            {
+                                              habitacion.observaciones
+                                            }
+                                          </Typography>
+                                        )}
+
+                                        {habitacion.conflictoAsignacion && (
+                                          <Alert severity="error">
+                                            Revise la ocupación o el tipo de personas asignadas.
+                                          </Alert>
+                                        )}
+                                      </Stack>
+                                    </CardContent>
+                                  </CardActionArea>
+
+                                  <CardActions
+                                    sx={{
+                                      px: 2,
+                                      pb: 2,
+                                      pt: 0,
+                                      gap: 1,
+                                      flexWrap:
+                                        'wrap',
+                                    }}
+                                  >
+                                    <ProtectedButton
+                                      permiso="ASIGNAR_HABITACION"
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={
+                                        <EditRounded />
+                                      }
+                                      onClick={() =>
+                                        setEditar(
+                                          habitacion
+                                        )
+                                      }
+                                    >
+                                      Editar
+                                    </ProtectedButton>
+
+                                    <ProtectedButton
+                                      permiso="ASIGNAR_HABITACION"
+                                      size="small"
+                                      variant="contained"
+                                      startIcon={
+                                        <PersonAddAltRounded />
+                                      }
+                                      onClick={() =>
+                                        setAsignar(
+                                          habitacion
+                                        )
+                                      }
+                                      disabled={
+                                        !habitacion.activo ||
+                                        habitacion.cuposDisponibles <=
+                                          0
+                                      }
+                                    >
+                                      Asignar persona
+                                    </ProtectedButton>
+                                  </CardActions>
+                                </Card>
+                              </Grid>
+                            )
+                          )}
+                        </Grid>
+                      </AccordionDetails>
+                    </Accordion>
+                  )
                 )}
-              </Grid>
-            </Stack>
-          )
-        )}
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
+        ))}
       </Stack>
 
       <Dialog
@@ -392,72 +594,128 @@ export default function Habitaciones() {
           {selected?.habitacion}
         </DialogTitle>
 
-        <DialogContent>
-          {(() => {
-            const persona =
-              selected?.persona ||
-              selected?.personas?.[0] ||
-              null;
-
-            if (!persona) {
-              return (
-                <Alert severity="info">
-                  Esta habitación aún no
-                  tiene una persona
-                  asignada.
-                </Alert>
-              );
-            }
-
-            return (
-              <Stack spacing={1.5}>
-                <Typography
-                  variant="h6"
-                  fontWeight={900}
-                >
-                  {persona.nombre}
-                </Typography>
-
-                <Chip
-                  color={colorPersona(
-                    persona
-                  )}
-                  label={obtenerDetallePersona(
-                    persona
-                  )}
-                  sx={{
-                    alignSelf:
-                      'flex-start',
-                  }}
-                />
-
-                <Typography
-                  color="text.secondary"
-                >
-                  Piso:{' '}
-                  {selected?.piso ||
-                    'Sin definir'}
-                </Typography>
-
-                {selected
-                  ?.conflictoAsignacion && (
-                  <Alert severity="error">
-                    La API encontró{' '}
-                    {
-                      selected
-                        .cantidadAsignados
-                    }{' '}
-                    personas asignadas a
-                    esta habitación. La
-                    capacidad permitida es
-                    una persona.
-                  </Alert>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Stack
+              direction="row"
+              gap={0.75}
+              flexWrap="wrap"
+            >
+              <Chip
+                label={`Bloque: ${selected?.bloque}`}
+              />
+              <Chip
+                label={`Piso: ${selected?.piso}`}
+              />
+              <Chip
+                color={colorTipo(
+                  selected?.tipo
                 )}
-              </Stack>
-            );
-          })()}
+                label={`Tipo: ${selected?.tipo}`}
+              />
+              <Chip
+                variant="outlined"
+                label={`Capacidad: ${selected?.capacidad}`}
+              />
+            </Stack>
+
+            {selected?.personas?.length ? (
+              selected.personas.map(
+                (persona, indice) => (
+                  <Stack
+                    key={`detalle-${persona.tipoPersona}-${persona.id || persona.nombre}-${indice}`}
+                    direction="row"
+                    spacing={1.25}
+                    alignItems="center"
+                    sx={{
+                      p: 1.5,
+                      border: '1px solid',
+                      borderColor:
+                        'divider',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <AvatarServidor
+                      servidor={
+                        persona.tipoPersona ===
+                        'Servidor'
+                          ? persona
+                          : undefined
+                      }
+                      nombre={
+                        persona.nombre
+                      }
+                      fotoPerfilUrl={
+                        persona.fotoPerfilUrl
+                      }
+                      size={52}
+                    />
+
+                    <Box>
+                      <Typography
+                        fontWeight={850}
+                      >
+                        {persona.nombre}
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                      >
+                        {persona.tipoPersona}
+                        {detallePersona(
+                          persona
+                        )
+                          ? ` · ${detallePersona(
+                              persona
+                            )}`
+                          : ''}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                )
+              )
+            ) : (
+              <Alert severity="info">
+                Esta habitación todavía
+                no tiene personas asignadas.
+              </Alert>
+            )}
+
+            {selected?.observaciones && (
+              <Alert severity="info">
+                {selected.observaciones}
+              </Alert>
+            )}
+          </Stack>
         </DialogContent>
       </Dialog>
+
+      <EditarHabitacionDialog
+        open={Boolean(editar)}
+        habitacion={editar}
+        token={token}
+        onClose={() =>
+          setEditar(null)
+        }
+        onSaved={async () => {
+          setEditar(null);
+          await api.reload();
+        }}
+      />
+
+      <AsignarPersonaHabitacionDialog
+        open={Boolean(asignar)}
+        habitacion={asignar}
+        token={token}
+        onClose={() =>
+          setAsignar(null)
+        }
+        onSaved={async () => {
+          setAsignar(null);
+          await api.reload();
+        }}
+      />
     </>
   );
 }

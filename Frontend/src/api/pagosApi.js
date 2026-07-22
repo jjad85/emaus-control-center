@@ -5,6 +5,26 @@ export async function buscarPersonaPago(tipo, criterio, id = '') {
   return r.datos;
 }
 
+// Compatibilidad con la pantalla pública/interna de reporte de pagos.
+export async function buscarCaminantePago(criterio, id = '') {
+  return buscarPersonaPago('Caminante', criterio, id);
+}
+
+export async function obtenerValorRetiroPago(tipo) {
+  const r = await getResource('configuraciones');
+  const configuracion = r.datos || {};
+  const claves = tipo === 'Servidor'
+    ? ['valorRetiroServidor', 'VALOR_RETIRO_SERVIDOR', 'valor_retiro_servidor']
+    : ['valorRetiroActual', 'VALOR_RETIRO_ACTUAL', 'valor_retiro_actual'];
+
+  for (const clave of claves) {
+    const valor = Number(String(configuracion[clave] ?? '').replace(/[^0-9.-]/g, ''));
+    if (valor > 0) return valor;
+  }
+
+  return null;
+}
+
 export async function obtenerMiServidorPago(token) {
   const r = await postAction('obtenermiservidorpago', { token });
   return r.datos;

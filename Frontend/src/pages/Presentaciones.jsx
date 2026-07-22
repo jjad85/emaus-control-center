@@ -5,6 +5,7 @@ import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
 import StatusChip from '../components/StatusChip';
+import AvatarServidor from '../components/servidores/AvatarServidor';
 
 export default function Presentaciones() {
   const api = useApi(() => obtenerPresentaciones(), []);

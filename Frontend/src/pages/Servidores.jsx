@@ -1,5 +1,6 @@
 import {
   Alert,
+  Avatar,
   Badge,
   Box,
   Button,
@@ -29,6 +30,7 @@ import {
   PersonSearchRounded,
   SearchRounded,
   TableRestaurantRounded,
+  GroupsRounded,
 } from '@mui/icons-material';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -50,6 +52,8 @@ import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
 import StatusChip from '../components/StatusChip';
 import ProtectedButton from '../components/ProtectedButton';
+import AvatarServidor from '../components/servidores/AvatarServidor';
+import GestionEquiposServidorDialog from '../components/equipos/GestionEquiposServidorDialog';
 
 const CONFIG_ACCIONES = {
   tema: { titulo: 'Asignar tema', permiso: 'EDITAR_SERVIDOR' },
@@ -113,6 +117,10 @@ export default function Servidores() {
   const [resumenPagos, setResumenPagos] = useState(null);
   const [cargandoPagos, setCargandoPagos] = useState(false);
   const [errorPagos, setErrorPagos] = useState('');
+  const [
+    servidorGestionEquipos,
+    setServidorGestionEquipos,
+  ] = useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -147,6 +155,7 @@ export default function Servidores() {
   const filtrados = useMemo(() => items.filter((item) => {
     const texto = normalizar(busqueda);
     return !texto || normalizar(item.nombre).includes(texto) ||
+      normalizar(item.documentoIdentidad).includes(texto) ||
       normalizar(item.correo).includes(texto) || String(item.celular || '').includes(busqueda);
   }), [items, busqueda]);
 
@@ -155,9 +164,9 @@ export default function Servidores() {
     setDialogo(tipo);
     setForm({
       nombre: servidor.nombre || '',
+      documentoIdentidad: servidor.documentoIdentidad || '',
       correo: servidor.correo || '',
       celular: servidor.celular || '',
-      contacto: servidor.contacto || '',
       estadoPago: servidor.estadoPago || 'Pendiente',
       temaId: '',
       destinoAsignacion: servidor.mesa ? 'Mesa' : (servidor.equipo || ''),
@@ -309,7 +318,7 @@ export default function Servidores() {
 
       <Stack spacing={2.5}>
         <TextField
-          placeholder="Buscar por nombre, correo o celular"
+          placeholder="Buscar por nombre, documento, correo o celular"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           sx={{ maxWidth: 440 }}
@@ -328,6 +337,19 @@ export default function Servidores() {
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flex: 1 }}>
                   <Stack spacing={1.5}>
+                    <Stack alignItems="center" spacing={1}>
+                      <AvatarServidor
+                        servidor={servidor}
+                        size={104}
+                        destacado={Boolean(
+                          servidor.rolEquipo === 'Líder' ||
+                          servidor.rolMesa === 'Líder' ||
+                          servidor.rol === 'Líder'
+                        )}
+                        mostrarTooltip={false}
+                      />
+                    </Stack>
+
                     <Box>
                       <Typography
                         component="button"
@@ -383,11 +405,30 @@ export default function Servidores() {
                             : 'Sin tema'}
                         />
                       </Badge>
-                      <Chip size="small" variant="outlined" icon={<TableRestaurantRounded />} label={servidor.mesa
-                        ? `Mesa ${servidor.mesa} · ${servidor.rolMesa || servidor.rolEquipo || 'Sin rol'}`
-                        : servidor.equipo
-                          ? `${servidor.equipo} · ${servidor.rolEquipo || servidor.rol || 'Sin rol'}`
-                          : 'Sin asignación'} />
+                      <Chip
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        icon={<TableRestaurantRounded />}
+                        label={
+                          servidor.equipo
+                            ? `Principal: ${servidor.equipo}`
+                            : 'Sin equipo principal'
+                        }
+                      />
+
+                      {(servidor.equiposApoyo || []).map(
+                        (equipoApoyo) => (
+                          <Chip
+                            key={equipoApoyo.id}
+                            size="small"
+                            color="secondary"
+                            variant="outlined"
+                            icon={<GroupsRounded />}
+                            label={`Apoyo: ${equipoApoyo.nombre}`}
+                          />
+                        )
+                      )}
                       <Chip size="small" variant="outlined" icon={<BedRounded />} label={servidor.habitacion ? `Habitación ${servidor.habitacion}` : 'Sin habitación'} />
                     </Stack>
                   </Stack>
@@ -396,7 +437,18 @@ export default function Servidores() {
                 <CardActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
                   <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<EditRounded />} onClick={() => abrirAccion('editar', servidor)}>Editar</ProtectedButton>
                   <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<MenuBookRounded />} onClick={() => abrirTema(servidor)}>Tema</ProtectedButton>
-                  <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<TableRestaurantRounded />} onClick={() => abrirAsignacion(servidor)}>Asignar equipo</ProtectedButton>
+                  <ProtectedButton
+                    permiso="EDITAR_EQUIPOS"
+                    size="small"
+                    startIcon={<GroupsRounded />}
+                    onClick={() =>
+                      setServidorGestionEquipos(
+                        servidor
+                      )
+                    }
+                  >
+                    Equipos
+                  </ProtectedButton>
                   <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<BedRounded />} onClick={() => abrirHabitacion(servidor)}>Habitación</ProtectedButton>
                 </CardActions>
               </Card>
@@ -429,10 +481,26 @@ export default function Servidores() {
           <Stack spacing={2}>
             <Card variant="outlined">
               <CardContent>
+                  <Stack alignItems="center" mb={2}>
+                    <AvatarServidor
+                      servidor={detalleServidor}
+                      size={104}
+                      destacado={Boolean(
+                        detalleServidor?.rolEquipo === 'Líder' ||
+                        detalleServidor?.rolMesa === 'Líder' ||
+                        detalleServidor?.rol === 'Líder'
+                      )}
+                      mostrarTooltip={false}
+                    />
+                  </Stack>
                 <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>
-                  Datos personales y contacto
+                  Datos personales
                 </Typography>
                 <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Typography variant="caption" color="text.secondary">Documento de identidad</Typography>
+                    <Typography fontWeight={700}>{detalleServidor?.documentoIdentidad || 'No registrado'}</Typography>
+                  </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <Typography variant="caption" color="text.secondary">Celular</Typography>
                     <Typography fontWeight={700}>{detalleServidor?.celular || 'No registrado'}</Typography>
@@ -442,10 +510,6 @@ export default function Servidores() {
                     <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
                       {detalleServidor?.correo || 'No registrado'}
                     </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">Contacto de emergencia</Typography>
-                    <Typography fontWeight={700}>{detalleServidor?.contacto || 'No registrado'}</Typography>
                   </Grid>
                   {detalleServidor?.tallaCamiseta && (
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -466,8 +530,34 @@ export default function Servidores() {
                     </Typography>
                     <Stack spacing={1.5}>
                       <Box>
-                        <Typography variant="caption" color="text.secondary">Equipo, mesa y rol</Typography>
-                        <Typography fontWeight={750}>{descripcionAsignacion(detalleServidor)}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Equipo principal
+                        </Typography>
+                        <Typography fontWeight={750}>
+                          {detalleServidor?.equipo ||
+                            'Sin equipo principal'}
+                        </Typography>
+
+                        {(detalleServidor?.equiposApoyo || []).length > 0 && (
+                          <Stack
+                            direction="row"
+                            gap={1}
+                            flexWrap="wrap"
+                            mt={1}
+                          >
+                            {detalleServidor.equiposApoyo.map(
+                              (equipoApoyo) => (
+                                <Chip
+                                  key={equipoApoyo.id}
+                                  size="small"
+                                  color="secondary"
+                                  variant="outlined"
+                                  label={`Apoyo: ${equipoApoyo.nombre}`}
+                                />
+                              )
+                            )}
+                          </Stack>
+                        )}
                       </Box>
                       <Divider />
                       <Box>
@@ -669,9 +759,15 @@ export default function Servidores() {
             {dialogo === 'editar' && (
               <>
                 <TextField label="Nombre" value={form.nombre || ''} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+                <TextField
+                  label="Documento de identidad"
+                  value={form.documentoIdentidad || ''}
+                  onChange={(e) => setForm({ ...form, documentoIdentidad: e.target.value.replace(/\D/g, '') })}
+                  inputProps={{ inputMode: 'numeric', maxLength: 20 }}
+                  helperText="Se usa para identificar al servidor y buscarlo al reportar pagos."
+                />
                 <TextField label="Correo" value={form.correo || ''} onChange={(e) => setForm({ ...form, correo: e.target.value })} />
                 <TextField label="Celular" value={form.celular || ''} onChange={(e) => setForm({ ...form, celular: e.target.value })} />
-                <TextField label="Contacto" value={form.contacto || ''} onChange={(e) => setForm({ ...form, contacto: e.target.value })} />
               </>
             )}
 
@@ -814,6 +910,22 @@ export default function Servidores() {
       </Dialog>
 
       <Snackbar open={Boolean(mensaje)} autoHideDuration={3500} onClose={() => setMensaje('')} message={mensaje} />
-    </>
+    
+      <GestionEquiposServidorDialog
+        open={Boolean(servidorGestionEquipos)}
+        servidor={servidorGestionEquipos}
+        token={token}
+        onClose={() =>
+          setServidorGestionEquipos(null)
+        }
+        onSaved={async () => {
+          setMensaje(
+            'Equipos del servidor actualizados correctamente.'
+          );
+          await api.reload();
+        }}
+      />
+
+</>
   );
 }

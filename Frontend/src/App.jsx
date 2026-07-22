@@ -35,6 +35,7 @@ import MiCuenta from './pages/MiCuenta';
 import CodigoVestuario from './pages/CodigoVestuario';
 import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
 import AutorizacionesCaminante from './pages/AutorizacionesCaminante';
+import Auditoria from './pages/Auditoria';
 
 export default function App() {
   return (
@@ -96,6 +97,15 @@ export default function App() {
 
           <Route path="/caminantes" element={<Caminantes />} />
           <Route path="/pagos" element={<Pagos />} />
+          <Route
+            path="/tesoreria/reportar-pago"
+            element={<ReportarPago />}
+          />
+
+          <Route
+            path="/mi-cuenta/reportar-pago"
+            element={<ReportarPago />}
+          />
 
           <Route
             path="/mesas"
@@ -113,8 +123,13 @@ export default function App() {
           />
 
           <Route
-            path="/minutograma"
+            path="/paso-a-paso"
             element={<Minutograma />}
+          />
+
+          <Route
+            path="/minutograma"
+            element={<Navigate to="/paso-a-paso" replace />}
           />
 
           <Route
@@ -135,6 +150,11 @@ export default function App() {
           <Route
             path="/configuracion"
             element={<Configuracion />}
+          />
+
+          <Route
+            path="/auditoria"
+            element={<Auditoria />}
           />
 
           <Route path="/mi-cuenta" element={<MiCuenta />} />

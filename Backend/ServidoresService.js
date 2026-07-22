@@ -8,12 +8,22 @@
 
 function obtenerServidores(filtros) {
   const parametros = filtros || {};
+  const mapaEquiposApoyo =
+    typeof obtenerMapaEquiposApoyoServidores_ === 'function'
+      ? obtenerMapaEquiposApoyoServidores_()
+      : {};
 
   return leerHojaComoObjetos(HOJAS.SERVIDORES)
     .map(convertirServidor)
+    .map(function(servidor) {
+      servidor.equiposApoyo =
+        mapaEquiposApoyo[String(servidor.id)] || [];
+      return servidor;
+    })
     .filter(function(servidor) {
       return (
         coincideTexto(servidor.nombre, parametros.nombre) &&
+        coincideTexto(servidor.documentoIdentidad, parametros.documentoIdentidad) &&
         coincideExacto(servidor.estadoPago, parametros.estadoPago) &&
         coincideExacto(servidor.equipo, parametros.equipo) &&
         coincideExacto(servidor.rolEquipo || servidor.rol, parametros.rol) &&
@@ -70,6 +80,10 @@ function convertirServidor(registro) {
   return {
     id: registro.id || '',
     nombre: registro.nombre || '',
+    documentoIdentidad: registro.documentoIdentidad || '',
+    fotoPerfilId: registro.fotoPerfilId || '',
+    fotoPerfilUrl: registro.fotoPerfilUrl || '',
+    fechaActualizacionFoto: registro.fechaActualizacionFoto || '',
     correo: registro.correo || '',
     celular: registro.celular || registro.telefono || '',
     contacto: registro.contacto || '',
@@ -106,6 +120,10 @@ function resumirServidor(servidor) {
   return {
     id: servidor.id || '',
     nombre: servidor.nombre || '',
+    documentoIdentidad: servidor.documentoIdentidad || '',
+    fotoPerfilId: servidor.fotoPerfilId || '',
+    fotoPerfilUrl: servidor.fotoPerfilUrl || '',
+    fechaActualizacionFoto: servidor.fechaActualizacionFoto || '',
     celular: servidor.celular || '',
     rol: servidor.rol || '',
     rolMesa: servidor.rolMesa || '',
@@ -114,6 +132,7 @@ function resumirServidor(servidor) {
     temas: servidor.temas || [],
     mesa: servidor.mesa || '',
     equipo: servidor.equipo || '',
+    equiposApoyo: servidor.equiposApoyo || [],
     habitacion: servidor.habitacion || ''
   };
 }
@@ -135,17 +154,33 @@ function editarServidor(token, id, datos) {
   const sesion = validarPermiso(token, 'EDITAR_SERVIDOR');
   const entrada = datos || {};
   const nombre = String(entrada.nombre || '').trim();
+  const documentoIdentidad = String(entrada.documentoIdentidad || '').trim();
 
   if (!nombre) {
     throw crearErrorAplicacion('NOMBRE_SERVIDOR_REQUERIDO', 'El nombre es obligatorio.');
   }
 
   return ejecutarCrudConBloqueo(function() {
+    if (documentoIdentidad) {
+      const duplicado = obtenerServidores({}).some(function(servidor) {
+        return String(servidor.id) !== String(id) &&
+          normalizarTexto(servidor.documentoIdentidad) === normalizarTexto(documentoIdentidad);
+      });
+
+      if (duplicado) {
+        throw crearErrorAplicacion(
+          'DOCUMENTO_SERVIDOR_DUPLICADO',
+          'Ya existe otro servidor con este documento de identidad.'
+        );
+      }
+    }
+
     const actualizado = actualizarRegistroSheet(
       HOJAS.SERVIDORES,
       id,
       {
         nombre: nombre,
+        documentoIdentidad: documentoIdentidad,
         correo: String(entrada.correo || '').trim(),
         celular: String(entrada.celular || '').trim(),
         contacto: String(entrada.contacto || '').trim()

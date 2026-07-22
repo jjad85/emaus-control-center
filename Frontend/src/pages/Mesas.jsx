@@ -1,140 +1,134 @@
 import {
+  Alert,
+  AlertTitle,
   Box,
   Card,
   CardActionArea,
   CardContent,
+  Chip,
   Dialog,
   DialogContent,
   DialogTitle,
-  Divider,
   Grid,
+  Button,
   LinearProgress,
-  Paper,
   Stack,
   Typography,
 } from '@mui/material';
-
 import { useState } from 'react';
-
+import PersonAddAltRounded from '@mui/icons-material/PersonAddAltRounded';
+import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded';
 import { obtenerMesas } from '../api/mesasApi';
+import { useAuth } from '../auth/AuthContext';
+import ProtectedButton from '../components/ProtectedButton';
+import AsignarCaminantesMesaDialog from '../components/mesas/AsignarCaminantesMesaDialog';
+import LiberarMesaDialog from '../components/mesas/LiberarMesaDialog';
 import { useApi } from '../hooks/useApi';
-
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
 import StatusChip from '../components/StatusChip';
+import AvatarServidor from '../components/servidores/AvatarServidor';
 
-function normalizar(valor) {
-  return String(valor ?? '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
-
-function contarEstados(items, obtenerValor) {
-  return items.reduce((resultado, item) => {
-    const estado = normalizar(obtenerValor(item)).replace(/\s+/g, '');
-    const clave = estado || 'sindefinir';
-    resultado[clave] = (resultado[clave] || 0) + 1;
-    return resultado;
-  }, {});
-}
-
-function obtenerCantidad(estados, ...claves) {
-  return claves.reduce(
-    (total, clave) => total + Number(estados[clave] || 0),
-    0
-  );
-}
-
-function obtenerTelefonoContacto(caminante) {
+function ServidorMesa({
+  etiqueta,
+  servidor,
+}) {
   return (
-    caminante?.contacto?.telefono ||
-    caminante?.telefonoContacto ||
-    caminante?.contactoTelefono ||
-    '—'
-  );
-}
-
-function ResumenEstado({ titulo, estados, total }) {
-  const pendientes = obtenerCantidad(
-    estados,
-    'pendiente',
-    'nosolicitada',
-    'sindefinir'
-  );
-
-  const enProceso = obtenerCantidad(
-    estados,
-    'enproceso',
-    'solicitada',
-    'parcial',
-    'pagoparcial'
-  );
-
-  const completados = obtenerCantidad(
-    estados,
-    'entregado',
-    'entregada',
-    'completado',
-    'aprobado',
-    'recibido',
-    'recibida',
-    'pagado',
-    'pagototal',
-    'total'
-  );
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 2, height: '100%', borderRadius: 2.5 }}
+    <Stack
+      direction="row"
+      spacing={1.25}
+      alignItems="center"
     >
-      <Typography fontWeight={850} mb={1.5}>
-        {titulo}
-      </Typography>
+      <AvatarServidor
+        servidor={servidor}
+        size={52}
+      />
 
-      <Stack spacing={0.75}>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2" color="text.secondary">
-            Pendientes
-          </Typography>
-          <Typography fontWeight={800}>{pendientes}</Typography>
-        </Stack>
+      <div>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          fontWeight={800}
+        >
+          {etiqueta}
+        </Typography>
 
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2" color="text.secondary">
-            En proceso / parcial
-          </Typography>
-          <Typography fontWeight={800}>{enProceso}</Typography>
-        </Stack>
+        <Typography fontWeight={850}>
+          {servidor?.nombre ||
+            'Sin asignar'}
+        </Typography>
+      </div>
+    </Stack>
+  );
+}
 
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2" color="text.secondary">
-            Completados
-          </Typography>
-          <Typography fontWeight={800}>{completados}</Typography>
-        </Stack>
+function PersonaFueraDeRango({
+  persona,
+}) {
+  return (
+    <Stack
+      direction="row"
+      spacing={1}
+      alignItems="center"
+    >
+      <AvatarServidor
+        servidor={
+          persona.tipoPersona ===
+          'Servidor'
+            ? persona
+            : undefined
+        }
+        nombre={persona.nombre}
+        fotoPerfilUrl={
+          persona.fotoPerfilUrl
+        }
+        size={34}
+      />
 
-        <Divider sx={{ my: 0.5 }} />
+      <Box>
+        <Typography
+          variant="body2"
+          fontWeight={800}
+        >
+          {persona.nombre}
+        </Typography>
 
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2" fontWeight={700}>
-            Total
-          </Typography>
-          <Typography fontWeight={850}>{total}</Typography>
-        </Stack>
-      </Stack>
-    </Paper>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+        >
+          {persona.tipoPersona}
+          {persona.rol
+            ? ` · ${persona.rol}`
+            : ''}
+        </Typography>
+      </Box>
+    </Stack>
   );
 }
 
 export default function Mesas() {
-  const api = useApi(() => obtenerMesas(), []);
-  const [selected, setSelected] = useState(null);
+  const { token } = useAuth();
 
-  if (api.loading && !api.data) {
+  const api = useApi(
+    () => obtenerMesas(),
+    []
+  );
+
+  const [selected, setSelected] =
+    useState(null);
+
+  const [mesaAsignar, setMesaAsignar] =
+    useState(null);
+
+  const [mesaLiberar, setMesaLiberar] =
+    useState(null);
+
+  if (
+    api.loading &&
+    !api.data
+  ) {
     return <LoadingState />;
   }
 
@@ -147,75 +141,274 @@ export default function Mesas() {
     );
   }
 
-  const mesas = api.data?.items || [];
-  const caminantesSeleccionados = selected?.caminantes || [];
+  const items =
+    api.data?.items || [];
 
-  const estadosPago = contarEstados(
-    caminantesSeleccionados,
-    (caminante) => caminante.estadoPago
-  );
-
-  const estadosCarta = contarEstados(
-    caminantesSeleccionados,
-    (caminante) => caminante.entregables?.carta
-  );
-
-  const estadosFoto = contarEstados(
-    caminantesSeleccionados,
-    (caminante) => caminante.entregables?.foto
-  );
+  const sincronizacion =
+    api.data?.sincronizacion;
 
   return (
     <>
       <PageHeader
         eyebrow="Distribución"
         title="Mesas"
-        subtitle="Mapa general de mesas"
+        subtitle={`${items.length} mesas configuradas`}
         onRefresh={api.reload}
         loading={api.loading}
       />
 
+      {sincronizacion
+        ?.requiereReubicacion && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+        >
+          <AlertTitle>
+            La cantidad de mesas fue
+            reducida y existen asignaciones
+            pendientes
+          </AlertTitle>
+
+          <Typography>
+            El parámetro indica{' '}
+            <strong>
+              {
+                sincronizacion
+                  .numeroMesasConfigurado
+              }{' '}
+              mesas
+            </strong>
+            , pero todavía hay personas
+            asignadas a{' '}
+            <strong>
+              {
+                sincronizacion
+                  .cantidadMesasFueraDeRango
+              }{' '}
+              mesas adicionales
+            </strong>
+            .
+          </Typography>
+
+          <Typography
+            variant="body2"
+            mt={1}
+          >
+            Reubica estas personas en una
+            mesa entre la 1 y la{' '}
+            {
+              sincronizacion
+                .numeroMesasConfigurado
+            }
+            , o aumenta nuevamente el
+            parámetro.
+          </Typography>
+
+          <Stack
+            spacing={1.5}
+            mt={2}
+          >
+            {sincronizacion
+              .mesasFueraDeRango
+              .map((mesa) => (
+                <Card
+                  key={
+                    mesa.numero
+                  }
+                  variant="outlined"
+                >
+                  <CardContent>
+                    <Stack
+                      direction={{
+                        xs: 'column',
+                        sm: 'row',
+                      }}
+                      justifyContent="space-between"
+                      alignItems={{
+                        sm: 'center',
+                      }}
+                      gap={1}
+                      mb={1.5}
+                    >
+                      <Typography
+                        fontWeight={900}
+                      >
+                        Mesa {mesa.numero}
+                      </Typography>
+
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                      >
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={`${mesa.cantidadPersonas} personas`}
+                        />
+
+                        <ProtectedButton
+                          permiso="ASIGNAR_MESA"
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          startIcon={
+                            <DeleteOutlineRounded />
+                          }
+                          onClick={() =>
+                            setMesaLiberar(mesa)
+                          }
+                        >
+                          Eliminar mesa
+                        </ProtectedButton>
+                      </Stack>
+                    </Stack>
+
+                    <Grid
+                      container
+                      spacing={1.5}
+                    >
+                      {[
+                        ...mesa.servidores,
+                        ...mesa.caminantes,
+                      ].map(
+                        (
+                          persona,
+                          indice
+                        ) => (
+                          <Grid
+                            key={`${persona.tipoPersona}-${persona.id || persona.nombre}-${indice}`}
+                            size={{
+                              xs: 12,
+                              sm: 6,
+                            }}
+                          >
+                            <PersonaFueraDeRango
+                              persona={
+                                persona
+                              }
+                            />
+                          </Grid>
+                        )
+                      )}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))}
+          </Stack>
+        </Alert>
+      )}
+
+      {sincronizacion?.sincronizada && (
+        <Alert
+          severity="success"
+          variant="outlined"
+          sx={{ mb: 3 }}
+        >
+          La cantidad de mesas está
+          sincronizada con el parámetro del
+          retiro.
+        </Alert>
+      )}
+
       <Grid container spacing={2}>
-        {mesas.map((mesa) => (
+        {items.map((mesa) => (
           <Grid
             key={mesa.numero}
-            size={{ xs: 12, sm: 6, lg: 4 }}
+            size={{
+              xs: 12,
+              sm: 6,
+              lg: 4,
+            }}
           >
-            <Card sx={{ height: '100%' }}>
+            <Card
+              sx={{
+                height: '100%',
+              }}
+            >
               <CardActionArea
-                onClick={() => setSelected(mesa)}
-                sx={{ height: '100%' }}
+                onClick={() =>
+                  setSelected(mesa)
+                }
+                sx={{
+                  height: '100%',
+                }}
               >
                 <CardContent>
-                  <Typography variant="h5" fontWeight={850}>
+                  <Typography
+                    variant="h5"
+                    fontWeight={900}
+                    mb={2}
+                  >
                     Mesa {mesa.numero}
                   </Typography>
 
-                  <Typography>
-                    Líder: {mesa.lider?.nombre || 'Sin asignar'}
-                  </Typography>
+                  <Stack spacing={1.5}>
+                    <ServidorMesa
+                      etiqueta="Líder"
+                      servidor={
+                        mesa.lider
+                      }
+                    />
 
-                  <Typography>
-                    Colíder: {mesa.colider?.nombre || 'Sin asignar'}
-                  </Typography>
+                    <ServidorMesa
+                      etiqueta="Colíder"
+                      servidor={
+                        mesa.colider
+                      }
+                    />
+                  </Stack>
 
-                  <Typography mt={2}>
-                    {mesa.cantidadCaminantes} de {mesa.capacidad} caminantes
+                  <Typography mt={2.5}>
+                    {
+                      mesa.cantidadCaminantes
+                    }{' '}
+                    de {mesa.capacidad}{' '}
+                    caminantes
                   </Typography>
 
                   <LinearProgress
                     variant="determinate"
                     value={Math.min(
-                      Number(mesa.porcentajeOcupacion || 0),
+                      mesa.porcentajeOcupacion ||
+                        0,
                       100
                     )}
-                    sx={{ my: 1, height: 9, borderRadius: 999 }}
+                    sx={{ my: 1 }}
                   />
 
-                  <Typography variant="body2" color="text.secondary">
-                    Cartas: {mesa.cartas?.porcentajeCumplimiento || 0}% · Fotos:{' '}
-                    {mesa.fotos?.porcentajeCumplimiento || 0}%
+                  <Typography
+                    variant="body2"
+                  >
+                    Cartas:{' '}
+                    {mesa.cartas
+                      ?.porcentajeCumplimiento ||
+                      0}
+                    % · Fotos:{' '}
+                    {mesa.fotos
+                      ?.porcentajeCumplimiento ||
+                      0}
+                    %
                   </Typography>
+
+                  <ProtectedButton
+                    permiso="ASIGNAR_MESA"
+                    size="small"
+                    variant="contained"
+                    startIcon={
+                      <PersonAddAltRounded />
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setMesaAsignar(mesa);
+                    }}
+                    disabled={
+                      mesa.cuposDisponibles <= 0
+                    }
+                    sx={{ mt: 2 }}
+                  >
+                    Asignar caminantes
+                  </ProtectedButton>
                 </CardContent>
               </CardActionArea>
             </Card>
@@ -225,162 +418,131 @@ export default function Mesas() {
 
       <Dialog
         open={Boolean(selected)}
-        onClose={() => setSelected(null)}
+        onClose={() =>
+          setSelected(null)
+        }
         fullWidth
         maxWidth="lg"
       >
         <DialogTitle>
-          <Stack spacing={0.5}>
-            <Typography variant="h5" fontWeight={900}>
-              Mesa {selected?.numero}
-            </Typography>
+          <Typography
+            variant="h5"
+            fontWeight={900}
+          >
+            Mesa {selected?.numero}
+          </Typography>
 
-            <Typography variant="body2" color="text.secondary">
-              Líder: {selected?.lider?.nombre || 'Sin asignar'}
-            </Typography>
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row',
+            }}
+            spacing={3}
+            mt={2}
+          >
+            <ServidorMesa
+              etiqueta="Líder"
+              servidor={
+                selected?.lider
+              }
+            />
 
-            <Typography variant="body2" color="text.secondary">
-              Colíder: {selected?.colider?.nombre || 'Sin asignar'}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              {selected?.cantidadCaminantes || 0} de {selected?.capacidad || 0}{' '}
-              caminantes
-            </Typography>
+            <ServidorMesa
+              etiqueta="Colíder"
+              servidor={
+                selected?.colider
+              }
+            />
           </Stack>
         </DialogTitle>
 
-        <DialogContent>
-          <Box sx={{ overflowX: 'auto' }}>
-            <Box sx={{ minWidth: 980 }}>
-              <Grid
-                container
-                spacing={1}
-                sx={{
-                  px: 1.5,
-                  py: 1.25,
-                  bgcolor: 'action.hover',
-                  borderRadius: 2,
-                  mb: 0.5,
-                }}
-              >
-                <Grid size={3}>
-                  <Typography variant="body2" fontWeight={850}>
-                    Caminante
-                  </Typography>
-                </Grid>
-
-                <Grid size={1.5}>
-                  <Typography variant="body2" fontWeight={850}>
-                    Habitación
-                  </Typography>
-                </Grid>
-
-                <Grid size={1.75}>
-                  <Typography variant="body2" fontWeight={850}>
-                    Pago
-                  </Typography>
-                </Grid>
-
-                <Grid size={1.75}>
-                  <Typography variant="body2" fontWeight={850}>
-                    Carta
-                  </Typography>
-                </Grid>
-
-                <Grid size={1.75}>
-                  <Typography variant="body2" fontWeight={850}>
-                    Foto
-                  </Typography>
-                </Grid>
-
-                <Grid size={2.25}>
-                  <Typography variant="body2" fontWeight={850}>
-                    Contacto
-                  </Typography>
-                </Grid>
-              </Grid>
-
-              <Stack spacing={0}>
-                {caminantesSeleccionados.map((caminante) => (
-                  <Grid
-                    container
-                    spacing={1}
-                    alignItems="center"
-                    key={caminante.id}
-                    sx={{
-                      px: 1.5,
-                      py: 1.5,
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                    }}
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            {selected?.caminantes?.map(
+              (caminante) => (
+                <Stack
+                  key={caminante.id}
+                  direction={{
+                    xs: 'column',
+                    md: 'row',
+                  }}
+                  justifyContent="space-between"
+                  alignItems={{
+                    md: 'center',
+                  }}
+                  gap={1}
+                  sx={{
+                    borderBottom:
+                      '1px solid',
+                    borderColor:
+                      'divider',
+                    py: 1,
+                  }}
+                >
+                  <Typography
+                    fontWeight={750}
                   >
-                    <Grid size={3}>
-                      <Typography fontWeight={800}>
-                        {caminante.nombre}
-                      </Typography>
-                    </Grid>
+                    {caminante.nombre}
+                  </Typography>
 
-                    <Grid size={1.5}>
-                      <Typography>
-                        {caminante.habitacion || '—'}
-                      </Typography>
-                    </Grid>
+                  <Typography>
+                    Habitación:{' '}
+                    {caminante.habitacion ||
+                      '—'}
+                  </Typography>
 
-                    <Grid size={1.75}>
-                      <StatusChip value={caminante.estadoPago} />
-                    </Grid>
+                  <StatusChip
+                    value={
+                      caminante.estadoPago
+                    }
+                  />
 
-                    <Grid size={1.75}>
-                      <StatusChip value={caminante.entregables?.carta} />
-                    </Grid>
+                  <StatusChip
+                    value={
+                      caminante.entregables
+                        ?.carta
+                    }
+                  />
 
-                    <Grid size={1.75}>
-                      <StatusChip value={caminante.entregables?.foto} />
-                    </Grid>
-
-                    <Grid size={2.25}>
-                      <Typography>
-                        {obtenerTelefonoContacto(caminante)}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                ))}
-              </Stack>
-            </Box>
-          </Box>
-
-          <Typography variant="h6" fontWeight={900} mt={3} mb={1.5}>
-            Resumen de la mesa
-          </Typography>
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <ResumenEstado
-                titulo="Pagos"
-                estados={estadosPago}
-                total={caminantesSeleccionados.length}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <ResumenEstado
-                titulo="Cartas"
-                estados={estadosCarta}
-                total={caminantesSeleccionados.length}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <ResumenEstado
-                titulo="Fotos"
-                estados={estadosFoto}
-                total={caminantesSeleccionados.length}
-              />
-            </Grid>
-          </Grid>
+                  <StatusChip
+                    value={
+                      caminante.entregables
+                        ?.foto
+                    }
+                  />
+                </Stack>
+              )
+            )}
+          </Stack>
         </DialogContent>
       </Dialog>
-    </>
+    
+      <AsignarCaminantesMesaDialog
+        open={Boolean(mesaAsignar)}
+        mesa={mesaAsignar}
+        token={token}
+        onClose={() =>
+          setMesaAsignar(null)
+        }
+        onSaved={async () => {
+          setMesaAsignar(null);
+          await api.reload();
+        }}
+      />
+
+      <LiberarMesaDialog
+        open={Boolean(mesaLiberar)}
+        mesa={mesaLiberar}
+        token={token}
+        onClose={() =>
+          setMesaLiberar(null)
+        }
+        onSaved={async () => {
+          setMesaLiberar(null);
+          await api.reload();
+        }}
+      />
+
+</>
   );
 }

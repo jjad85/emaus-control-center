@@ -26,9 +26,7 @@ import AssignmentIndRounded from '@mui/icons-material/AssignmentIndRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
-import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import SlideshowRounded from '@mui/icons-material/SlideshowRounded';
-import RecordVoiceOverRounded from '@mui/icons-material/RecordVoiceOverRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
 import ConstructionRounded from '@mui/icons-material/ConstructionRounded';
 import SettingsRounded from '@mui/icons-material/SettingsRounded';
@@ -41,7 +39,9 @@ import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
 import ExpandLessRounded from '@mui/icons-material/ExpandLessRounded';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
+import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import CheckroomRounded from '@mui/icons-material/CheckroomRounded';
+import FactCheckRounded from '@mui/icons-material/FactCheckRounded';
 
 import {
   Outlet,
@@ -63,7 +63,10 @@ import NotificationBell from '../components/NotificationBell';
 import FooterSistema from '../components/FooterSistema';
 
 import { obtenerConfiguraciones } from '../api/configuracionesApi';
+import { obtenerMiFotoPerfilServidor } from '../api/fotoPerfilServidorApi';
 import { useApi } from '../hooks/useApi';
+
+import AvatarServidor from '../components/servidores/AvatarServidor';
 
 const drawerWidth = 260;
 
@@ -90,19 +93,9 @@ const menuGroups = [
         icon: <GroupsRounded />,
       },
       {
-        label: 'Pagos',
-        path: '/pagos',
-        icon: <PaymentsRounded />,
-      },
-      {
         label: 'Servidores',
         path: '/servidores',
         icon: <PersonRounded />,
-      },
-      {
-        label: 'Equipos',
-        path: '/equipos',
-        icon: <GroupsRounded />,
       },
     ],
   },
@@ -111,6 +104,11 @@ const menuGroups = [
     label: 'Logística',
     icon: <ConstructionRounded />,
     items: [
+      {
+        label: 'Equipos',
+        path: '/equipos',
+        icon: <GroupsRounded />,
+      },
       {
         label: 'Habitaciones',
         path: '/habitaciones',
@@ -126,12 +124,6 @@ const menuGroups = [
         path: '/presentaciones',
         icon: <SlideshowRounded />,
       },
-      {
-        label: 'Temas',
-        path: '/temas',
-        icon: <RecordVoiceOverRounded />,
-        soloAdministrador: true,
-      },
     ],
   },
   {
@@ -140,8 +132,8 @@ const menuGroups = [
     icon: <AccessTimeRounded />,
     items: [
       {
-        label: 'Paso a paso',
-        path: '/paso-a-paso',
+        label: 'Minutograma',
+        path: '/minutograma',
         icon: <AccessTimeRounded />,
       },
     ],
@@ -160,6 +152,11 @@ const menuGroups = [
         label: 'Configuración',
         path: '/configuracion',
         icon: <SettingsRounded />,
+      },
+      {
+        label: 'Auditoría',
+        path: '/auditoria',
+        icon: <FactCheckRounded />,
       },
     ],
   },
@@ -190,21 +187,11 @@ function esRolAdministrador(rol) {
 }
 
 function obtenerGruposVisibles(rol) {
-  const administrador = esRolAdministrador(rol);
-
-  return menuGroups
-    .filter(
-      (grupo) =>
-        grupo.id !== 'sistema' ||
-        administrador
-    )
-    .map((grupo) => ({
-      ...grupo,
-      items: grupo.items.filter(
-        (item) => !item.soloAdministrador || administrador
-      ),
-    }))
-    .filter((grupo) => grupo.items.length > 0);
+  return menuGroups.filter(
+    (grupo) =>
+      grupo.id !== 'sistema' ||
+      esRolAdministrador(rol)
+  );
 }
 
 function obtenerGrupoActivo(pathname, rol) {
@@ -222,6 +209,7 @@ function MenuLateral({
   autenticado,
   nombre,
   rol,
+  fotoPerfilUrl,
   inicial,
   handleLogin,
   handleLogout,
@@ -568,14 +556,12 @@ function MenuLateral({
               spacing={1.25}
               alignItems="center"
             >
-              <Avatar
-                sx={{
-                  bgcolor: '#9fd0c3',
-                  color: '#173b34',
-                }}
-              >
-                {inicial}
-              </Avatar>
+              <AvatarServidor
+                nombre={nombre}
+                fotoPerfilUrl={fotoPerfilUrl || ''}
+                size={44}
+                mostrarTooltip={false}
+              />
 
               <Box sx={{ minWidth: 0 }}>
                 <Typography
@@ -653,12 +639,63 @@ export default function MainLayout() {
   );
 
   const {
+    token,
     autenticado,
     nombre,
     rol,
+    fotoPerfilUrl,
     logout,
     solicitarAutenticacion,
   } = useAuth();
+
+  const [fotoPerfilMenu, setFotoPerfilMenu] =
+    useState(fotoPerfilUrl || '');
+
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarFotoPerfilMenu() {
+      if (!autenticado || !token) {
+        setFotoPerfilMenu('');
+        return;
+      }
+
+      try {
+        const datos =
+          await obtenerMiFotoPerfilServidor(token);
+
+        if (activo) {
+          setFotoPerfilMenu(
+            datos?.fotoPerfilUrl || ''
+          );
+        }
+      } catch {
+        // Si no se puede consultar la foto, se conservan
+        // las iniciales sin afectar el resto del menú.
+      }
+    }
+
+    cargarFotoPerfilMenu();
+
+    function actualizarFoto(event) {
+      setFotoPerfilMenu(
+        event?.detail?.fotoPerfilUrl || ''
+      );
+    }
+
+    window.addEventListener(
+      'foto-perfil-servidor-actualizada',
+      actualizarFoto
+    );
+
+    return () => {
+      activo = false;
+      window.removeEventListener(
+        'foto-perfil-servidor-actualizada',
+        actualizarFoto
+      );
+    };
+  }, [autenticado, token]);
 
   const configuracionApi = useApi(
     () => obtenerConfiguraciones(),
@@ -671,11 +708,11 @@ export default function MainLayout() {
   const [logoutMessageOpen, setLogoutMessageOpen] =
     useState(false);
 
-  const [menuCuentaAnchor, setMenuCuentaAnchor] = useState(null);
+  const [menuUsuarioAnchor, setMenuUsuarioAnchor] =
+    useState(null);
 
-  function abrirMenuCuenta(event) { setMenuCuentaAnchor(event.currentTarget); }
-  function cerrarMenuCuenta() { setMenuCuentaAnchor(null); }
-  function irCuenta(path) { cerrarMenuCuenta(); navigate(path); cerrarMenuMovil(); }
+  const menuUsuarioAbierto =
+    Boolean(menuUsuarioAnchor);
 
   const configuracion =
     configuracionApi.data || {};
@@ -713,6 +750,24 @@ export default function MainLayout() {
     solicitarAutenticacion();
   }
 
+  function abrirMenuUsuario(event) {
+    setMenuUsuarioAnchor(event.currentTarget);
+  }
+
+  function cerrarMenuUsuario() {
+    setMenuUsuarioAnchor(null);
+  }
+
+  function navegarDesdeMenuUsuario(path) {
+    cerrarMenuUsuario();
+    navigate(path);
+  }
+
+  async function cerrarSesionDesdeMenuUsuario() {
+    cerrarMenuUsuario();
+    await handleLogout();
+  }
+
   const inicial = String(nombre || 'I')
     .trim()
     .charAt(0)
@@ -724,6 +779,7 @@ export default function MainLayout() {
     autenticado,
     nombre,
     rol,
+    fotoPerfilUrl,
     inicial,
     handleLogin,
     handleLogout,
@@ -811,20 +867,32 @@ export default function MainLayout() {
           )}
 
           {autenticado && (
-            <IconButton onClick={abrirMenuCuenta} aria-label="Abrir menú de cuenta" sx={{ ml: 0.5, p: 0.25 }}>
-            <Avatar
-              sx={{
-                width: 34,
-                height: 34,
-                ml: 1,
-                bgcolor: '#9fd0c3',
-                color: '#173b34',
-                fontSize: 15,
-                fontWeight: 850,
-              }}
+            <IconButton
+              aria-label="Abrir menú de usuario"
+              aria-controls={
+                menuUsuarioAbierto
+                  ? 'menu-usuario'
+                  : undefined
+              }
+              aria-haspopup="true"
+              aria-expanded={
+                menuUsuarioAbierto
+                  ? 'true'
+                  : undefined
+              }
+              onClick={abrirMenuUsuario}
+              sx={{ ml: 0.5, p: 0.25 }}
             >
-              {inicial}
-            </Avatar>
+              <AvatarServidor
+                nombre={nombre}
+                fotoPerfilUrl={fotoPerfilMenu || fotoPerfilUrl || ''}
+                size={36}
+                mostrarTooltip={false}
+                sx={{
+                  bgcolor: '#9fd0c3',
+                  color: '#173b34',
+                }}
+              />
             </IconButton>
           )}
         </Toolbar>
@@ -923,13 +991,36 @@ export default function MainLayout() {
               mb: 3,
             }}
           >
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+            >
               <NotificationBell modo="desktop" />
+
               {autenticado && (
-                <IconButton onClick={abrirMenuCuenta} aria-label="Abrir menú de cuenta" sx={{ p: 0.25 }}>
-                  <Avatar sx={{ width: 38, height: 38, bgcolor: '#9fd0c3', color: '#173b34', fontWeight: 850 }}>
-                    {inicial}
-                  </Avatar>
+                <IconButton
+                  aria-label="Abrir menú de usuario"
+                  aria-controls={
+                    menuUsuarioAbierto
+                      ? 'menu-usuario'
+                      : undefined
+                  }
+                  aria-haspopup="true"
+                  aria-expanded={
+                    menuUsuarioAbierto
+                      ? 'true'
+                      : undefined
+                  }
+                  onClick={abrirMenuUsuario}
+                  sx={{ p: 0.25 }}
+                >
+                  <AvatarServidor
+                    nombre={nombre}
+                    fotoPerfilUrl={fotoPerfilMenu || fotoPerfilUrl || ''}
+                    size={42}
+                    mostrarTooltip={false}
+                  />
                 </IconButton>
               )}
             </Stack>
@@ -965,23 +1056,112 @@ export default function MainLayout() {
       </Box>
 
       <Menu
-        anchorEl={menuCuentaAnchor}
-        open={Boolean(menuCuentaAnchor)}
-        onClose={cerrarMenuCuenta}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        id="menu-usuario"
+        anchorEl={menuUsuarioAnchor}
+        open={menuUsuarioAbierto}
+        onClose={cerrarMenuUsuario}
+        onClick={cerrarMenuUsuario}
+        transformOrigin={{
+          horizontal: 'right',
+          vertical: 'top',
+        }}
+        anchorOrigin={{
+          horizontal: 'right',
+          vertical: 'bottom',
+        }}
+        slotProps={{
+          paper: {
+            elevation: 6,
+            sx: {
+              mt: 1,
+              minWidth: 240,
+              borderRadius: 2.5,
+              overflow: 'visible',
+            },
+          },
+        }}
       >
-        <MenuItem onClick={() => irCuenta('/mi-cuenta')}>
-          <ListItemIcon><AccountCircleRounded fontSize="small" /></ListItemIcon>
-          <ListItemText>Mi cuenta</ListItemText>
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+          }}
+        >
+          <AvatarServidor
+            nombre={nombre}
+            fotoPerfilUrl={fotoPerfilMenu || fotoPerfilUrl || ''}
+            size={46}
+            mostrarTooltip={false}
+          />
+
+          <Box sx={{ minWidth: 0 }}>
+            <Typography fontWeight={850} noWrap>
+              {nombre || 'Servidor'}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              noWrap
+            >
+              {rol || 'Sin rol'}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider />
+
+        <MenuItem
+          onClick={() =>
+            navegarDesdeMenuUsuario('/mi-cuenta')
+          }
+          sx={{ py: 1.15 }}
+        >
+          <ListItemIcon>
+            <AccountCircleRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Mi cuenta" />
         </MenuItem>
-        <MenuItem onClick={() => irCuenta('/codigo-vestuario')}>
-          <ListItemIcon><CheckroomRounded fontSize="small" /></ListItemIcon>
-          <ListItemText>Código de vestuario</ListItemText>
+
+        <MenuItem
+          onClick={() =>
+            navegarDesdeMenuUsuario('/reportar-pago')
+          }
+          sx={{ py: 1.15 }}
+        >
+          <ListItemIcon>
+            <PaymentsRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Reportar pago" />
         </MenuItem>
-        <MenuItem onClick={() => irCuenta('/reportar-pago?tipo=servidor&miCuenta=1')}>
-          <ListItemIcon><PaymentsRounded fontSize="small" /></ListItemIcon>
-          <ListItemText>Reportar pago</ListItemText>
+
+        <MenuItem
+          onClick={() =>
+            navegarDesdeMenuUsuario('/codigo-vestuario')
+          }
+          sx={{ py: 1.15 }}
+        >
+          <ListItemIcon>
+            <CheckroomRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Código de vestuario" />
+        </MenuItem>
+
+        <Divider />
+
+        <MenuItem
+          onClick={cerrarSesionDesdeMenuUsuario}
+          sx={{
+            py: 1.15,
+            color: 'error.main',
+          }}
+        >
+          <ListItemIcon sx={{ color: 'error.main' }}>
+            <LogoutRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Cerrar sesión" />
         </MenuItem>
       </Menu>
 

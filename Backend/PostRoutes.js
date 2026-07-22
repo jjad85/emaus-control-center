@@ -457,6 +457,17 @@ function routePost(contenido) {
           'Administración consultada correctamente'
       };
 
+    case 'obtenerauditoriasistema':
+      return {
+        datos:
+          obtenerAuditoriaSistema(
+            contenido.token,
+            contenido.filtros
+          ),
+        mensaje:
+          'Auditoría consultada correctamente'
+      };
+
     case 'desbloquearusuariosistema':
       return {
         datos:
@@ -501,6 +512,192 @@ function routePost(contenido) {
           ),
         mensaje:
           'Configuración actualizada correctamente'
+      };
+
+
+    case 'obtenermiservidorpago':
+      return {
+        datos: obtenerMiServidorPago(contenido.token),
+        mensaje: 'Información de pago del servidor consultada correctamente'
+      };
+
+    case 'obtenermifotoperfilservidor':
+      return {
+        datos: obtenerMiFotoPerfilServidor(contenido.token),
+        mensaje: 'Fotografía de perfil consultada correctamente'
+      };
+
+    case 'actualizarmifotoperfilservidor':
+      return {
+        datos: actualizarMiFotoPerfilServidor(contenido.token, contenido.archivo),
+        mensaje: 'Fotografía de perfil actualizada correctamente'
+      };
+
+    case 'eliminarmifotoperfilservidor':
+      return {
+        datos: eliminarMiFotoPerfilServidor(contenido.token),
+        mensaje: 'Fotografía de perfil eliminada correctamente'
+      };
+
+
+    case 'listarequiposadministrables':
+      return {
+        datos: listarEquiposAdministrables(
+          contenido.token
+        ),
+        mensaje:
+          'Equipos consultados correctamente'
+      };
+
+    case 'guardarequipoadministrable':
+      return {
+        datos: guardarEquipoAdministrable(
+          contenido.token,
+          contenido.equipo
+        ),
+        mensaje:
+          'Equipo guardado correctamente'
+      };
+
+    case 'cambiarestadoequipoadministrable':
+      return {
+        datos: cambiarEstadoEquipoAdministrable(
+          contenido.token,
+          contenido.equipoId,
+          contenido.activo
+        ),
+        mensaje:
+          'Estado del equipo actualizado correctamente'
+      };
+
+    case 'obtenerasignacionequiposservidor':
+      return {
+        datos: obtenerAsignacionEquiposServidor(
+          contenido.token,
+          contenido.servidorId
+        ),
+        mensaje:
+          'Asignación de equipos consultada correctamente'
+      };
+
+    case 'guardarasignacionequiposservidor':
+      return {
+        datos: guardarAsignacionEquiposServidor(
+          contenido.token,
+          contenido.servidorId,
+          contenido.equipoPrincipalId,
+          contenido.equipoPrincipalNombre,
+          contenido.rolEquipoPrincipal,
+          contenido.mesaPrincipal,
+          contenido.equiposApoyoIds
+        ),
+        mensaje:
+          'Equipos del servidor guardados correctamente'
+      };
+
+
+
+    case 'obtenerresumenasignacionequipos':
+      return {
+        datos: obtenerResumenAsignacionEquipos(
+          contenido.token
+        ),
+        mensaje:
+          'Resumen de asignación de equipos consultado correctamente'
+      };
+
+    case 'obtenercandidatosasignacionequipo':
+      return {
+        datos: obtenerCandidatosAsignacionEquipo(
+          contenido.token,
+          contenido.equipoId,
+          contenido.equipoNombre
+        ),
+        mensaje:
+          'Servidores disponibles consultados correctamente'
+      };
+
+    case 'asignarservidoresequipo':
+      return {
+        datos: asignarServidoresAEquipo(
+          contenido.token,
+          contenido.equipoId,
+          contenido.equipoNombre,
+          contenido.rol,
+          contenido.servidorIds
+        ),
+        mensaje:
+          'Servidores asignados correctamente'
+      };
+
+
+    case 'editarhabitacion':
+      return {
+        datos: editarHabitacion(
+          contenido.token,
+          contenido.habitacionId,
+          contenido.datos
+        ),
+        mensaje:
+          'Habitación actualizada correctamente'
+      };
+
+    case 'obtenercandidatoshabitacion':
+      return {
+        datos: obtenerCandidatosHabitacion(
+          contenido.token,
+          contenido.habitacionId,
+          contenido.tipoPersona
+        ),
+        mensaje:
+          'Personas disponibles consultadas correctamente'
+      };
+
+    case 'asignarpersonashabitacion':
+      return {
+        datos: asignarPersonasHabitacion(
+          contenido.token,
+          contenido.habitacionId,
+          contenido.tipoPersona,
+          contenido.personaIds
+        ),
+        mensaje:
+          'Personas asignadas correctamente'
+      };
+
+
+    case 'obtenercandidatosmesacaminantes':
+      return {
+        datos:
+          obtenerCandidatosMesaCaminantes(
+            contenido.token,
+            contenido.numeroMesa
+          ),
+        mensaje:
+          'Caminantes disponibles consultados correctamente'
+      };
+
+    case 'asignarcaminantesmesa':
+      return {
+        datos:
+          asignarCaminantesMesa(
+            contenido.token,
+            contenido.numeroMesa,
+            contenido.caminanteIds
+          ),
+        mensaje:
+          'Caminantes asignados correctamente'
+      };
+
+    case 'liberarmesafueraderango':
+      return {
+        datos:
+          liberarMesaFueraDeRango(
+            contenido.token,
+            contenido.numeroMesa
+          ),
+        mensaje:
+          'Mesa liberada correctamente'
       };
 
     default:

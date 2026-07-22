@@ -346,11 +346,19 @@ function actualizarConfiguracionExistente(
   try {
     bloqueo.waitLock(30000);
 
-    hoja
-      .getRange(
+    const celdaNombreVisible =
+      hoja.getRange(
         numeroFila,
         indiceNombreVisible + 1
-      )
+      );
+
+    /*
+     * Algunas hojas heredaron por error la validación SI/NO
+     * en la columna Nombre Visible. Se elimina antes de escribir
+     * para evitar que Sheets rechace textos como "Número Mesas".
+     */
+    celdaNombreVisible
+      .clearDataValidations()
       .setValue(
         nombreVisible
       );
@@ -374,8 +382,8 @@ function actualizarConfiguracionExistente(
       )
       .setValue(
         activo
-          ? 'Sí'
-          : 'No'
+          ? 'SI'
+          : 'NO'
       );
 
     SpreadsheetApp.flush();

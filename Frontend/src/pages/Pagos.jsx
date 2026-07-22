@@ -32,6 +32,7 @@ import {
 } from '../api/pagosApi';
 import LoadingState from '../components/LoadingState';
 import PageHeader from '../components/PageHeader';
+import AvatarServidor from '../components/servidores/AvatarServidor';
 
 function formatearMoneda(valor) {
   return Number(valor || 0).toLocaleString('es-CO', {
@@ -82,112 +83,50 @@ function Indicador({ titulo, valor, detalle }) {
   );
 }
 
-function descargarEstadosCuentaExcel(reporte) {
-  const grupos = reporte?.grupos || [];
+function escaparCsv(valor) {
+  const texto = String(valor ?? '');
+  return `"${texto.replace(/"/g, '""')}"`;
+}
 
-  const columnasBase = [
-    { titulo: 'ID', valor: persona => persona.id },
-    { titulo: 'Nombre', valor: persona => persona.nombre },
-    { titulo: 'Número de inscripción', valor: persona => persona.numeroInscripcion },
-    { titulo: 'Documento', valor: persona => persona.documentoIdentidad },
-    { titulo: 'Valor individual', valor: (persona, grupo) => grupo.valorIndividual },
-    { titulo: 'Valor esperado', valor: persona => persona.valorEsperado },
-    { titulo: 'Valor recaudado', valor: persona => persona.valorRecaudado },
-    { titulo: 'Valor pendiente', valor: persona => persona.valorPendiente },
-    { titulo: 'Excedente', valor: persona => persona.excedente },
-    { titulo: 'Estado de pago', valor: persona => persona.estadoPago }
-  ];
+function descargarReporteCsv(reporte) {
+  const filas = [[
+    'Grupo',
+    'ID',
+    'Nombre',
+    'Número de inscripción',
+    'Documento',
+    'Valor individual',
+    'Valor esperado',
+    'Valor recaudado',
+    'Valor pendiente',
+    'Excedente',
+    'Estado de pago'
+  ]];
 
-  function crearTabla(titulo, tipoPersona) {
-    const grupo = grupos.find(item => item.tipoPersona === tipoPersona);
-    const columnas = tipoPersona === 'Servidor'
-      ? columnasBase.filter(columna => columna.titulo !== 'Número de inscripción')
-      : columnasBase;
-    const filas = grupo?.detalle || [];
-
-    const encabezados = columnas
-      .map(columna => `<th>${escaparHtml(columna.titulo)}</th>`)
-      .join('');
-
-    const cuerpo = filas.length
-      ? filas.map((persona, indice) => {
-        const clase = indice % 2 === 0 ? 'fila-par' : 'fila-impar';
-        const celdas = columnas.map(columna => {
-          const valor = columna.valor(persona, grupo);
-          const esMoneda = [
-            'Valor individual',
-            'Valor esperado',
-            'Valor recaudado',
-            'Valor pendiente',
-            'Excedente'
-          ].includes(columna.titulo);
-
-          return esMoneda
-            ? `<td class="numero">${escaparHtml(valor)}</td>`
-            : `<td>${escaparHtml(valor)}</td>`;
-        }).join('');
-        return `<tr class="${clase}">${celdas}</tr>`;
-      }).join('')
-      : `<tr><td colspan="${columnas.length}" class="sin-registros">No hay personas registradas.</td></tr>`;
-
-    return `
-      <table>
-        <thead>
-          <tr>
-            <th colspan="${columnas.length}" class="titulo-seccion">${escaparHtml(titulo)}</th>
-          </tr>
-          <tr class="encabezados">${encabezados}</tr>
-        </thead>
-        <tbody>${cuerpo}</tbody>
-      </table>
-      <div class="separador"></div>
-    `;
-  }
-
-  const contenido = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8" />
-        <style>
-          body { font-family: Arial, sans-serif; }
-          table { border-collapse: collapse; width: 100%; margin-bottom: 18px; }
-          th, td { border: 1px solid #b7b7b7; padding: 7px 9px; vertical-align: top; }
-          .titulo-seccion {
-            background: #1f4e78;
-            color: #ffffff;
-            font-size: 15px;
-            font-weight: 700;
-            text-align: center;
-            padding: 10px;
-          }
-          .encabezados th {
-            background: #d9eaf7;
-            color: #1f1f1f;
-            font-weight: 700;
-            text-align: center;
-          }
-          .fila-par td { background: #ffffff; }
-          .fila-impar td { background: #f2f6fa; }
-          .numero { text-align: right; mso-number-format: '\\$'#,##0; }
-          .sin-registros { text-align: center; font-style: italic; color: #666666; }
-          .separador { height: 18px; }
-        </style>
-      </head>
-      <body>
-        ${crearTabla('ESTADOS DE CUENTA DE CAMINANTES', 'Caminante')}
-        ${crearTabla('ESTADOS DE CUENTA DE SERVIDORES', 'Servidor')}
-      </body>
-    </html>
-  `;
-
-  const blob = new Blob([contenido], {
-    type: 'application/vnd.ms-excel;charset=utf-8;'
+  (reporte?.grupos || []).forEach(grupo => {
+    (grupo.detalle || []).forEach(persona => {
+      filas.push([
+        grupo.tipoPersona,
+        persona.id,
+        persona.nombre,
+        persona.numeroInscripcion,
+        persona.documentoIdentidad,
+        grupo.valorIndividual,
+        persona.valorEsperado,
+        persona.valorRecaudado,
+        persona.valorPendiente,
+        persona.excedente,
+        persona.estadoPago
+      ]);
+    });
   });
+
+  const contenido = filas.map(fila => fila.map(escaparCsv).join(';')).join('\n');
+  const blob = new Blob([`\ufeff${contenido}`], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const enlace = document.createElement('a');
   enlace.href = url;
-  enlace.download = `estados-de-cuenta-${new Date().toISOString().slice(0, 10)}.xls`;
+  enlace.download = `reporte-pagos-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(enlace);
   enlace.click();
   enlace.remove();
@@ -467,7 +406,7 @@ export default function Pagos() {
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => descargarEstadosCuentaExcel(reporte)}
+                onClick={() => descargarReporteCsv(reporte)}
                 disabled={!reporte}
                 sx={{ minWidth: 220, minHeight: 40, whiteSpace: 'nowrap' }}
               >
