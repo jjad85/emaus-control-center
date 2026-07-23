@@ -89,6 +89,17 @@ function procesarError(error) {
     );
   }
 
+  if (
+    error?.code === 'ECONNABORTED' ||
+    String(error?.message || '')
+      .toLowerCase()
+      .includes('timeout')
+  ) {
+    throw new Error(
+      'La operación tardó más de lo esperado. Verifica si el archivo quedó registrado antes de volver a cargarlo.'
+    );
+  }
+
   throw new Error(
     error?.message ||
       'No fue posible conectar con la API'
@@ -121,7 +132,8 @@ export async function getResource(
 
 export async function postAction(
   accion,
-  payload = {}
+  payload = {},
+  options = {}
 ) {
   try {
     const body =
@@ -135,7 +147,12 @@ export async function postAction(
         baseURL,
         body,
         {
-          timeout: 30000,
+          timeout:
+            options.timeout ??
+            30000,
+
+          onUploadProgress:
+            options.onUploadProgress,
 
           headers: {
             Accept:

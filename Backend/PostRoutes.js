@@ -447,6 +447,26 @@ function routePost(contenido) {
         mensaje: 'Estado del tema actualizado correctamente'
       };
 
+
+    case 'movertema':
+      return {
+        datos: moverTema(contenido.token, contenido.id, contenido.direccion),
+        mensaje: 'Orden del tema actualizado correctamente'
+      };
+
+    case 'obtener mitemaasignado':
+    case 'obtenermitemaasignado':
+      return { datos: obtenerMiTemaAsignado(contenido.token), mensaje: 'Temas asignados consultados correctamente' };
+
+    case 'subirversiontema':
+      return { datos: subirVersionTema(contenido.token, contenido.temaId, contenido.archivo, contenido.comentario), mensaje: 'Presentación cargada correctamente' };
+
+    case 'actualizarpreferenciasmitema':
+      return { datos: actualizarPreferenciasMiTema(contenido.token, contenido.temaId, contenido.datos), mensaje: 'Preferencias del tema actualizadas correctamente' };
+
+    case 'subirmusicatema':
+      return { datos: subirMusicaTema(contenido.token, contenido.temaId, contenido.archivo, contenido.observaciones), mensaje: 'Música cargada correctamente' };
+
     case 'obteneradministracionsistema':
       return {
         datos:

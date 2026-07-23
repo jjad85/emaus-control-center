@@ -31,6 +31,7 @@ import Configuracion from './pages/Configuracion';
 import Administracion from './pages/Administracion';
 import NotificacionesWhatsApp from './pages/NotificacionesWhatsApp';
 import Temas from './pages/Temas';
+import MisTemas from './pages/MisTemas';
 import MiCuenta from './pages/MiCuenta';
 import CodigoVestuario from './pages/CodigoVestuario';
 import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
@@ -140,6 +141,11 @@ export default function App() {
           <Route
             path="/temas"
             element={<Temas />}
+          />
+
+          <Route
+            path="/mis-temas"
+            element={<MisTemas />}
           />
 
           <Route

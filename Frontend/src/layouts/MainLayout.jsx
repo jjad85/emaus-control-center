@@ -42,6 +42,7 @@ import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
 import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import CheckroomRounded from '@mui/icons-material/CheckroomRounded';
 import FactCheckRounded from '@mui/icons-material/FactCheckRounded';
+import TopicRounded from '@mui/icons-material/TopicRounded';
 
 import {
   Outlet,
@@ -132,8 +133,13 @@ const menuGroups = [
     icon: <AccessTimeRounded />,
     items: [
       {
-        label: 'Minutograma',
-        path: '/minutograma',
+        label: 'Temas',
+        path: '/temas',
+        icon: <TopicRounded />,
+      },
+      {
+        label: 'Paso a paso',
+        path: '/paso-a-paso',
         icon: <AccessTimeRounded />,
       },
     ],
@@ -187,11 +193,15 @@ function esRolAdministrador(rol) {
 }
 
 function obtenerGruposVisibles(rol) {
-  return menuGroups.filter(
-    (grupo) =>
-      grupo.id !== 'sistema' ||
-      esRolAdministrador(rol)
-  );
+  const rolNormalizado = String(rol || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const esServidor = rolNormalizado === 'servidor' || rolNormalizado === 'servidores';
+  return menuGroups
+    .filter((grupo) => grupo.id !== 'sistema' || esRolAdministrador(rol))
+    .map((grupo) => ({
+      ...grupo,
+      items: grupo.items.filter((item) => !item.soloServidor || esServidor || esRolAdministrador(rol)),
+    }))
+    .filter((grupo) => grupo.items.length > 0);
 }
 
 function obtenerGrupoActivo(pathname, rol) {
@@ -1147,6 +1157,18 @@ export default function MainLayout() {
             <CheckroomRounded fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="Código de vestuario" />
+        </MenuItem>
+
+        <MenuItem
+          onClick={() =>
+            navegarDesdeMenuUsuario('/mis-temas')
+          }
+          sx={{ py: 1.15 }}
+        >
+          <ListItemIcon>
+            <TopicRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Mis temas" />
         </MenuItem>
 
         <Divider />
