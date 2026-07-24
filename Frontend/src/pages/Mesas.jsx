@@ -248,7 +248,7 @@ export default function Mesas() {
                         />
 
                         <ProtectedButton
-                          permiso="ASIGNAR_MESA"
+                          permiso="MESAS_ASIGNAR_CAMINANTE"
                           size="small"
                           color="error"
                           variant="outlined"
@@ -392,7 +392,7 @@ export default function Mesas() {
                   </Typography>
 
                   <ProtectedButton
-                    permiso="ASIGNAR_MESA"
+                    permiso="MESAS_ASIGNAR_CAMINANTE"
                     size="small"
                     variant="contained"
                     startIcon={

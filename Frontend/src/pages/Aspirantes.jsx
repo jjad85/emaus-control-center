@@ -1060,8 +1060,8 @@ export default function Aspirantes() {
           onVerDetalle={setSeleccionado}
           token={token}
           puedeNotificar={
-            puede('NOTIFICAR_ASPIRANTE') ||
-            puede('CONVERTIR_ASPIRANTE')
+            puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
+            puede('ASPIRANTES_CAMBIAR_ESTADO')
           }
           onNotificacionCompletada={api.reload}
         />
@@ -1078,8 +1078,8 @@ export default function Aspirantes() {
           onVerDetalle={setSeleccionado}
           token={token}
           puedeNotificar={
-            puede('NOTIFICAR_ASPIRANTE') ||
-            puede('CONVERTIR_ASPIRANTE')
+            puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
+            puede('ASPIRANTES_CAMBIAR_ESTADO')
           }
           onNotificacionCompletada={api.reload}
         />
@@ -1096,8 +1096,8 @@ export default function Aspirantes() {
           onVerDetalle={setSeleccionado}
           token={token}
           puedeNotificar={
-            puede('NOTIFICAR_ASPIRANTE') ||
-            puede('CONVERTIR_ASPIRANTE')
+            puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
+            puede('ASPIRANTES_CAMBIAR_ESTADO')
           }
           onNotificacionCompletada={api.reload}
         />
@@ -1389,8 +1389,8 @@ export default function Aspirantes() {
             Cerrar
           </Button>
 
-          {(puede('NOTIFICAR_ASPIRANTE') ||
-            puede('CONVERTIR_ASPIRANTE')) &&
+          {(puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
+            puede('ASPIRANTES_CAMBIAR_ESTADO')) &&
             notificacionesWhatsappUnicas(
               seleccionado?.whatsappNotificaciones
             ).map(
@@ -1414,7 +1414,7 @@ export default function Aspirantes() {
               )
             )}
 
-          {puede('ACTUALIZAR_ESTADO_ASPIRANTE') &&
+          {puede('ASPIRANTES_CAMBIAR_ESTADO') &&
             !aspiranteBloqueado(seleccionado) && (
               <>
                 <Button
@@ -1434,7 +1434,7 @@ export default function Aspirantes() {
                   Rechazar
                 </Button>
 
-                {puede('CONVERTIR_ASPIRANTE') && (
+                {puede('ASPIRANTES_CAMBIAR_ESTADO') && (
                   <Button
                     variant="contained"
                     color="success"

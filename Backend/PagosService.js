@@ -204,7 +204,7 @@ function reportarPagoPublico(datos) {
 }
 
 function obtenerPagos(token, filtros) {
-  validarPermiso(token, 'GESTIONAR_PAGOS');
+  validarPermiso(token, 'PAGOS_VER_ESTADOS_CUENTA');
   const f = filtros || {};
   const caminantesPorId = {};
   const servidoresPorId = {};
@@ -230,7 +230,7 @@ function obtenerPagos(token, filtros) {
 }
 
 function validarPago(token, id, decision) {
-  const sesion=validarPermiso(token,'GESTIONAR_PAGOS');
+  const sesion=validarPermiso(token,'PAGOS_VALIDAR_COMPROBANTE');
   const pago=leerRegistroPorIdSheet(HOJAS.PAGOS,id,{usuario:sesion.usuario});
   const estado=normalizarTexto(decision.estado)==='aprobado'?'Aprobado':'Rechazado';
   const valorAprobado=estado==='Aprobado'?Number(decision.valorAprobado||pago.valorReportado):'';
@@ -263,7 +263,7 @@ function recalcularEstadoPagoServidor_(servidorId, usuario) {
   return resumen;
 }
 
-function obtenerPagosCaminante(token,caminanteId){ validarPermiso(token,'CONSULTAR_CAMINANTES'); return completarResumenPagosPersona_(leerRegistroPorIdSheet(HOJAS.CAMINANTES,caminanteId,{usuario:'CONSULTA'}), 'Caminante'); }
+function obtenerPagosCaminante(token,caminanteId){ validarPermiso(token,'CAMINANTES_VER_DETALLE'); return completarResumenPagosPersona_(leerRegistroPorIdSheet(HOJAS.CAMINANTES,caminanteId,{usuario:'CONSULTA'}), 'Caminante'); }
 
 
 function convertirFechaPago_(valor, finDelDia) {
@@ -301,7 +301,7 @@ function pagoEstaEnRangoFechas_(pago, fechaDesde, fechaHasta) {
 }
 
 function obtenerReportePagos(token, filtros) {
-  validarPermiso(token, 'GESTIONAR_PAGOS');
+  validarPermiso(token, 'PAGOS_VER_ESTADOS_CUENTA');
   const f = filtros || {};
   const grupos = [
     construirGrupoReportePagos_('Caminante', f),

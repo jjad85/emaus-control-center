@@ -530,7 +530,7 @@ export default function Habitaciones() {
                                     }}
                                   >
                                     <ProtectedButton
-                                      permiso="ASIGNAR_HABITACION"
+                                      permiso="HABITACIONES_ASIGNAR_PERSONA"
                                       size="small"
                                       variant="outlined"
                                       startIcon={
@@ -546,7 +546,7 @@ export default function Habitaciones() {
                                     </ProtectedButton>
 
                                     <ProtectedButton
-                                      permiso="ASIGNAR_HABITACION"
+                                      permiso="HABITACIONES_ASIGNAR_PERSONA"
                                       size="small"
                                       variant="contained"
                                       startIcon={

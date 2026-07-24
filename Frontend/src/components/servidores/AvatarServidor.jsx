@@ -1,4 +1,4 @@
-import { Avatar, Badge, Tooltip } from '@mui/material';
+import { Avatar, Tooltip } from '@mui/material';
 
 function obtenerIniciales(nombre) {
   return String(nombre || '?')
@@ -32,36 +32,26 @@ export default function AvatarServidor({
     '';
 
   const contenido = (
-    <Badge
-      overlap="circular"
-      variant={destacado ? 'dot' : undefined}
-      color="primary"
-      anchorOrigin={{
-        vertical: 'bottom',
-        horizontal: 'right',
+    <Avatar
+      src={foto || undefined}
+      alt={nombreVisible}
+      imgProps={{
+        referrerPolicy: 'no-referrer',
+        loading: 'lazy',
+      }}
+      sx={{
+        width: size,
+        height: size,
+        fontSize: Math.max(15, size * 0.32),
+        fontWeight: 900,
+        bgcolor: 'primary.main',
+        color: 'primary.contrastText',
+        flexShrink: 0,
+        ...sx,
       }}
     >
-      <Avatar
-        src={foto || undefined}
-        alt={nombreVisible}
-        imgProps={{
-          referrerPolicy: 'no-referrer',
-          loading: 'lazy',
-        }}
-        sx={{
-          width: size,
-          height: size,
-          fontSize: Math.max(15, size * 0.32),
-          fontWeight: 900,
-          bgcolor: 'primary.main',
-          color: 'primary.contrastText',
-          flexShrink: 0,
-          ...sx,
-        }}
-      >
-        {obtenerIniciales(nombreVisible)}
-      </Avatar>
-    </Badge>
+      {obtenerIniciales(nombreVisible)}
+    </Avatar>
   );
 
   return mostrarTooltip ? (

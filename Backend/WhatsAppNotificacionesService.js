@@ -91,9 +91,9 @@ function obtenerNotificacionesWhatsapp(token, filtros) {
   const permisos = obtenerPermisosPorRol(sesion.rol);
 
   const puedeVer =
-    permisos.includes('NOTIFICAR_ASPIRANTE') ||
+    permisos.includes('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
     permisos.includes('NOTIFICAR_CAMINANTE') ||
-    permisos.includes('CONVERTIR_ASPIRANTE');
+    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO');
 
   if (!puedeVer) {
     throw crearErrorAplicacion(
@@ -362,7 +362,7 @@ function obtenerResumenNotificacionesWhatsappParaCampana(token) {
       cantidad: cantidad,
       ruta: '/notificaciones-whatsapp',
       permiso: tipo === 'INSCRIPCION' || tipo === 'APROBACION'
-        ? 'NOTIFICAR_ASPIRANTE'
+        ? 'ASPIRANTES_NOTIFICAR_PREINSCRIPCION'
         : 'NOTIFICAR_CAMINANTE'
     });
   });
@@ -485,8 +485,8 @@ function puedeGestionarTipoWhatsapp_(permisos, tipo) {
     tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.APROBACION
   ) {
     return (
-      permisos.includes('NOTIFICAR_ASPIRANTE') ||
-      permisos.includes('CONVERTIR_ASPIRANTE')
+      permisos.includes('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
+      permisos.includes('ASPIRANTES_CAMBIAR_ESTADO')
     );
   }
 

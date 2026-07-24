@@ -98,7 +98,7 @@ function actualizarEstadoAspirante(
   const sesion =
     validarPermiso(
       token,
-      'ACTUALIZAR_ESTADO_ASPIRANTE'
+      'ASPIRANTES_CAMBIAR_ESTADO'
     );
 
   const estadoValido =
@@ -141,7 +141,7 @@ function actualizarEstadoAspirante(
   ) {
     validarPermiso(
       token,
-      'CONVERTIR_ASPIRANTE'
+      'ASPIRANTES_CAMBIAR_ESTADO'
     );
 
     return ejecutarCrudConBloqueo(
@@ -192,7 +192,7 @@ function actualizarEstadoAspirante(
     nombre:
       sesion.nombre,
     accion:
-      'ACTUALIZAR_ESTADO_ASPIRANTE',
+      'ASPIRANTES_CAMBIAR_ESTADO',
     entidad:
       'Aspirantes',
     idRegistro:
@@ -221,7 +221,7 @@ function convertirAspiranteEnCaminante(
   const sesion =
     validarPermiso(
       token,
-      'CONVERTIR_ASPIRANTE'
+      'ASPIRANTES_CAMBIAR_ESTADO'
     );
 
   return ejecutarCrudConBloqueo(
@@ -332,7 +332,7 @@ function convertirAspiranteEnCaminanteInterno(
     nombre:
       sesion.nombre,
     accion:
-      'APROBAR_Y_CONVERTIR_ASPIRANTE',
+      'APROBAR_Y_ASPIRANTES_CAMBIAR_ESTADO',
     entidad:
       'Aspirantes',
     idRegistro:

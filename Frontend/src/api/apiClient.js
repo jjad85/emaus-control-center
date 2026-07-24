@@ -100,8 +100,15 @@ function procesarError(error) {
     );
   }
 
+  const mensaje = String(error?.message || '');
+  if (mensaje.toLowerCase().includes('network error')) {
+    throw new Error(
+      'No fue posible completar la comunicación con Google Apps Script. Verifica que la implementación esté actualizada y vuelve a intentar.'
+    );
+  }
+
   throw new Error(
-    error?.message ||
+    mensaje ||
       'No fue posible conectar con la API'
   );
 }
@@ -151,8 +158,11 @@ export async function postAction(
             options.timeout ??
             30000,
 
-          onUploadProgress:
-            options.onUploadProgress,
+          // No se registra onUploadProgress. En llamadas directas a Google
+          // Apps Script, agregar un listener de progreso al XMLHttpRequest
+          // obliga al navegador a enviar una petición OPTIONS (preflight).
+          // Apps Script no responde ese preflight con CORS y termina en
+          // "Network Error", aunque el archivo pueda haberse guardado.
 
           headers: {
             Accept:

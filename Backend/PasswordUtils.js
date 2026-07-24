@@ -252,3 +252,114 @@ function validarPoliticaPassword(
 
   return true;
 }
+
+/**
+ * Genera salt y claveHash para un cargue masivo de usuarios.
+ *
+ * Entrada esperada:
+ * [
+ *   { usuario: 'correo1@dominio.com', password: 'ClaveSegura1!' },
+ *   { usuario: 'correo2@dominio.com', password: 'ClaveSegura2!' }
+ * ]
+ *
+ * La contraseña en texto plano NO se incluye en el resultado ni se registra
+ * en los logs. El resultado conserva el mismo algoritmo usado por el login:
+ * salt único + HMAC SHA-256 + Base64 Web Safe.
+ */
+function generarCredencialesMasivas(usuarios) {
+  if (!Array.isArray(usuarios) || usuarios.length === 0) {
+    throw new Error(
+      'Debe enviar una lista con al menos un usuario y su contraseña.'
+    );
+  }
+
+  const usuariosProcesados = {};
+
+  return usuarios.map(function(item, indice) {
+    const numeroFila = indice + 1;
+    const usuario = String(
+      item && (item.usuario || item.correo || item.email) || ''
+    ).trim().toLowerCase();
+    const password = String(
+      item && (item.password || item.clave || item.contrasena) || ''
+    );
+
+    if (!usuario) {
+      throw new Error(
+        'El registro ' + numeroFila + ' no tiene usuario o correo.'
+      );
+    }
+
+    if (!password) {
+      throw new Error(
+        'El registro ' + numeroFila + ' (' + usuario + ') no tiene contraseña.'
+      );
+    }
+
+    if (usuariosProcesados[usuario]) {
+      throw new Error(
+        'El usuario ' + usuario + ' está repetido en la lista.'
+      );
+    }
+
+    validarPoliticaPassword(password);
+    usuariosProcesados[usuario] = true;
+
+    const credencial = crearCredencialPassword(password);
+
+    return {
+      usuario: usuario,
+      salt: credencial.salt,
+      claveHash: credencial.claveHash
+    };
+  });
+}
+
+/**
+ * Función ejecutable desde el editor de Apps Script.
+ *
+ * 1. Reemplace los registros de ejemplo por los usuarios reales.
+ * 2. Ejecute esta función.
+ * 3. Copie el JSON del registro de ejecución.
+ * 4. Elimine inmediatamente las contraseñas en texto plano del código.
+ */
+function ejecutarGeneracionCredencialesMasivas() {
+  const usuarios = [
+    {
+      usuario: 'servidor1@ejemplo.com',
+      password: 'Cambiar2026!'
+    },
+    {
+      usuario: 'servidor2@ejemplo.com',
+      password: 'Cambiar2026!'
+    }
+  ];
+
+  const resultado = generarCredencialesMasivas(usuarios);
+
+  Logger.log(
+    JSON.stringify(resultado, null, 2)
+  );
+
+  return resultado;
+}
+
+/**
+ * Convierte el resultado de generarCredencialesMasivas a una matriz que se
+ * puede pegar directamente en Google Sheets: Usuario | Salt | ClaveHash.
+ */
+function generarMatrizCredencialesMasivas(usuarios) {
+  const credenciales = generarCredencialesMasivas(usuarios);
+
+  return [
+    ['Usuario', 'Salt', 'ClaveHash']
+  ].concat(
+    credenciales.map(function(item) {
+      return [
+        item.usuario,
+        item.salt,
+        item.claveHash
+      ];
+    })
+  );
+}

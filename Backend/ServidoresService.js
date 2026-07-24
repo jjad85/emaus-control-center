@@ -151,7 +151,7 @@ function obtenerOpcionesGestionServidor(token, servidorId) {
 }
 
 function editarServidor(token, id, datos) {
-  const sesion = validarPermiso(token, 'EDITAR_SERVIDOR');
+  const sesion = validarPermiso(token, 'SERVIDORES_EDITAR');
   const entrada = datos || {};
   const nombre = String(entrada.nombre || '').trim();
   const documentoIdentidad = String(entrada.documentoIdentidad || '').trim();
@@ -188,7 +188,7 @@ function editarServidor(token, id, datos) {
       opcionesCrudServidores_(sesion.usuario)
     );
 
-    auditarServidor_(sesion, 'EDITAR_SERVIDOR', id, actualizado);
+    auditarServidor_(sesion, 'SERVIDORES_EDITAR', id, actualizado);
     return convertirServidor(actualizado);
   });
 }
@@ -206,7 +206,7 @@ function actualizarPagoServidor(token, id, estadoPago) {
 }
 
 function asignarTemaServidor(token, id, temaId) {
-  const sesion = validarPermiso(token, 'EDITAR_SERVIDOR');
+  const sesion = validarPermiso(token, 'SERVIDORES_EDITAR');
   const nuevoTemaId = String(temaId || '').trim();
 
   return ejecutarCrudConBloqueo(function() {
@@ -331,7 +331,7 @@ function agregarValorUnico_(lista, valor) {
  * - las llamadas nuevas envían tipoAsignacion y equipo.
  */
 function asignarMesaServidor(token, id, mesa, rolMesa, tipoAsignacion, equipo) {
-  const sesion = validarPermiso(token, 'EDITAR_SERVIDOR');
+  const sesion = validarPermiso(token, 'SERVIDORES_ASIGNAR_EQUIPO');
   const servidor = obtenerServidorPorId(id);
   const tipo = normalizarTexto(tipoAsignacion || (String(mesa || '').trim() ? 'Mesa' : (String(equipo || '').trim() ? 'Equipo' : '')));
   const rol = String(rolMesa || '').trim();
@@ -423,7 +423,7 @@ function asignarEquipoServidor(token, id, equipo, rolEquipo) {
 }
 
 function asignarHabitacionServidor(token, id, habitacion) {
-  const sesion = validarPermiso(token, 'EDITAR_SERVIDOR');
+  const sesion = validarPermiso(token, 'SERVIDORES_ASIGNAR_HABITACION');
   const numero = String(habitacion || '').trim();
 
   if (numero) {
@@ -574,7 +574,7 @@ function obtenerHabitacionesDisponiblesServidor_(servidor) {
 function validarPermisoEdicionServidor_(token) {
   const sesion = obtenerSesion(token);
   const permisos = obtenerPermisosPorRol(sesion.rol);
-  if (!permisos.includes('EDITAR_SERVIDOR') && !permisos.includes('ACTUALIZAR_PAGO_SERVIDOR')) {
+  if (!permisos.includes('SERVIDORES_EDITAR') && !permisos.includes('SERVIDORES_ASIGNAR_EQUIPO') && !permisos.includes('SERVIDORES_ASIGNAR_HABITACION')) {
     throw crearErrorAplicacion('PERMISO_DENEGADO', 'No tiene permisos para gestionar servidores.');
   }
   return sesion;

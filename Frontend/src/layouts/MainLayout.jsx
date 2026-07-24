@@ -87,16 +87,19 @@ const menuGroups = [
         label: 'Aspirantes',
         path: '/aspirantes',
         icon: <AssignmentIndRounded />,
+        permiso: 'ASPIRANTES_VER_DETALLE',
       },
       {
         label: 'Caminantes',
         path: '/caminantes',
         icon: <GroupsRounded />,
+        permiso: 'CAMINANTES_VER_DETALLE',
       },
       {
         label: 'Servidores',
         path: '/servidores',
         icon: <PersonRounded />,
+        permiso: 'SERVIDORES_VER_DETALLE',
       },
     ],
   },
@@ -109,22 +112,35 @@ const menuGroups = [
         label: 'Equipos',
         path: '/equipos',
         icon: <GroupsRounded />,
+        permiso: 'EQUIPOS_VER_DETALLE',
       },
       {
         label: 'Habitaciones',
         path: '/habitaciones',
         icon: <HotelRounded />,
+        permiso: 'HABITACIONES_VER_DETALLE',
       },
       {
         label: 'Mesas',
         path: '/mesas',
         icon: <TableRestaurantRounded />,
+        permiso: 'MESAS_VER_DETALLE',
       },
       {
         label: 'Presentaciones',
         path: '/presentaciones',
         icon: <SlideshowRounded />,
+        permiso: 'PRESENTACIONES_TODO',
       },
+    ],
+  },
+  {
+    id: 'tesoreria',
+    label: 'Tesorería',
+    icon: <PaymentsRounded />,
+    items: [
+      { label: 'Estados de cuenta', path: '/pagos', icon: <PaymentsRounded />, permiso: 'PAGOS_VER_ESTADOS_CUENTA' },
+      { label: 'Reportar pagos', path: '/tesoreria/reportar-pago', icon: <FactCheckRounded />, permiso: 'REPORTAR_PAGO_REGISTRAR' },
     ],
   },
   {
@@ -136,11 +152,13 @@ const menuGroups = [
         label: 'Temas',
         path: '/temas',
         icon: <TopicRounded />,
+        permiso: 'TEMAS_VER_DETALLE',
       },
       {
         label: 'Paso a paso',
         path: '/paso-a-paso',
         icon: <AccessTimeRounded />,
+        permiso: 'PASO_A_PASO_VER_DETALLE',
       },
     ],
   },
@@ -153,16 +171,19 @@ const menuGroups = [
         label: 'Administración',
         path: '/administracion',
         icon: <AdminPanelSettingsRounded />,
+        permiso: 'SISTEMA_TODO',
       },
       {
         label: 'Configuración',
         path: '/configuracion',
         icon: <SettingsRounded />,
+        permiso: 'SISTEMA_TODO',
       },
       {
         label: 'Auditoría',
         path: '/auditoria',
         icon: <FactCheckRounded />,
+        permiso: 'SISTEMA_TODO',
       },
     ],
   },
@@ -192,20 +213,30 @@ function esRolAdministrador(rol) {
   );
 }
 
-function obtenerGruposVisibles(rol) {
+function obtenerGruposVisibles(rol, tienePermiso) {
   const rolNormalizado = String(rol || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const esServidor = rolNormalizado === 'servidor' || rolNormalizado === 'servidores';
   return menuGroups
-    .filter((grupo) => grupo.id !== 'sistema' || esRolAdministrador(rol))
     .map((grupo) => ({
       ...grupo,
-      items: grupo.items.filter((item) => !item.soloServidor || esServidor || esRolAdministrador(rol)),
+      items: grupo.items.filter((item) => {
+        const cumpleRol =
+          !item.soloServidor ||
+          esServidor ||
+          esRolAdministrador(rol);
+
+        const cumplePermiso =
+          !item.permiso ||
+          Boolean(tienePermiso?.(item.permiso));
+
+        return cumpleRol && cumplePermiso;
+      }),
     }))
     .filter((grupo) => grupo.items.length > 0);
 }
 
-function obtenerGrupoActivo(pathname, rol) {
-  return obtenerGruposVisibles(rol)
+function obtenerGrupoActivo(pathname, rol, tienePermiso) {
+  return obtenerGruposVisibles(rol, tienePermiso)
     .find((grupo) =>
       grupo.items.some((item) =>
         rutaActiva(pathname, item.path)
@@ -226,22 +257,25 @@ function MenuLateral({
   tituloRetiro,
   cerrarMenuMovil,
   mostrarCerrar = false,
+  tienePermiso,
 }) {
   const gruposVisibles =
     useMemo(
-      () => obtenerGruposVisibles(rol),
-      [rol]
+      () => obtenerGruposVisibles(rol, tienePermiso),
+      [rol, tienePermiso]
     );
 
   const grupoActivo = useMemo(
     () =>
       obtenerGrupoActivo(
         location.pathname,
-        rol
+        rol,
+        tienePermiso
       ),
     [
       location.pathname,
       rol,
+      tienePermiso,
     ]
   );
 
@@ -541,74 +575,25 @@ function MenuLateral({
         })}
       </List>
 
-      <Box
-        sx={{
-          p: 2,
-          pb: {
-            xs:
-              'calc(16px + env(safe-area-inset-bottom))',
-            md: 2,
-          },
-        }}
-      >
-        <Divider
+      {!autenticado && (
+        <Box
           sx={{
-            mb: 2,
-            borderColor:
-              'rgba(255,255,255,.15)',
+            p: 2,
+            pb: {
+              xs:
+                'calc(16px + env(safe-area-inset-bottom))',
+              md: 2,
+            },
           }}
-        />
+        >
+          <Divider
+            sx={{
+              mb: 2,
+              borderColor:
+                'rgba(255,255,255,.15)',
+            }}
+          />
 
-        {autenticado ? (
-          <Stack spacing={1.25}>
-            <Stack
-              direction="row"
-              spacing={1.25}
-              alignItems="center"
-            >
-              <AvatarServidor
-                nombre={nombre}
-                fotoPerfilUrl={fotoPerfilUrl || ''}
-                size={44}
-                mostrarTooltip={false}
-              />
-
-              <Box sx={{ minWidth: 0 }}>
-                <Typography
-                  fontWeight={800}
-                  noWrap
-                >
-                  {nombre}
-                </Typography>
-
-                <Chip
-                  size="small"
-                  label={rol || 'Sin rol'}
-                  sx={{
-                    mt: 0.5,
-                    bgcolor:
-                      'rgba(255,255,255,.12)',
-                    color: '#fff',
-                  }}
-                />
-              </Box>
-            </Stack>
-
-            <Button
-              color="inherit"
-              variant="outlined"
-              startIcon={<LogoutRounded />}
-              onClick={handleLogout}
-              fullWidth
-              sx={{
-                borderColor:
-                  'rgba(255,255,255,.35)',
-              }}
-            >
-              Cerrar sesión
-            </Button>
-          </Stack>
-        ) : (
           <Stack spacing={1}>
             <Typography
               variant="body2"
@@ -634,8 +619,8 @@ function MenuLateral({
               Iniciar sesión
             </Button>
           </Stack>
-        )}
-      </Box>
+        </Box>
+      )}
     </>
   );
 }
@@ -656,6 +641,7 @@ export default function MainLayout() {
     fotoPerfilUrl,
     logout,
     solicitarAutenticacion,
+    tienePermiso,
   } = useAuth();
 
   const [fotoPerfilMenu, setFotoPerfilMenu] =
@@ -795,6 +781,7 @@ export default function MainLayout() {
     handleLogout,
     tituloRetiro,
     cerrarMenuMovil,
+    tienePermiso,
   };
 
   return (

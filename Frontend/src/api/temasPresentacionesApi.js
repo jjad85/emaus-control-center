@@ -15,8 +15,7 @@ export async function subirVersionTema(
   token,
   temaId,
   archivo,
-  comentario = '',
-  onUploadProgress
+  comentario = ''
 ) {
   const response = await postAction(
     'subirVersionTema',
@@ -28,7 +27,6 @@ export async function subirVersionTema(
     },
     {
       timeout: TIMEOUT_CARGA_ARCHIVO,
-      onUploadProgress,
     }
   );
 
@@ -52,8 +50,7 @@ export async function subirMusicaTema(
   token,
   temaId,
   archivo,
-  observaciones = '',
-  onUploadProgress
+  observaciones = ''
 ) {
   const response = await postAction(
     'subirMusicaTema',
@@ -65,7 +62,6 @@ export async function subirMusicaTema(
     },
     {
       timeout: TIMEOUT_CARGA_ARCHIVO,
-      onUploadProgress,
     }
   );
 

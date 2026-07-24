@@ -106,7 +106,7 @@ function obtenerAspirantes(
 ) {
   validarPermiso(
     token,
-    'CONSULTAR_ASPIRANTES'
+    'ASPIRANTES_VER_DETALLE'
   );
 
   const parametros =

@@ -111,7 +111,7 @@ function obtenerMatrizPermisos() {
  */
 function obtenerPermisosPorRol(rol) {
   const rolNormalizado =
-    normalizarTexto(rol);
+    normalizarCodigoRol_(rol);
 
   if (!rolNormalizado) {
     return [];
@@ -120,9 +120,67 @@ function obtenerPermisosPorRol(rol) {
   const matriz =
     obtenerMatrizPermisos();
 
+  /*
+   * El administrador siempre recibe todos los permisos activos de la matriz.
+   * Esto evita que una migración de nombres (Administrador -> ADMIN) deje al
+   * administrador sin acceso por tener filas antiguas en PermisosRol.
+   */
+  if (rolNormalizado === 'admin') {
+    const todos = [];
+
+    Object.keys(matriz).forEach(
+      function(codigoRol) {
+        (matriz[codigoRol] || []).forEach(
+          function(permiso) {
+            if (!todos.includes(permiso)) {
+              todos.push(permiso);
+            }
+          }
+        );
+      }
+    );
+
+    return todos;
+  }
+
   return (
     matriz[rolNormalizado] || []
   );
+}
+
+/**
+ * Normaliza nombres históricos y nombres visibles al código estable del rol.
+ * Las autorizaciones nunca deben depender del texto mostrado en pantalla.
+ */
+function normalizarCodigoRol_(rol) {
+  const valor = normalizarTexto(rol);
+
+  const alias = {
+    'administrador': 'admin',
+    'administrador del sistema': 'admin',
+    'admin': 'admin',
+    'equipo de audiovisuales': 'audiovisual',
+    'coordinador de audiovisuales': 'audiovisual',
+    'audiovisuales': 'audiovisual',
+    'audiovisual': 'audiovisual',
+    'lider del retiro': 'lider_retiro',
+    'lideres del retiro': 'lider_retiro',
+    'coordinador general': 'lider_retiro',
+    'coordinador general del retiro': 'lider_retiro',
+    'lider_retiro': 'lider_retiro',
+    'lider de mesa': 'lider_mesa',
+    'lideres de mesa': 'lider_mesa',
+    'lider_mesa': 'lider_mesa',
+    'servidor': 'servidor',
+    'servidores': 'servidor',
+    'equipo de registro': 'registro',
+    'coordinador de registro': 'registro',
+    'registro': 'registro',
+    'tesoreria': 'tesoreria',
+    'campanero': 'campanero'
+  };
+
+  return alias[valor] || valor.replace(/\s+/g, '_');
 }
 
 /**
@@ -130,7 +188,7 @@ function obtenerPermisosPorRol(rol) {
  */
 function validarRolActivo(rol) {
   const rolNormalizado =
-    normalizarTexto(rol);
+    normalizarCodigoRol_(rol);
 
   if (!rolNormalizado) {
     throw crearErrorAplicacion(
@@ -148,7 +206,7 @@ function validarRolActivo(rol) {
     roles.find(
       function(item) {
         return (
-          normalizarTexto(
+          normalizarCodigoRol_(
             item.rol
           ) === rolNormalizado
         );
@@ -230,4 +288,53 @@ function probarPermisosAdministrador() {
       2
     )
   );
+}
+
+/** Valida un permiso exacto o un permiso TODO asociado. */
+function tienePermisoSesion(token, permiso) {
+  const sesion = obtenerSesion(token);
+  const permisos = obtenerPermisosPorRol(sesion.rol);
+  const requerido = normalizarPermiso(permiso);
+  if (permisos.indexOf(requerido) >= 0) return true;
+  const equivalencias = {
+    CONSULTAR_ASPIRANTES: ['ASPIRANTES_VER_DETALLE'],
+    NOTIFICAR_ASPIRANTE: ['ASPIRANTES_NOTIFICAR_PREINSCRIPCION'],
+    CONVERTIR_ASPIRANTE: ['ASPIRANTES_CAMBIAR_ESTADO'],
+    ACTUALIZAR_ESTADO_ASPIRANTE: ['ASPIRANTES_CAMBIAR_ESTADO'],
+    CONSULTAR_CAMINANTES: ['CAMINANTES_VER_DETALLE'],
+    EDITAR_CAMINANTE: ['CAMINANTES_EDITAR'],
+    REGISTRAR_CAMINANTE: ['CAMINANTES_REGISTRAR'],
+    ASIGNAR_MESA: ['CAMINANTES_ASIGNAR_MESA', 'MESAS_ASIGNAR_CAMINANTE'],
+    ASIGNAR_HABITACION: ['CAMINANTES_ASIGNAR_HABITACION', 'HABITACIONES_ASIGNAR_PERSONA'],
+    ACTUALIZAR_CARTA: ['CAMINANTES_REPORTAR_CARTA'],
+    ACTUALIZAR_FOTO: ['CAMINANTES_REPORTAR_FOTO'],
+    CONSULTAR_SERVIDORES: ['SERVIDORES_VER_DETALLE'],
+    EDITAR_SERVIDOR: ['SERVIDORES_EDITAR'],
+    EDITAR_EQUIPOS: ['EQUIPOS_CREAR', 'EQUIPOS_ASIGNAR_SERVIDOR', 'EQUIPOS_EDITAR'],
+    GESTIONAR_PRESENTACIONES: ['PRESENTACIONES_TODO'],
+    GESTIONAR_PAGOS: ['PAGOS_VER_ESTADOS_CUENTA'],
+    ADMINISTRAR_TEMAS: ['TEMAS_VER_DETALLE', 'TEMAS_EDITAR', 'TEMAS_CREAR', 'TEMAS_DESACTIVAR'],
+    EXPORTAR_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_EXPORTAR'],
+    IMPORTAR_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_IMPORTAR'],
+    CREAR_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_REGISTRAR_ACTIVIDAD'],
+    EDITAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_EDITAR'],
+    ACTUALIZAR_ESTADO_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+    MOVER_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ORDEN'],
+    INICIAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_INICIAR'],
+    PAUSAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+    REANUDAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+    FINALIZAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+    REPORTAR_PAGO_REGISTRAR: ['REPORTAR_PAGO_TODO'],
+  };
+  return (equivalencias[requerido] || []).some(function(codigo) {
+    return permisos.indexOf(normalizarPermiso(codigo)) >= 0;
+  });
+}
+
+function validarPermisoSesion(token, permiso, mensaje) {
+  const sesion = obtenerSesion(token);
+  if (!tienePermisoSesion(token, permiso)) {
+    throw crearErrorAplicacion('PERMISO_DENEGADO', mensaje || 'No tiene permisos para realizar esta acción.');
+  }
+  return sesion;
 }

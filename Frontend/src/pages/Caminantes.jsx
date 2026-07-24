@@ -700,7 +700,7 @@ export default function Caminantes() {
           </Stack>
 
           <ProtectedButton
-            permiso="REGISTRAR_CAMINANTE"
+            permiso="CAMINANTES_REGISTRAR"
             variant="contained"
             startIcon={<AddRounded />}
             onClick={abrirRegistro}
@@ -885,7 +885,7 @@ export default function Caminantes() {
                     gap: 0.5,
                   }}
                 >
-                  {puede("EDITAR_CAMINANTE") && (
+                  {puede("CAMINANTES_EDITAR") && (
                     <Button
                       size="small"
                       startIcon={<EditRounded />}
@@ -895,17 +895,7 @@ export default function Caminantes() {
                     </Button>
                   )}
 
-                  {puede("ACTUALIZAR_PAGO") && (
-                    <Button
-                      size="small"
-                      startIcon={<PaymentsRounded />}
-                      onClick={() => abrirAccion("pago", caminante)}
-                    >
-                      Pago
-                    </Button>
-                  )}
-
-                  {puede("ASIGNAR_MESA") && (
+                  {puede("CAMINANTES_ASIGNAR_MESA") && (
                     <Button
                       size="small"
                       startIcon={<TableRestaurantRounded />}
@@ -915,7 +905,7 @@ export default function Caminantes() {
                     </Button>
                   )}
 
-                  {puede("ASIGNAR_HABITACION") && (
+                  {puede("CAMINANTES_ASIGNAR_HABITACION") && (
                     <Button
                       size="small"
                       startIcon={<BedRounded />}
@@ -925,7 +915,7 @@ export default function Caminantes() {
                     </Button>
                   )}
 
-                  {puede("ACTUALIZAR_CARTA") && (
+                  {puede("CAMINANTES_REPORTAR_CARTA") && (
                     <Button
                       size="small"
                       startIcon={<MailRounded />}
@@ -935,7 +925,7 @@ export default function Caminantes() {
                     </Button>
                   )}
 
-                  {puede("ACTUALIZAR_FOTO") && (
+                  {puede("CAMINANTES_REPORTAR_FOTO") && (
                     <Button
                       size="small"
                       startIcon={<PhotoRounded />}

@@ -41,7 +41,6 @@ export default function NotificationBell({ modo = 'desktop' }) {
     token,
     autenticado,
     loading: authLoading,
-    tienePermiso,
   } = useAuth();
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -53,15 +52,12 @@ export default function NotificationBell({ modo = 'desktop' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // La campana debe estar disponible para cualquier usuario autenticado.
+  // El backend decide qué notificaciones puede consultar cada usuario.
   const puedeConsultar =
     !authLoading &&
     autenticado &&
-    (
-      tienePermiso('CONVERTIR_ASPIRANTE') ||
-      tienePermiso('NOTIFICAR_ASPIRANTE') ||
-      tienePermiso('NOTIFICAR_CAMINANTE') ||
-      tienePermiso('GESTIONAR_PAGOS')
-    );
+    Boolean(token);
 
   const cargar = useCallback(async () => {
     if (!puedeConsultar || !token) {

@@ -1,524 +1,96 @@
-import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Divider,
-  FormControlLabel,
-  Grid,
-  MenuItem,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
-
-import LockOpenRounded from '@mui/icons-material/LockOpenRounded';
+import { Alert, Box, Button, Checkbox, CircularProgress, Divider, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 import SecurityRounded from '@mui/icons-material/SecurityRounded';
-
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-
+import LockOpenRounded from '@mui/icons-material/LockOpenRounded';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useApi } from '../hooks/useApi';
-
 import PageHeader from '../components/PageHeader';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
-
-import {
-  desbloquearUsuarioSistemaApi,
-  guardarPermisosRolSistemaApi,
-  obtenerAdministracionSistemaApi,
-} from '../api/administracionApi';
-
-
-const ETIQUETAS_PERMISOS = {
-  IMPORTAR_ACTIVIDADES_PASO_A_PASO: 'Importar actividades del paso a paso',
-  CREAR_ACTIVIDADES_PASO_A_PASO: 'Crear actividades del paso a paso',
-  EXPORTAR_ACTIVIDADES_PASO_A_PASO: 'Exportar tabla y cronograma del paso a paso',
-  MOVER_ACTIVIDADES_PASO_A_PASO: 'Mover actividades en modo acordeón',
-};
-
-function etiquetaPermiso(permiso) {
-  return ETIQUETAS_PERMISOS[permiso] || permiso;
-}
-
-function esAdministrador(
-  rol
-) {
-  const normalizado =
-    String(
-      rol || ''
-    )
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(
-        /[\u0300-\u036f]/g,
-        ''
-      );
-
-  return (
-    normalizado ===
-      'administrador' ||
-    normalizado ===
-      'administradores'
-  );
-}
-
-function fechaVisible(
-  valor
-) {
-  if (!valor) {
-    return '—';
-  }
-
-  const fecha =
-    new Date(valor);
-
-  if (
-    Number.isNaN(
-      fecha.getTime()
-    )
-  ) {
-    return String(valor);
-  }
-
-  return new Intl.DateTimeFormat(
-    'es-CO',
-    {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    }
-  ).format(fecha);
-}
+import { desbloquearUsuarioSistemaApi, guardarPermisosRolSistemaApi, obtenerAdministracionSistemaApi } from '../api/administracionApi';
 
 export default function Administracion() {
-  const {
-    token,
-    rol,
-  } = useAuth();
-
-  const api = useApi(
-    () =>
-      obtenerAdministracionSistemaApi(
-        token
-      ),
-    [token]
-  );
-
-  const [rolSeleccionado, setRolSeleccionado] =
-    useState('');
-
-  const [permisosSeleccionados, setPermisosSeleccionados] =
-    useState([]);
-
-  const [procesando, setProcesando] =
-    useState(false);
-
-  const [mensaje, setMensaje] =
-    useState('');
-
-  const [error, setError] =
-    useState('');
-
-  const datos =
-    api.data || {};
-
-  const roles =
-    datos.roles || [];
-
-  const catalogoPermisos =
-    datos.permisos || [];
-
-  const permisosPorRol =
-    datos.permisosPorRol || {};
+  const { token, tienePermiso } = useAuth();
+  const api = useApi(() => obtenerAdministracionSistemaApi(token), [token]);
+  const [matriz, setMatriz] = useState({});
+  const [procesando, setProcesando] = useState(false);
+  const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState('');
+  const datos = api.data || {};
+  const roles = datos.roles || [];
+  const catalogo = datos.permisos || [];
 
   useEffect(() => {
-    if (
-      !rolSeleccionado &&
-      roles.length
-    ) {
-      setRolSeleccionado(
-        roles[0].rol
-      );
+    if (api.data) {
+      const inicial = {};
+      roles.forEach((r) => { inicial[r.rol] = [...(datos.permisosPorRol?.[r.rol] || [])]; });
+      setMatriz(inicial);
     }
-  }, [
-    roles,
-    rolSeleccionado,
-  ]);
+  }, [api.data]);
 
-  useEffect(() => {
-    if (!rolSeleccionado) {
-      setPermisosSeleccionados([]);
-      return;
-    }
+  const grupos = useMemo(() => {
+    const resultado = [];
+    catalogo.forEach((item) => {
+      const permiso = typeof item === 'string' ? { codigo: item, modulo: 'Otros', pagina: 'Otros', accion: item } : item;
+      let grupo = resultado.find((g) => g.modulo === permiso.modulo && g.pagina === permiso.pagina);
+      if (!grupo) { grupo = { modulo: permiso.modulo, pagina: permiso.pagina, permisos: [] }; resultado.push(grupo); }
+      grupo.permisos.push(permiso);
+    });
+    return resultado;
+  }, [catalogo]);
 
-    setPermisosSeleccionados(
-      permisosPorRol[
-        rolSeleccionado
-      ] || []
-    );
-  }, [
-    rolSeleccionado,
-    permisosPorRol,
-  ]);
+  const usuariosBloqueados = (datos.usuarios || []).filter((u) => u.bloqueado);
 
-  const usuariosBloqueados =
-    useMemo(
-      () =>
-        (
-          datos.usuarios || []
-        ).filter(
-          (usuario) =>
-            usuario.bloqueado
-        ),
-      [datos.usuarios]
-    );
+  if (!tienePermiso('SISTEMA_TODO')) return <Alert severity="error">No tiene permisos para administrar el sistema.</Alert>;
+  if (api.loading && !api.data) return <LoadingState />;
+  if (api.error) return <ErrorState message={api.error} onRetry={api.reload} />;
 
-  if (!esAdministrador(rol)) {
-    return (
-      <Alert severity="error">
-        Esta página es exclusiva para administradores.
-      </Alert>
-    );
+  function cambiar(rol, permiso) {
+    setMatriz((actual) => {
+      const lista = actual[rol] || [];
+      return { ...actual, [rol]: lista.includes(permiso) ? lista.filter((p) => p !== permiso) : [...lista, permiso] };
+    });
   }
 
-  if (
-    api.loading &&
-    !api.data
-  ) {
-    return <LoadingState />;
-  }
-
-  if (api.error) {
-    return (
-      <ErrorState
-        message={api.error}
-        onRetry={api.reload}
-      />
-    );
-  }
-
-  async function desbloquear(
-    usuario
-  ) {
-    setProcesando(true);
-    setError('');
-    setMensaje('');
-
+  async function guardarTodo() {
+    setProcesando(true); setError(''); setMensaje('');
     try {
-      await desbloquearUsuarioSistemaApi(
-        token,
-        usuario
-      );
-
-      setMensaje(
-        `El usuario ${usuario} fue desbloqueado.`
-      );
-
+      for (const rol of roles) await guardarPermisosRolSistemaApi(token, rol.rol, matriz[rol.rol] || []);
+      setMensaje('La matriz de roles y permisos fue actualizada correctamente. Cierre sesión e ingrese nuevamente para refrescar los permisos.');
       await api.reload();
-    } catch (err) {
-      setError(
-        err.message ||
-          'No fue posible desbloquear el usuario.'
-      );
-    } finally {
-      setProcesando(false);
-    }
+    } catch (e) { setError(e.message || 'No fue posible guardar la matriz.'); }
+    finally { setProcesando(false); }
   }
 
-  function cambiarPermiso(
-    permiso
-  ) {
-    setPermisosSeleccionados(
-      (actuales) =>
-        actuales.includes(
-          permiso
-        )
-          ? actuales.filter(
-              (item) =>
-                item !== permiso
-            )
-          : [
-              ...actuales,
-              permiso,
-            ]
-    );
+  async function desbloquear(usuario) {
+    setProcesando(true); setError('');
+    try { await desbloquearUsuarioSistemaApi(token, usuario); await api.reload(); }
+    catch (e) { setError(e.message || 'No fue posible desbloquear el usuario.'); }
+    finally { setProcesando(false); }
   }
 
-  async function guardarPermisos() {
-    if (!rolSeleccionado) {
-      return;
-    }
-
-    setProcesando(true);
-    setError('');
-    setMensaje('');
-
-    try {
-      await guardarPermisosRolSistemaApi(
-        token,
-        rolSeleccionado,
-        permisosSeleccionados
-      );
-
-      setMensaje(
-        `Los permisos de ${rolSeleccionado} fueron actualizados.`
-      );
-
-      await api.reload();
-    } catch (err) {
-      setError(
-        err.message ||
-          'No fue posible actualizar los permisos.'
-      );
-    } finally {
-      setProcesando(false);
-    }
-  }
-
-  return (
-    <>
-      <PageHeader
-        eyebrow="Sistema"
-        title="Administración"
-        subtitle="Seguridad de usuarios, roles y permisos"
-        onRefresh={api.reload}
-        loading={api.loading}
-      />
-
-      <Stack spacing={2.5}>
-        {mensaje && (
-          <Alert severity="success">
-            {mensaje}
-          </Alert>
-        )}
-
-        {error && (
-          <Alert severity="error">
-            {error}
-          </Alert>
-        )}
-
-        <Paper sx={{ p: 2.5 }}>
-          <Stack spacing={2}>
-            <Box>
-              <Typography
-                variant="h6"
-                fontWeight={900}
-              >
-                Usuarios bloqueados
-              </Typography>
-
-              <Typography
-                color="text.secondary"
-                variant="body2"
-              >
-                Desbloqueo manual de cuentas bloqueadas por intentos fallidos.
-              </Typography>
-            </Box>
-
-            <Divider />
-
-            {!usuariosBloqueados.length ? (
-              <Alert severity="info">
-                No hay usuarios bloqueados actualmente.
-              </Alert>
-            ) : (
-              <Stack spacing={1.5}>
-                {usuariosBloqueados.map(
-                  (usuario) => (
-                    <Paper
-                      key={usuario.id || usuario.usuario}
-                      variant="outlined"
-                      sx={{
-                        p: 2,
-                        borderRadius: 3,
-                      }}
-                    >
-                      <Stack
-                        direction={{
-                          xs: 'column',
-                          md: 'row',
-                        }}
-                        justifyContent="space-between"
-                        alignItems={{
-                          xs: 'stretch',
-                          md: 'center',
-                        }}
-                        gap={2}
-                      >
-                        <Box>
-                          <Typography
-                            fontWeight={850}
-                          >
-                            {usuario.nombre ||
-                              usuario.usuario}
-                          </Typography>
-
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                          >
-                            Usuario: {usuario.usuario}
-                          </Typography>
-
-                          <Stack
-                            direction="row"
-                            gap={1}
-                            mt={1}
-                            flexWrap="wrap"
-                          >
-                            <Chip
-                              size="small"
-                              color="error"
-                              label={`${usuario.intentosFallidos} intentos`}
-                            />
-
-                            <Chip
-                              size="small"
-                              label={`Bloqueado hasta: ${fechaVisible(
-                                usuario.bloqueadoHasta
-                              )}`}
-                            />
-                          </Stack>
-                        </Box>
-
-                        <Button
-                          variant="contained"
-                          startIcon={<LockOpenRounded />}
-                          onClick={() =>
-                            desbloquear(
-                              usuario.usuario
-                            )
-                          }
-                          disabled={procesando}
-                        >
-                          Desbloquear
-                        </Button>
-                      </Stack>
-                    </Paper>
-                  )
-                )}
-              </Stack>
-            )}
-          </Stack>
-        </Paper>
-
-        <Paper sx={{ p: 2.5 }}>
-          <Stack spacing={2}>
-            <Box>
-              <Typography
-                variant="h6"
-                fontWeight={900}
-              >
-                Roles y permisos
-              </Typography>
-
-              <Typography
-                color="text.secondary"
-                variant="body2"
-              >
-                Seleccione un rol y determine sus permisos activos.
-              </Typography>
-            </Box>
-
-            <Divider />
-
-            <TextField
-              select
-              label="Rol"
-              value={rolSeleccionado}
-              onChange={(event) =>
-                setRolSeleccionado(
-                  event.target.value
-                )
-              }
-              sx={{
-                maxWidth: 420,
-              }}
-            >
-              {roles.map(
-                (item) => (
-                  <MenuItem
-                    key={item.rol}
-                    value={item.rol}
-                  >
-                    {item.rol}
-                  </MenuItem>
-                )
-              )}
-            </TextField>
-
-            <Grid
-              container
-              spacing={1}
-            >
-              {catalogoPermisos.map(
-                (permiso) => (
-                  <Grid
-                    key={permiso}
-                    size={{
-                      xs: 12,
-                      sm: 6,
-                      lg: 4,
-                    }}
-                  >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={
-                            permisosSeleccionados.includes(
-                              permiso
-                            )
-                          }
-                          onChange={() =>
-                            cambiarPermiso(
-                              permiso
-                            )
-                          }
-                        />
-                      }
-                      label={etiquetaPermiso(permiso)}
-                    />
-                  </Grid>
-                )
-              )}
-            </Grid>
-
-            <Button
-              variant="contained"
-              startIcon={
-                procesando
-                  ? (
-                    <CircularProgress
-                      size={18}
-                      color="inherit"
-                    />
-                  )
-                  : <SecurityRounded />
-              }
-              onClick={guardarPermisos}
-              disabled={
-                procesando ||
-                !rolSeleccionado
-              }
-              sx={{
-                alignSelf: 'flex-start',
-              }}
-            >
-              Guardar permisos
-            </Button>
-          </Stack>
-        </Paper>
-      </Stack>
-    </>
-  );
+  return <>
+    <PageHeader eyebrow="Sistema" title="Administración" subtitle="Matriz definitiva de roles y permisos" onRefresh={api.reload} loading={api.loading} />
+    <Stack spacing={2.5}>
+      {mensaje && <Alert severity="success">{mensaje}</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
+      <Paper sx={{ p: 2.5 }}>
+        <Typography variant="h6" fontWeight={900}>Usuarios bloqueados</Typography>
+        <Divider sx={{ my: 2 }} />
+        {!usuariosBloqueados.length ? <Alert severity="info">No hay usuarios bloqueados.</Alert> : usuariosBloqueados.map((u) => <Stack key={u.usuario} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 1 }}><Box><Typography fontWeight={800}>{u.nombre || u.usuario}</Typography><Typography variant="body2">{u.usuario}</Typography></Box><Button startIcon={<LockOpenRounded />} onClick={() => desbloquear(u.usuario)}>Desbloquear</Button></Stack>)}
+      </Paper>
+      <Paper sx={{ p: 2.5 }}>
+        <Stack direction={{ xs:'column', md:'row' }} justifyContent="space-between" gap={2} mb={2}>
+          <Box><Typography variant="h6" fontWeight={900}>Roles y permisos</Typography><Typography variant="body2" color="text.secondary">Marque las acciones permitidas para cada rol. El control aplica al menú, páginas, botones y backend.</Typography></Box>
+          <Button variant="contained" startIcon={procesando ? <CircularProgress size={18} color="inherit" /> : <SecurityRounded />} disabled={procesando} onClick={guardarTodo}>Guardar matriz</Button>
+        </Stack>
+        <TableContainer sx={{ maxHeight: '68vh', border: 1, borderColor: 'divider', borderRadius: 2 }}>
+          <Table stickyHeader size="small">
+            <TableHead><TableRow><TableCell sx={{ minWidth: 170, fontWeight: 900 }}>Módulo</TableCell><TableCell sx={{ minWidth: 170, fontWeight: 900 }}>Página</TableCell><TableCell sx={{ minWidth: 220, fontWeight: 900 }}>Acción</TableCell>{roles.map((r) => <TableCell key={r.rol} align="center" sx={{ minWidth: 105, fontWeight: 900 }}>{r.rol}</TableCell>)}</TableRow></TableHead>
+            <TableBody>{grupos.flatMap((grupo) => grupo.permisos.map((p, index) => <TableRow key={p.codigo} hover><TableCell>{index === 0 ? grupo.modulo : ''}</TableCell><TableCell>{index === 0 ? grupo.pagina : ''}</TableCell><TableCell>{p.accion}</TableCell>{roles.map((r) => <TableCell key={`${r.rol}-${p.codigo}`} align="center"><Checkbox checked={(matriz[r.rol] || []).includes(p.codigo)} onChange={() => cambiar(r.rol, p.codigo)} /></TableCell>)}</TableRow>))}</TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    </Stack>
+  </>;
 }

@@ -454,6 +454,18 @@ function routePost(contenido) {
         mensaje: 'Orden del tema actualizado correctamente'
       };
 
+    case 'reordenartemas':
+      return {
+        datos: reordenarTemas(
+          contenido.token,
+          contenido.idsOrdenados ||
+          (contenido.datos && contenido.datos.idsOrdenados) ||
+          contenido.orden ||
+          []
+        ),
+        mensaje: 'Orden de los temas actualizado correctamente'
+      };
+
     case 'obtener mitemaasignado':
     case 'obtenermitemaasignado':
       return { datos: obtenerMiTemaAsignado(contenido.token), mensaje: 'Temas asignados consultados correctamente' };
@@ -466,6 +478,24 @@ function routePost(contenido) {
 
     case 'subirmusicatema':
       return { datos: subirMusicaTema(contenido.token, contenido.temaId, contenido.archivo, contenido.observaciones), mensaje: 'Música cargada correctamente' };
+
+    case 'obtenerrevisionpresentaciones':
+      return { datos: obtenerRevisionPresentaciones(contenido.token), mensaje: 'Presentaciones consultadas correctamente' };
+
+    case 'comentarpresentacion':
+      return { datos: comentarPresentacion(contenido.token, contenido.temaId, contenido.versionId, contenido.comentario), mensaje: 'Comentario registrado correctamente' };
+
+    case 'revisarpresentacionaudiovisuales':
+      return { datos: revisarPresentacionAudiovisuales(contenido.token, contenido.temaId, contenido.versionId, contenido.decision, contenido.comentario), mensaje: 'Revisión registrada correctamente' };
+
+    case 'responderrevisionservidor':
+      return { datos: responderRevisionServidor(contenido.token, contenido.temaId, contenido.versionId, contenido.decision, contenido.comentario), mensaje: 'Respuesta registrada correctamente' };
+
+    case 'obtenernotificacionestemas':
+      return { datos: obtenerNotificacionesTemas(contenido.token), mensaje: 'Notificaciones consultadas correctamente' };
+
+    case 'marcarnotificaciontemaleida':
+      return { datos: marcarNotificacionTemaLeida(contenido.token, contenido.id), mensaje: 'Notificación actualizada correctamente' };
 
     case 'obteneradministracionsistema':
       return {

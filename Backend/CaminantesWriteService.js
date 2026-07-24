@@ -34,10 +34,10 @@ function obtenerOpcionesRegistroCaminante(
 
   const puedeConsultar =
     [
-      'REGISTRAR_CAMINANTE',
-      'EDITAR_CAMINANTE',
-      'ASIGNAR_MESA',
-      'ASIGNAR_HABITACION'
+      'CAMINANTES_REGISTRAR',
+      'CAMINANTES_EDITAR',
+      'CAMINANTES_ASIGNAR_MESA',
+      'CAMINANTES_ASIGNAR_HABITACION'
     ].some(
       function(permiso) {
         return permisos.includes(
@@ -78,7 +78,7 @@ function registrarCaminante(
   const sesion =
     validarPermiso(
       token,
-      'REGISTRAR_CAMINANTE'
+      'CAMINANTES_REGISTRAR'
     );
 
   return ejecutarCrudConBloqueo(
@@ -161,7 +161,7 @@ function registrarCaminanteInterno(
 
   auditarCaminanteCrud(
     sesion,
-    'REGISTRAR_CAMINANTE',
+    'CAMINANTES_REGISTRAR',
     creado.id,
     creado
   );
@@ -174,7 +174,7 @@ function registrarCaminanteInterno(
 /**
  * Edita datos generales.
  *
- * Requiere EDITAR_CAMINANTE.
+ * Requiere CAMINANTES_EDITAR.
  */
 function editarCaminante(
   token,
@@ -184,7 +184,7 @@ function editarCaminante(
   const sesion =
     validarPermiso(
       token,
-      'EDITAR_CAMINANTE'
+      'CAMINANTES_EDITAR'
     );
 
   return ejecutarCrudConBloqueo(
@@ -234,7 +234,7 @@ function editarCaminante(
 
       auditarCaminanteCrud(
         sesion,
-        'EDITAR_CAMINANTE',
+        'CAMINANTES_EDITAR',
         id,
         {
           anterior: actual,
@@ -296,7 +296,7 @@ function asignarMesaCaminante(
   const sesion =
     validarPermiso(
       token,
-      'ASIGNAR_MESA'
+      'CAMINANTES_ASIGNAR_MESA'
     );
 
   const valor =
@@ -316,7 +316,7 @@ function asignarMesaCaminante(
         id,
         'mesa',
         valor,
-        'ASIGNAR_MESA'
+        'CAMINANTES_ASIGNAR_MESA'
       );
     }
   );
@@ -333,7 +333,7 @@ function asignarHabitacionCaminante(
   const sesion =
     validarPermiso(
       token,
-      'ASIGNAR_HABITACION'
+      'CAMINANTES_ASIGNAR_HABITACION'
     );
 
   const valor =
@@ -353,7 +353,7 @@ function asignarHabitacionCaminante(
         id,
         'habitacion',
         valor,
-        'ASIGNAR_HABITACION'
+        'CAMINANTES_ASIGNAR_HABITACION'
       );
     }
   );
@@ -370,7 +370,7 @@ function actualizarCartaCaminante(
   const sesion =
     validarPermiso(
       token,
-      'ACTUALIZAR_CARTA'
+      'CAMINANTES_REPORTAR_CARTA'
     );
 
   const valor =
@@ -391,7 +391,7 @@ function actualizarCartaCaminante(
     id,
     'carta',
     valor,
-    'ACTUALIZAR_CARTA'
+    'CAMINANTES_REPORTAR_CARTA'
   );
 }
 
@@ -406,7 +406,7 @@ function actualizarFotoCaminante(
   const sesion =
     validarPermiso(
       token,
-      'ACTUALIZAR_FOTO'
+      'CAMINANTES_REPORTAR_FOTO'
     );
 
   const valor =
@@ -427,7 +427,7 @@ function actualizarFotoCaminante(
     id,
     'foto',
     valor,
-    'ACTUALIZAR_FOTO'
+    'CAMINANTES_REPORTAR_FOTO'
   );
 }
 

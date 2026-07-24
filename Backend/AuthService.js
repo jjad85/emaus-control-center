@@ -834,10 +834,16 @@ function validarPermiso(
       sesion.rol
     );
 
+  /*
+   * ADMIN es un superusuario. Su acceso no puede quedar bloqueado porque
+   * un permiso nuevo aún no exista en la matriz o no haya sido migrado.
+   */
+  const esAdministrador =
+    normalizarCodigoRol_(sesion.rol) === 'admin';
+
   if (
-    !permisosActuales.includes(
-      permiso
-    )
+    !esAdministrador &&
+    !tienePermisoSesion(token, permiso)
   ) {
     throw crearErrorAplicacion(
       'PERMISO_DENEGADO',
@@ -853,7 +859,9 @@ function validarPermiso(
     sesion,
     {
       permisos:
-        permisosActuales
+        esAdministrador && !permisosActuales.includes(permiso)
+          ? permisosActuales.concat([permiso])
+          : permisosActuales
     }
   );
 }

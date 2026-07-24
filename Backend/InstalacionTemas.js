@@ -2,7 +2,7 @@
 function instalarModuloTemas() {
   const libro = obtenerLibro();
   const encabezadosTemas = [
-    'ID','Nombre','Descripción','Duración Minutos','Día del Tema','Orden del Día','Orden General','Hora Propuesta',
+    'ID','Nombre','Descripción','Duración Minutos','Día del Tema','Hora Propuesta',
     'Servidor ID','Servidor Nombre','Requiere Presentación','Requiere Testimonio','Requiere Música','Estado Preparación',
     'Aprobación Conferencista','Aprobación Audiovisuales','Versión Aprobada ID','Carpeta Drive ID','Carpeta Drive URL',
     'Observaciones','Activo','Fecha Registro','Fecha Actualización','Actualizado Por'
@@ -13,13 +13,15 @@ function instalarModuloTemas() {
     TemaRevisiones: ['ID','Tema ID','Versión ID','Tipo Revisión','Revisor ID','Revisor Nombre','Decisión','Observaciones','Fecha Registro'],
     TemaMusica: ['ID','Tema ID','Nombre Canción','Autor','Plataforma','URL','Archivo Drive ID','Archivo Drive URL','Observaciones','Activo','Fecha Registro','Fecha Actualización','Actualizado Por'],
     TemaArchivos: ['ID','Tema ID','Categoría','Nombre Archivo','Archivo Drive ID','Archivo Drive URL','Cargado Por ID','Cargado Por Nombre','Observaciones','Activo','Fecha Registro'],
-    TemaOrdenHistorial: ['ID','Tema ID','Día Anterior','Día Nuevo','Orden Anterior','Orden Nuevo','Usuario ID','Usuario Nombre','Fecha Registro']
   };
 
   migrarHojaTemas_(libro, encabezadosTemas);
   Object.keys(auxiliares).forEach(function(nombre) { asegurarHojaTemas_(libro, nombre, auxiliares[nombre]); });
   instalarPermisoAdministrarTemas_(libro);
   instalarConfiguracionPlantillaTemas_(libro);
+
+  const historialOrden = libro.getSheetByName('TemaOrdenHistorial');
+  if (historialOrden) libro.deleteSheet(historialOrden);
 
   return { instalado: true, hoja: HOJAS.TEMAS, columnas: encabezadosTemas.length, hojasAuxiliares: Object.keys(auxiliares), permiso: 'ADMINISTRAR_TEMAS' };
 }
@@ -32,21 +34,18 @@ function migrarHojaTemas_(libro, encabezados) {
   const encabezadosAnteriores = datosAnteriores.length ? datosAnteriores[0].map(String) : [];
   const mapas = encabezadosAnteriores.map(function(valor) { return normalizarEncabezado(valor); });
   const ahora = new Date();
-  const conteoDia = {};
-  let ordenGeneral = 0;
+  let consecutivo = 0;
 
   const nuevasFilas = datosAnteriores.slice(1).filter(function(fila) { return fila.some(function(v) { return String(v || '').trim(); }); }).map(function(fila) {
     const anterior = {};
     mapas.forEach(function(clave, indice) { anterior[clave] = fila[indice]; });
-    ordenGeneral += 1;
+    consecutivo += 1;
     const dia = String(anterior.diaDelTema || 'Sin definir').trim() || 'Sin definir';
-    const claveDia = normalizarTexto(dia);
-    conteoDia[claveDia] = (conteoDia[claveDia] || 0) + 1;
 
     const registro = {
-      id: anterior.id || ordenGeneral,
+      id: anterior.id || consecutivo,
       nombre: anterior.nombre || '', descripcion: anterior.descripcion || '', duracionMinutos: anterior.duracionMinutos || '',
-      diaDelTema: dia, ordenDelDia: anterior.ordenDelDia || conteoDia[claveDia], ordenGeneral: anterior.ordenGeneral || ordenGeneral,
+      diaDelTema: dia,
       horaPropuesta: anterior.horaPropuesta || '', servidorId: anterior.servidorId || '', servidorNombre: anterior.servidorNombre || '',
       requierePresentacion: anterior.requierePresentacion || 'Pendiente', requiereTestimonio: anterior.requiereTestimonio || 'No',
       requiereMusica: anterior.requiereMusica || 'Pendiente', estadoPreparacion: anterior.estadoPreparacion || 'Pendiente de definición',

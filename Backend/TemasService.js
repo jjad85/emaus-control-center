@@ -1,14 +1,18 @@
 /**
  * ============================================================
- * TEMAS SERVICE - FASE 1
+ * TEMAS SERVICE
  * ============================================================
- * Administración, asignación y ordenamiento de temas.
+ * Administración y asignación de temas agrupados por día.
+ * El módulo no maneja orden manual ni automático.
  */
 
-const PERMISO_ADMINISTRAR_TEMAS = 'ADMINISTRAR_TEMAS';
+const PERMISO_VER_TEMAS = 'TEMAS_VER_DETALLE';
+const PERMISO_CREAR_TEMAS = 'TEMAS_CREAR';
+const PERMISO_EDITAR_TEMAS = 'TEMAS_EDITAR';
+const PERMISO_DESACTIVAR_TEMAS = 'TEMAS_DESACTIVAR';
 
 function obtenerTemas(token, filtros) {
-  validarPermiso(token, PERMISO_ADMINISTRAR_TEMAS);
+  validarPermiso(token, PERMISO_VER_TEMAS);
 
   const parametros = filtros || {};
   const incluirInactivos = convertirBooleano(parametros.incluirInactivos);
@@ -19,8 +23,7 @@ function obtenerTemas(token, filtros) {
       return coincideTexto(item.nombre, parametros.nombre);
     });
 
-  ordenarTemasEnMemoria_(items);
-  completarNavegacionTemas_(items);
+  ordenarTemasPorDiaYHora_(items);
 
   return {
     items: items,
@@ -30,165 +33,68 @@ function obtenerTemas(token, filtros) {
 }
 
 function registrarTema(token, datos) {
-  const sesion = validarPermiso(token, PERMISO_ADMINISTRAR_TEMAS);
+  const sesion = validarPermiso(token, PERMISO_CREAR_TEMAS);
 
   return ejecutarCrudConBloqueo(function() {
     const registro = prepararTema_(datos);
     validarTema_(registro);
     validarNombreTemaUnico_(registro.nombre, null);
 
-    registro.ordenGeneral = obtenerSiguienteOrdenGeneralTema_();
-    registro.ordenDelDia = obtenerSiguienteOrdenDiaTema_(registro.diaDelTema);
     registro.estadoPreparacion = calcularEstadoPreparacionTema_(registro);
     registro.aprobacionConferencista = 'No';
     registro.aprobacionAudiovisuales = 'No';
 
     const creado = crearRegistroSheet(HOJAS.TEMAS, registro, opcionesCrudTemas(sesion.usuario));
-    normalizarOrdenesTemas_(sesion);
     auditarTema_(sesion, 'REGISTRAR_TEMA', creado.id, creado);
     return convertirTema(leerRegistroPorIdSheet(HOJAS.TEMAS, creado.id, opcionesCrudTemas('')));
   });
 }
 
 function editarTema(token, id, datos) {
-  const sesion = validarPermiso(token, PERMISO_ADMINISTRAR_TEMAS);
+  const sesion = validarPermiso(token, PERMISO_EDITAR_TEMAS);
 
   return ejecutarCrudConBloqueo(function() {
-    const anterior = leerRegistroPorIdSheet(HOJAS.TEMAS, id, opcionesCrudTemas(sesion.usuario));
+    const temaId = String(id || '').trim();
+    if (!temaId) {
+      throw crearErrorAplicacion('ID_TEMA_REQUERIDO', 'No se recibió el identificador del tema que se desea editar.');
+    }
+
+    const anterior = leerRegistroPorIdSheet(HOJAS.TEMAS, temaId, opcionesCrudTemas(sesion.usuario));
     const registro = prepararTema_(datos);
     validarTema_(registro);
-    validarNombreTemaUnico_(registro.nombre, id);
-
-    const cambioDia = normalizarTexto(anterior.diaDelTema) !== normalizarTexto(registro.diaDelTema);
-    if (cambioDia) {
-      registro.ordenDelDia = obtenerSiguienteOrdenDiaTema_(registro.diaDelTema, id);
-    }
+    validarNombreTemaUnico_(registro.nombre, temaId);
     registro.estadoPreparacion = calcularEstadoPreparacionTema_(Object.assign({}, anterior, registro));
 
-    const actualizado = actualizarRegistroSheet(HOJAS.TEMAS, id, registro, opcionesCrudTemas(sesion.usuario));
-    normalizarOrdenesTemas_(sesion);
-    registrarHistorialOrdenTema_(sesion, anterior, actualizado);
-    auditarTema_(sesion, 'EDITAR_TEMA', id, { anterior: anterior, nuevo: actualizado });
-    return convertirTema(leerRegistroPorIdSheet(HOJAS.TEMAS, id, opcionesCrudTemas('')));
+    const actualizado = actualizarRegistroSheet(
+      HOJAS.TEMAS,
+      temaId,
+      registro,
+      opcionesCrudTemas(sesion.usuario)
+    );
+
+    // Elimina duplicados históricos del mismo tema sin alterar la fila editada.
+    depurarDuplicadosTema_(temaId, actualizado.nombre);
+
+    const resultado = leerRegistroPorIdSheet(HOJAS.TEMAS, temaId, opcionesCrudTemas(''));
+    auditarTema_(sesion, 'EDITAR_TEMA', temaId, { anterior: anterior, nuevo: resultado });
+    return convertirTema(resultado);
   });
 }
 
 function cambiarEstadoTema(token, id, activo) {
-  const sesion = validarPermiso(token, PERMISO_ADMINISTRAR_TEMAS);
+  const sesion = validarPermiso(token, PERMISO_DESACTIVAR_TEMAS);
 
   return ejecutarCrudConBloqueo(function() {
-    const anterior = leerRegistroPorIdSheet(HOJAS.TEMAS, id, opcionesCrudTemas(sesion.usuario));
     const activar = convertirBooleano(activo);
-    const cambios = { activo: activar ? 'Sí' : 'No' };
-
-    if (activar) {
-      cambios.ordenGeneral = obtenerSiguienteOrdenGeneralTema_(id);
-      cambios.ordenDelDia = obtenerSiguienteOrdenDiaTema_(anterior.diaDelTema, id);
-    }
-
-    const actualizado = actualizarRegistroSheet(HOJAS.TEMAS, id, cambios, opcionesCrudTemas(sesion.usuario));
-    normalizarOrdenesTemas_(sesion);
-    auditarTema_(sesion, activar ? 'ACTIVAR_TEMA' : 'DESACTIVAR_TEMA', id, actualizado);
-    return convertirTema(leerRegistroPorIdSheet(HOJAS.TEMAS, id, opcionesCrudTemas('')));
-  });
-}
-
-function moverTema(token, id, direccion) {
-  const sesion = validarPermiso(token, PERMISO_ADMINISTRAR_TEMAS);
-  const movimiento = normalizarTexto(direccion);
-
-  if (movimiento !== 'subir' && movimiento !== 'bajar') {
-    throw crearErrorAplicacion('DIRECCION_TEMA_INVALIDA', 'La dirección debe ser subir o bajar.');
-  }
-
-  return ejecutarCrudConBloqueo(function() {
-    const registros = listarRegistrosSheet(
+    const actualizado = actualizarRegistroSheet(
       HOJAS.TEMAS,
-      {},
+      id,
+      { activo: activar ? 'Sí' : 'No' },
       opcionesCrudTemas(sesion.usuario)
     );
 
-    const activos = registros
-      .filter(function(item) {
-        return convertirBooleano(item.activo);
-      })
-      .sort(function(a, b) {
-        const ordenA = numeroSeguroTema_(a.ordenGeneral);
-        const ordenB = numeroSeguroTema_(b.ordenGeneral);
-
-        // Los registros sin orden se ubican al final de forma estable.
-        if (!ordenA && ordenB) return 1;
-        if (ordenA && !ordenB) return -1;
-
-        return (
-          ordenA - ordenB ||
-          numeroSeguroTema_(a.ordenDelDia) - numeroSeguroTema_(b.ordenDelDia) ||
-          String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es')
-        );
-      });
-
-    const indiceActual = activos.findIndex(function(item) {
-      return String(item.id) === String(id);
-    });
-
-    if (indiceActual < 0) {
-      throw crearErrorAplicacion(
-        'TEMA_NO_EXISTE',
-        'No se encontró el tema activo que se desea mover.'
-      );
-    }
-
-    const indiceDestino = movimiento === 'subir'
-      ? indiceActual - 1
-      : indiceActual + 1;
-
-    if (indiceDestino < 0 || indiceDestino >= activos.length) {
-      return convertirTema(activos[indiceActual]);
-    }
-
-    const temaMovido = activos[indiceActual];
-    const ordenAnterior = indiceActual + 1;
-
-    // Se mueve realmente el elemento dentro del arreglo y después se
-    // reescriben todos los órdenes. Esto evita empates y órdenes vacíos.
-    activos.splice(indiceActual, 1);
-    activos.splice(indiceDestino, 0, temaMovido);
-
-    const conteoPorDia = {};
-    activos.forEach(function(item, indice) {
-      const dia = item.diaDelTema || 'Sin definir';
-      const claveDia = normalizarTexto(dia);
-      conteoPorDia[claveDia] = (conteoPorDia[claveDia] || 0) + 1;
-
-      actualizarRegistroSheet(
-        HOJAS.TEMAS,
-        item.id,
-        {
-          ordenGeneral: indice + 1,
-          ordenDelDia: conteoPorDia[claveDia]
-        },
-        opcionesCrudTemas(sesion.usuario)
-      );
-    });
-
-    const resultado = leerRegistroPorIdSheet(
-      HOJAS.TEMAS,
-      id,
-      opcionesCrudTemas('')
-    );
-
-    registrarHistorialOrdenTema_(sesion, temaMovido, resultado);
-    auditarTema_(
-      sesion,
-      'MOVER_TEMA_' + movimiento.toUpperCase(),
-      id,
-      {
-        anterior: ordenAnterior,
-        nuevo: indiceDestino + 1
-      }
-    );
-
-    return convertirTema(resultado);
+    auditarTema_(sesion, activar ? 'ACTIVAR_TEMA' : 'DESACTIVAR_TEMA', id, actualizado);
+    return convertirTema(leerRegistroPorIdSheet(HOJAS.TEMAS, id, opcionesCrudTemas('')));
   });
 }
 
@@ -199,15 +105,13 @@ function convertirTema(registro) {
     descripcion: registro.descripcion || '',
     duracionMinutos: numeroSeguroTema_(registro.duracionMinutos) || '',
     diaDelTema: registro.diaDelTema || 'Sin definir',
-    ordenDelDia: numeroSeguroTema_(registro.ordenDelDia),
-    ordenGeneral: numeroSeguroTema_(registro.ordenGeneral),
     horaPropuesta: formatearHoraTema_(registro.horaPropuesta),
     servidorId: registro.servidorId || '',
     servidorNombre: registro.servidorNombre || '',
     requierePresentacion: normalizarSiNoPendienteTema_(registro.requierePresentacion),
     requiereTestimonio: convertirBooleano(registro.requiereTestimonio),
     requiereMusica: normalizarSiNoPendienteTema_(registro.requiereMusica),
-    estadoPreparacion: registro.estadoPreparacion || 'Pendiente de definición',
+    estadoPreparacion: registro.estadoPreparacion || 'Pendiente definir presentación',
     aprobacionConferencista: convertirBooleano(registro.aprobacionConferencista),
     aprobacionAudiovisuales: convertirBooleano(registro.aprobacionAudiovisuales),
     versionAprobadaId: registro.versionAprobadaId || '',
@@ -224,7 +128,9 @@ function convertirTema(registro) {
 function prepararTema_(datos) {
   const entrada = datos || {};
   const servidorId = String(entrada.servidorId || '').trim();
-  const servidor = obtenerServidoresVigentesParaTemas_().find(function(item) { return String(item.id) === servidorId; });
+  const servidor = obtenerServidoresVigentesParaTemas_().find(function(item) {
+    return String(item.id) === servidorId;
+  });
 
   return {
     nombre: String(entrada.nombre || '').trim(),
@@ -253,80 +159,115 @@ function validarTema_(tema) {
 
 function validarNombreTemaUnico_(nombre, idExcluir) {
   const duplicado = listarRegistrosSheet(HOJAS.TEMAS, {}, opcionesCrudTemas('')).find(function(item) {
-    return convertirBooleano(item.activo) && normalizarTexto(item.nombre) === normalizarTexto(nombre) && String(item.id) !== String(idExcluir || '');
+    return convertirBooleano(item.activo) &&
+      normalizarTexto(item.nombre) === normalizarTexto(nombre) &&
+      String(item.id) !== String(idExcluir || '');
   });
   if (duplicado) throw crearErrorAplicacion('TEMA_DUPLICADO', 'Ya existe un tema activo con ese nombre.');
 }
 
 function obtenerServidoresVigentesParaTemas_() {
   return leerHojaComoObjetos(HOJAS.SERVIDORES)
-    .filter(function(registro) { return registro.activo === undefined || registro.activo === '' || convertirBooleano(registro.activo); })
+    .filter(function(registro) {
+      return registro.activo === undefined || registro.activo === '' || convertirBooleano(registro.activo);
+    })
     .map(convertirServidor)
-    .filter(function(item) { return String(item.id || '').trim() && String(item.nombre || '').trim(); })
-    .map(function(item) { return { id: item.id, nombre: item.nombre }; })
-    .sort(function(a, b) { return String(a.nombre).localeCompare(String(b.nombre), 'es', { sensitivity: 'base' }); });
+    .filter(function(item) {
+      return String(item.id || '').trim() && String(item.nombre || '').trim();
+    })
+    .map(function(item) {
+      return { id: item.id, nombre: item.nombre };
+    })
+    .sort(function(a, b) {
+      return String(a.nombre).localeCompare(String(b.nombre), 'es', { sensitivity: 'base' });
+    });
 }
 
-function obtenerSiguienteOrdenGeneralTema_(idExcluir) {
-  return listarRegistrosSheet(HOJAS.TEMAS, {}, opcionesCrudTemas('')).filter(function(item) {
-    return convertirBooleano(item.activo) && String(item.id) !== String(idExcluir || '');
-  }).length + 1;
-}
+function ordenarTemasPorDiaYHora_(items) {
+  const prioridad = {
+    viernes: 1,
+    sabado: 2,
+    domingo: 3,
+    'sin definir': 99
+  };
 
-function obtenerSiguienteOrdenDiaTema_(dia, idExcluir) {
-  const clave = normalizarTexto(dia || 'Sin definir');
-  return listarRegistrosSheet(HOJAS.TEMAS, {}, opcionesCrudTemas('')).filter(function(item) {
-    return convertirBooleano(item.activo) && normalizarTexto(item.diaDelTema || 'Sin definir') === clave && String(item.id) !== String(idExcluir || '');
-  }).length + 1;
-}
-
-function normalizarOrdenesTemas_(sesion) {
-  const registros = listarRegistrosSheet(HOJAS.TEMAS, {}, opcionesCrudTemas(sesion.usuario));
-  const activos = registros.filter(function(item) { return convertirBooleano(item.activo); });
-  activos.sort(function(a, b) {
-    const diferencia = numeroSeguroTema_(a.ordenGeneral) - numeroSeguroTema_(b.ordenGeneral);
-    return diferencia || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
-  });
-
-  const conteoDia = {};
-  activos.forEach(function(item, indice) {
-    const dia = item.diaDelTema || 'Sin definir';
-    const clave = normalizarTexto(dia);
-    conteoDia[clave] = (conteoDia[clave] || 0) + 1;
-    actualizarRegistroSheet(HOJAS.TEMAS, item.id, {
-      ordenGeneral: indice + 1,
-      ordenDelDia: conteoDia[clave]
-    }, opcionesCrudTemas(sesion.usuario));
-  });
-}
-
-function ordenarTemasEnMemoria_(items) {
   items.sort(function(a, b) {
     if (a.activo !== b.activo) return a.activo ? -1 : 1;
-    return numeroSeguroTema_(a.ordenGeneral) - numeroSeguroTema_(b.ordenGeneral) || String(a.nombre).localeCompare(String(b.nombre), 'es');
-  });
-}
 
-function completarNavegacionTemas_(items) {
-  const activos = items.filter(function(item) { return item.activo; });
-  activos.forEach(function(item, indice) {
-    item.totalTemas = activos.length;
-    item.temaAnterior = indice > 0 ? activos[indice - 1].nombre : '';
-    item.temaSiguiente = indice < activos.length - 1 ? activos[indice + 1].nombre : '';
+    const diaA = normalizarTexto(a.diaDelTema || 'Sin definir');
+    const diaB = normalizarTexto(b.diaDelTema || 'Sin definir');
+    const diferenciaDia = (prioridad[diaA] || 50) - (prioridad[diaB] || 50);
+    if (diferenciaDia) return diferenciaDia;
+
+    const horaA = String(a.horaPropuesta || '99:99');
+    const horaB = String(b.horaPropuesta || '99:99');
+    return horaA.localeCompare(horaB) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
   });
 }
 
 function obtenerDiasTema_(items) {
-  const dias = ['Sin definir'];
-  items.forEach(function(item) { if (item.diaDelTema && !dias.includes(item.diaDelTema)) dias.push(item.diaDelTema); });
-  return dias;
+  const base = ['Viernes', 'Sábado', 'Domingo', 'Sin definir'];
+  items.forEach(function(item) {
+    if (item.diaDelTema && base.indexOf(item.diaDelTema) < 0) base.push(item.diaDelTema);
+  });
+  return base;
 }
 
 function calcularEstadoPreparacionTema_(tema) {
   const presentacion = normalizarSiNoPendienteTema_(tema.requierePresentacion);
-  if (presentacion === 'No') return 'Sin presentación';
-  if (!tema.servidorId || presentacion === 'Pendiente') return 'Pendiente de definición';
-  return 'Pendiente de carga';
+  const tieneServidor = Boolean(
+    String(tema.servidorId || '').trim() ||
+    String(tema.servidorNombre || '').trim()
+  );
+
+  if (!tieneServidor) return 'Pendiente asignar servidor';
+  if (presentacion === 'Pendiente') return 'Pendiente definir presentación';
+  if (presentacion === 'No') return 'Tema configurado';
+  return 'Pendiente cargar presentación';
+}
+
+/**
+ * Elimina filas duplicadas históricas del mismo tema.
+ * Conserva la primera fila que coincide con el ID editado y elimina las demás
+ * coincidencias por ID o por nombre normalizado.
+ */
+function depurarDuplicadosTema_(temaId, nombreTema) {
+  const hoja = obtenerHoja(HOJAS.TEMAS);
+  const ultimaFila = hoja.getLastRow();
+  const ultimaColumna = hoja.getLastColumn();
+  if (ultimaFila < 3 || ultimaColumna < 1) return;
+
+  const encabezados = hoja.getRange(1, 1, 1, ultimaColumna).getDisplayValues()[0];
+  const propiedades = encabezados.map(function(encabezado) {
+    return convertirEncabezadoCrud(encabezado);
+  });
+  const indiceId = propiedades.indexOf('id');
+  const indiceNombre = propiedades.indexOf('nombre');
+  if (indiceId < 0 || indiceNombre < 0) return;
+
+  const valores = hoja.getRange(2, 1, ultimaFila - 1, ultimaColumna).getDisplayValues();
+  const idBuscado = String(temaId || '').trim();
+  const nombreBuscado = normalizarTexto(nombreTema || '');
+  let filaConservada = null;
+  const filasEliminar = [];
+
+  valores.forEach(function(fila, indice) {
+    const numeroFila = indice + 2;
+    const mismoId = String(fila[indiceId] || '').trim() === idBuscado;
+    const mismoNombre = nombreBuscado && normalizarTexto(fila[indiceNombre] || '') === nombreBuscado;
+    if (!mismoId && !mismoNombre) return;
+
+    if (filaConservada === null) {
+      filaConservada = numeroFila;
+      return;
+    }
+
+    filasEliminar.push(numeroFila);
+  });
+
+  filasEliminar.sort(function(a, b) { return b - a; }).forEach(function(numeroFila) {
+    hoja.deleteRow(numeroFila);
+  });
 }
 
 function normalizarSiNoPendienteTema_(valor) {
@@ -349,29 +290,26 @@ function numeroSeguroTema_(valor) {
   return isFinite(numero) && numero > 0 ? numero : 0;
 }
 
-function registrarHistorialOrdenTema_(sesion, anterior, nuevo) {
-  if (!anterior || !nuevo) return;
-  if (String(anterior.diaDelTema || '') === String(nuevo.diaDelTema || '') && Number(anterior.ordenGeneral || 0) === Number(nuevo.ordenGeneral || 0)) return;
-  crearRegistroSheet('TemaOrdenHistorial', {
-    temaId: nuevo.id,
-    diaAnterior: anterior.diaDelTema || '',
-    diaNuevo: nuevo.diaDelTema || '',
-    ordenAnterior: anterior.ordenGeneral || '',
-    ordenNuevo: nuevo.ordenGeneral || '',
-    usuarioId: sesion.usuario || '',
-    usuarioNombre: sesion.nombre || '',
-    fechaRegistro: new Date()
-  }, { campoId: 'id', usuario: sesion.usuario || '' });
-}
-
 function opcionesCrudTemas(usuario) {
   return {
-    campoId: 'id', campoActivo: 'activo', campoFechaRegistro: 'fechaRegistro',
-    campoFechaActualizacion: 'fechaActualizacion', campoActualizadoPor: 'actualizadoPor',
-    usuario: usuario || '', valorActivo: 'Sí', valorInactivo: 'No'
+    campoId: 'id',
+    campoActivo: 'activo',
+    campoFechaRegistro: 'fechaRegistro',
+    campoFechaActualizacion: 'fechaActualizacion',
+    campoActualizadoPor: 'actualizadoPor',
+    usuario: usuario || '',
+    valorActivo: 'Sí',
+    valorInactivo: 'No'
   };
 }
 
 function auditarTema_(sesion, accion, id, detalle) {
-  registrarAuditoria({ usuario: sesion.usuario, nombre: sesion.nombre, accion: accion, entidad: 'Temas', idRegistro: id, detalle: JSON.stringify(detalle || {}) });
+  registrarAuditoria({
+    usuario: sesion.usuario,
+    nombre: sesion.nombre,
+    accion: accion,
+    entidad: 'Temas',
+    idRegistro: id,
+    detalle: JSON.stringify(detalle || {})
+  });
 }

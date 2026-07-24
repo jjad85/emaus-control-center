@@ -83,24 +83,24 @@ export default function App() {
 
           <Route
             path="/aspirantes"
-            element={<Aspirantes />}
+            element={<PrivateRoute permiso="ASPIRANTES_VER_DETALLE"><Aspirantes /></PrivateRoute>}
           />
 
           <Route
             path="/equipos"
-            element={<Equipos />}
+            element={<PrivateRoute permiso="EQUIPOS_VER_DETALLE"><Equipos /></PrivateRoute>}
           />
 
           <Route
             path="/servidores"
-            element={<Servidores />}
+            element={<PrivateRoute permiso="SERVIDORES_VER_DETALLE"><Servidores /></PrivateRoute>}
           />
 
-          <Route path="/caminantes" element={<Caminantes />} />
-          <Route path="/pagos" element={<Pagos />} />
+          <Route path="/caminantes" element={<PrivateRoute permiso="CAMINANTES_VER_DETALLE"><Caminantes /></PrivateRoute>} />
+          <Route path="/pagos" element={<PrivateRoute permiso="PAGOS_VER_ESTADOS_CUENTA"><Pagos /></PrivateRoute>} />
           <Route
             path="/tesoreria/reportar-pago"
-            element={<ReportarPago />}
+            element={<PrivateRoute permiso="REPORTAR_PAGO_REGISTRAR"><ReportarPago /></PrivateRoute>}
           />
 
           <Route
@@ -110,22 +110,26 @@ export default function App() {
 
           <Route
             path="/mesas"
-            element={<Mesas />}
+            element={<PrivateRoute permiso="MESAS_VER_DETALLE"><Mesas /></PrivateRoute>}
           />
 
           <Route
             path="/presentaciones"
-            element={<Presentaciones />}
+            element={
+              <PrivateRoute permiso="PRESENTACIONES_TODO">
+                <Presentaciones />
+              </PrivateRoute>
+            }
           />
 
           <Route
             path="/habitaciones"
-            element={<Habitaciones />}
+            element={<PrivateRoute permiso="HABITACIONES_VER_DETALLE"><Habitaciones /></PrivateRoute>}
           />
 
           <Route
             path="/paso-a-paso"
-            element={<Minutograma />}
+            element={<PrivateRoute permiso="PASO_A_PASO_VER_DETALLE"><Minutograma /></PrivateRoute>}
           />
 
           <Route
@@ -140,31 +144,31 @@ export default function App() {
 
           <Route
             path="/temas"
-            element={<Temas />}
+            element={<PrivateRoute permiso="TEMAS_VER_DETALLE"><Temas /></PrivateRoute>}
           />
 
           <Route
             path="/mis-temas"
-            element={<MisTemas />}
+            element={<PrivateRoute permiso="MIS_TEMAS_VER"><MisTemas /></PrivateRoute>}
           />
 
           <Route
             path="/administracion"
-            element={<Administracion />}
+            element={<PrivateRoute permiso="SISTEMA_TODO"><Administracion /></PrivateRoute>}
           />
 
           <Route
             path="/configuracion"
-            element={<Configuracion />}
+            element={<PrivateRoute permiso="SISTEMA_TODO"><Configuracion /></PrivateRoute>}
           />
 
           <Route
             path="/auditoria"
-            element={<Auditoria />}
+            element={<PrivateRoute permiso="SISTEMA_TODO"><Auditoria /></PrivateRoute>}
           />
 
-          <Route path="/mi-cuenta" element={<MiCuenta />} />
-          <Route path="/codigo-vestuario" element={<CodigoVestuario />} />
+          <Route path="/mi-cuenta" element={<PrivateRoute permiso="MI_CUENTA_VER"><MiCuenta /></PrivateRoute>} />
+          <Route path="/codigo-vestuario" element={<PrivateRoute permiso="CODIGO_VESTUARIO_VER"><CodigoVestuario /></PrivateRoute>} />
 
           <Route
             path="/notificaciones-whatsapp"

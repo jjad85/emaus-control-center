@@ -19,8 +19,8 @@ function obtenerNotificaciones(token) {
   let totalPendientes = 0;
 
   if (
-    permisos.includes('CONVERTIR_ASPIRANTE') ||
-    permisos.includes('ACTUALIZAR_ESTADO_ASPIRANTE')
+    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO') ||
+    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO')
   ) {
     const aspirantes = leerHojaComoObjetos(HOJAS.ASPIRANTES)
       .filter(function(item) {
@@ -42,30 +42,55 @@ function obtenerNotificaciones(token) {
         mensaje: 'Hay solicitudes pendientes de revisión.',
         cantidad: pendientes.length,
         ruta: '/aspirantes',
-        permiso: 'CONVERTIR_ASPIRANTE'
+        permiso: 'ASPIRANTES_CAMBIAR_ESTADO'
       });
       totalPendientes += pendientes.length;
     }
   }
 
-  if (permisos.includes('GESTIONAR_PAGOS')) {
+  if (permisos.includes('PAGOS_VER_ESTADOS_CUENTA')) {
     const pagosPendientes = leerHojaComoObjetos(HOJAS.PAGOS).filter(function(p) {
       return normalizarTexto(p.estadoPagoReportado || p.estado) === 'pendiente';
     });
     if (pagosPendientes.length) {
-      items.push({ id:'PAGOS_PENDIENTES', tipo:'warning', titulo: pagosPendientes.length + ' pagos pendientes por validar', mensaje:'Tesorería debe revisar los comprobantes reportados.', cantidad:pagosPendientes.length, ruta:'/pagos', permiso:'GESTIONAR_PAGOS' });
+      items.push({ id:'PAGOS_PENDIENTES', tipo:'warning', titulo: pagosPendientes.length + ' pagos pendientes por validar', mensaje:'Tesorería debe revisar los comprobantes reportados.', cantidad:pagosPendientes.length, ruta:'/pagos', permiso:'PAGOS_VER_ESTADOS_CUENTA' });
       totalPendientes += pagosPendientes.length;
     }
   }
 
-  const resumenWhatsapp =
-    obtenerResumenNotificacionesWhatsappParaCampana(token);
+  // Entrega 3: notificaciones del flujo colaborativo de presentaciones.
+  try {
+    const notificacionesTemas = obtenerNotificacionesTemas(token).filter(function(n) { return !n.leida; });
+    if (notificacionesTemas.length) {
+      items.push({
+        id: 'PRESENTACIONES_PENDIENTES', tipo: 'warning',
+        titulo: notificacionesTemas.length === 1 ? '1 novedad en presentaciones' : notificacionesTemas.length + ' novedades en presentaciones',
+        mensaje: 'Hay comentarios, revisiones o aprobaciones pendientes.',
+        cantidad: notificacionesTemas.length,
+        ruta: normalizarTexto(sesion.rol).indexOf('audiovis') >= 0 || normalizarTexto(sesion.rol).indexOf('admin') >= 0 ? '/presentaciones' : '/mis-temas',
+        permiso: ''
+      });
+      totalPendientes += notificacionesTemas.length;
+    }
+  } catch (ignoradoTemas) {}
 
-  resumenWhatsapp.items.forEach(function(item) {
-    items.push(item);
-  });
+  // WhatsApp es un tipo específico de notificación y no todos los roles
+  // tienen permiso para consultarlo. No debe bloquear la campana general.
+  const puedeConsultarWhatsapp =
+    permisos.includes('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
+    permisos.includes('NOTIFICAR_CAMINANTE') ||
+    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO');
 
-  totalPendientes += resumenWhatsapp.totalPendientes;
+  if (puedeConsultarWhatsapp) {
+    const resumenWhatsapp =
+      obtenerResumenNotificacionesWhatsappParaCampana(token);
+
+    resumenWhatsapp.items.forEach(function(item) {
+      items.push(item);
+    });
+
+    totalPendientes += resumenWhatsapp.totalPendientes;
+  }
 
   return {
     total: items.length,

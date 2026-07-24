@@ -1,26 +1,23 @@
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
-import { obtenerPresentaciones } from '../api/presentacionesApi';
-import { useApi } from '../hooks/useApi';
-import LoadingState from '../components/LoadingState';
-import ErrorState from '../components/ErrorState';
+import { useEffect, useState } from 'react';
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from '@mui/material';
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import DownloadRounded from '@mui/icons-material/DownloadRounded';
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
+import ReplayRounded from '@mui/icons-material/ReplayRounded';
+import CommentRounded from '@mui/icons-material/CommentRounded';
 import PageHeader from '../components/PageHeader';
-import StatusChip from '../components/StatusChip';
-import AvatarServidor from '../components/servidores/AvatarServidor';
+import EstadoTemaChip from '../components/temas/EstadoTemaChip';
+import HistorialVersiones from '../components/temas/HistorialVersiones';
+import ComentariosPresentacion from '../components/temas/ComentariosPresentacion';
+import { useAuth } from '../auth/AuthContext';
+import { comentarPresentacion, obtenerRevisionPresentaciones, revisarPresentacionAudiovisuales } from '../api/entrega3PresentacionesApi';
 
-export default function Presentaciones() {
-  const api = useApi(() => obtenerPresentaciones(), []);
-  if (api.loading && !api.data) return <LoadingState />;
-  if (api.error) return <ErrorState message={api.error} onRetry={api.reload} />;
-  const items = api.data.items || [];
-  return (
-    <>
-      <PageHeader eyebrow="Control audiovisual" title="Presentaciones" subtitle={`Avance general: ${api.data.indicadores.avanceGeneral}%`} onRefresh={api.reload} loading={api.loading} />
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead><TableRow><TableCell>Conferencista</TableCell><TableCell>Tema</TableCell><TableCell>Entrega</TableCell><TableCell>Apoyo</TableCell><TableCell>Ajustado</TableCell><TableCell>Aprobado</TableCell><TableCell>Observaciones</TableCell></TableRow></TableHead>
-          <TableBody>{items.map((i) => <TableRow key={i.id} hover><TableCell>{i.nombre}</TableCell><TableCell>{i.tema}</TableCell><TableCell><StatusChip value={i.entrega} /></TableCell><TableCell><StatusChip value={i.apoyoAudiovisual} /></TableCell><TableCell><StatusChip value={i.ajustadoAudiovisuales} /></TableCell><TableCell><StatusChip value={i.aprobadoConferencista} /></TableCell><TableCell>{i.observaciones || '—'}</TableCell></TableRow>)}</TableBody>
-        </Table>
-      </TableContainer>
-    </>
-  );
+export default function Presentaciones(){
+ const {token}=useAuth(); const [data,setData]=useState(null); const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [mensaje,setMensaje]=useState(''); const [dialogo,setDialogo]=useState(null); const [texto,setTexto]=useState(''); const [guardando,setGuardando]=useState(false);
+ async function cargar(){setLoading(true);setError('');try{setData(await obtenerRevisionPresentaciones(token));}catch(e){setError(e.message||'No fue posible consultar las presentaciones.');}finally{setLoading(false);}}
+ useEffect(()=>{cargar();},[token]);
+ async function ejecutar(){if(!dialogo)return;setGuardando(true);setError('');try{const {tipo,tema,version}=dialogo;if(tipo==='comentar')await comentarPresentacion(token,tema.id,version.id,texto);else await revisarPresentacionAudiovisuales(token,tema.id,version.id,tipo,texto);setMensaje(tipo==='aprobar'?'Presentación aprobada y enviada al servidor.':tipo==='solicitar ajustes'?'Ajustes solicitados al servidor.':'Comentario registrado.');setDialogo(null);setTexto('');await cargar();}catch(e){setError(e.message);}finally{setGuardando(false);}}
+ if(loading&&!data)return <Stack alignItems="center" py={8}><CircularProgress/></Stack>;
+ const items=data?.items||[]; const ind=data?.indicadores||{};
+ return <><PageHeader eyebrow="Control audiovisual" title="Presentaciones" subtitle="Revisión, comentarios y aprobación de versiones" onRefresh={cargar} loading={loading}/><Stack spacing={2.5}>{error&&<Alert severity="error" onClose={()=>setError('')}>{error}</Alert>}{mensaje&&<Alert severity="success" onClose={()=>setMensaje('')}>{mensaje}</Alert>}<Grid container spacing={2}>{[['Total',ind.total],['Pendientes de revisión',ind.pendientesRevision],['Requieren ajustes',ind.requierenAjustes],['Pendientes del servidor',ind.pendientesServidor],['Configurados',ind.configurados]].map(([l,v])=><Grid key={l} size={{xs:6,md:'auto'}}><Card variant="outlined"><CardContent><Typography variant="h4" fontWeight={950}>{v||0}</Typography><Typography color="text.secondary">{l}</Typography></CardContent></Card></Grid>)}</Grid>{!items.length&&<Alert severity="info">No hay presentaciones para revisar.</Alert>}{items.map((tema)=>{const v=tema.versionActual;return <Accordion key={tema.id} disableGutters sx={{borderRadius:3,'&:before':{display:'none'}}}><AccordionSummary expandIcon={<ExpandMoreRounded/>}><Stack direction={{xs:'column',md:'row'}} justifyContent="space-between" width="100%" gap={1} pr={2}><Box><Typography fontWeight={900}>{tema.nombre}</Typography><Typography variant="body2" color="text.secondary">Servidor: {tema.servidorNombre||'Sin asignar'} · {tema.diaDelTema||'Sin día'} {tema.horaPropuesta||''}</Typography></Box><EstadoTemaChip estado={tema.estadoPreparacion}/></Stack></AccordionSummary><AccordionDetails><Stack spacing={2.5}>{!v?<Alert severity="warning">El servidor todavía no ha cargado una presentación.</Alert>:<><Stack direction={{xs:'column',sm:'row'}} gap={1} flexWrap="wrap"><Button component="a" href={v.archivoDriveUrl} target="_blank" variant="outlined" startIcon={<DownloadRounded/>}>Abrir versión {v.numeroVersion}</Button><Button variant="contained" color="success" startIcon={<CheckCircleRounded/>} onClick={()=>{setDialogo({tipo:'aprobar',tema,version:v});setTexto('');}}>Aprobar</Button><Button variant="outlined" color="warning" startIcon={<ReplayRounded/>} onClick={()=>{setDialogo({tipo:'solicitar ajustes',tema,version:v});setTexto('');}}>Solicitar ajustes</Button><Button variant="text" startIcon={<CommentRounded/>} onClick={()=>{setDialogo({tipo:'comentar',tema,version:v});setTexto('');}}>Comentar</Button></Stack><Box><Typography variant="h6" fontWeight={900} mb={1}>Comentarios</Typography><ComentariosPresentacion comentarios={tema.comentarios}/></Box><Box><Typography variant="h6" fontWeight={900} mb={1}>Historial de versiones</Typography><HistorialVersiones versiones={tema.versiones}/></Box></>}</Stack></AccordionDetails></Accordion>})}</Stack><Dialog open={Boolean(dialogo)} onClose={()=>!guardando&&setDialogo(null)} fullWidth maxWidth="sm"><DialogTitle>{dialogo?.tipo==='aprobar'?'Aprobar presentación':dialogo?.tipo==='solicitar ajustes'?'Solicitar ajustes':'Agregar comentario'}</DialogTitle><DialogContent><TextField autoFocus fullWidth multiline minRows={4} sx={{mt:1}} label={dialogo?.tipo==='aprobar'?'Comentario opcional':'Comentario'} value={texto} onChange={(e)=>setTexto(e.target.value)}/></DialogContent><DialogActions><Button onClick={()=>setDialogo(null)} disabled={guardando}>Cancelar</Button><Button onClick={ejecutar} variant="contained" disabled={guardando||(dialogo?.tipo!=='aprobar'&&!texto.trim())}>{guardando?'Guardando...':'Confirmar'}</Button></DialogActions></Dialog></>;
 }

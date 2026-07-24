@@ -438,17 +438,65 @@ export function AuthProvider({
             permiso
           );
 
-        return (
-          sesion?.permisos || []
-        )
-          .map(
-            normalizarPermiso
-          )
-          .includes(
-            requerido
-          );
+        // El rol ADMIN es un superusuario. No debe depender de que cada
+        // permiso exista o esté correctamente asignado en la matriz.
+        const rolNormalizado = String(sesion?.rol || '')
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
+        if ([
+          'admin',
+          'administrador',
+          'administrador del sistema',
+        ].includes(rolNormalizado)) {
+          return true;
+        }
+
+        const permisosNormalizados = (sesion?.permisos || []).map(normalizarPermiso);
+        if (permisosNormalizados.includes(requerido)) {
+          return true;
+        }
+
+        // Compatibilidad entre los códigos históricos usados por algunos
+        // servicios/pantallas y los códigos definitivos de la matriz.
+        const equivalencias = {
+          CONSULTAR_ASPIRANTES: ['ASPIRANTES_VER_DETALLE'],
+          NOTIFICAR_ASPIRANTE: ['ASPIRANTES_NOTIFICAR_PREINSCRIPCION'],
+          CONVERTIR_ASPIRANTE: ['ASPIRANTES_CAMBIAR_ESTADO'],
+          ACTUALIZAR_ESTADO_ASPIRANTE: ['ASPIRANTES_CAMBIAR_ESTADO'],
+          CONSULTAR_CAMINANTES: ['CAMINANTES_VER_DETALLE'],
+          EDITAR_CAMINANTE: ['CAMINANTES_EDITAR'],
+          REGISTRAR_CAMINANTE: ['CAMINANTES_REGISTRAR'],
+          ASIGNAR_MESA: ['CAMINANTES_ASIGNAR_MESA', 'MESAS_ASIGNAR_CAMINANTE'],
+          ASIGNAR_HABITACION: ['CAMINANTES_ASIGNAR_HABITACION', 'HABITACIONES_ASIGNAR_PERSONA'],
+          ACTUALIZAR_CARTA: ['CAMINANTES_REPORTAR_CARTA'],
+          ACTUALIZAR_FOTO: ['CAMINANTES_REPORTAR_FOTO'],
+          CONSULTAR_SERVIDORES: ['SERVIDORES_VER_DETALLE'],
+          EDITAR_SERVIDOR: ['SERVIDORES_EDITAR'],
+          EDITAR_EQUIPOS: ['EQUIPOS_CREAR', 'EQUIPOS_ASIGNAR_SERVIDOR', 'EQUIPOS_EDITAR'],
+          GESTIONAR_PRESENTACIONES: ['PRESENTACIONES_TODO'],
+          GESTIONAR_PAGOS: ['PAGOS_VER_ESTADOS_CUENTA'],
+          ADMINISTRAR_TEMAS: ['TEMAS_VER_DETALLE', 'TEMAS_EDITAR', 'TEMAS_CREAR', 'TEMAS_DESACTIVAR'],
+          EXPORTAR_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_EXPORTAR'],
+          IMPORTAR_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_IMPORTAR'],
+          CREAR_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_REGISTRAR_ACTIVIDAD'],
+          EDITAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_EDITAR'],
+          ACTUALIZAR_ESTADO_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+          MOVER_ACTIVIDADES_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ORDEN'],
+          INICIAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_INICIAR'],
+          PAUSAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+          REANUDAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+          FINALIZAR_ACTIVIDAD_PASO_A_PASO: ['PASO_A_PASO_CAMBIAR_ESTADO'],
+          REPORTAR_PAGO_REGISTRAR: ['REPORTAR_PAGO_TODO'],
+        };
+
+        return (equivalencias[requerido] || []).some((codigo) =>
+          permisosNormalizados.includes(normalizarPermiso(codigo))
+        );
       },
-      [sesion?.permisos]
+      [sesion?.permisos, sesion?.rol]
     );
 
   const solicitarAutenticacion =

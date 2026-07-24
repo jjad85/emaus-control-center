@@ -32,7 +32,7 @@ function obtenerMiTemaAsignado(token) {
       return item.activo && String(item.servidorId || '').trim() === servidorId;
     });
 
-  ordenarTemasEnMemoria_(temas);
+  ordenarTemasColaboracion_(temas);
   const plantilla = obtenerUrlPlantillaTemas_();
 
   return {
@@ -40,6 +40,7 @@ function obtenerMiTemaAsignado(token) {
       tema.versiones = listarVersionesTemaParaUsuario_(tema.id);
       tema.musica = listarMusicaTemaParaUsuario_(tema.id);
       tema.versionActual = tema.versiones.find(function(v) { return v.esVersionActual; }) || null;
+      tema.comentarios = listarComentariosTema_(tema.id);
       return tema;
     }),
     plantillaUrl: plantilla,
@@ -50,55 +51,134 @@ function obtenerMiTemaAsignado(token) {
 
 function subirVersionTema(token, temaId, archivo, comentario) {
   const sesion = obtenerSesion(token);
-  return ejecutarCrudConBloqueo(function() {
-    const tema = validarTemaPerteneceASesion_(sesion, temaId);
-    if (normalizarSiNoPendienteTema_(tema.requierePresentacion) === 'No') {
-      throw crearErrorAplicacion('TEMA_SIN_PRESENTACION', 'Este tema está marcado como que no requiere presentación.');
+  const temaInicial = validarTemaPerteneceASesion_(sesion, temaId);
+
+  if (normalizarSiNoPendienteTema_(temaInicial.requierePresentacion) === 'No') {
+    throw crearErrorAplicacion('TEMA_SIN_PRESENTACION', 'Este tema está marcado como que no requiere presentación.');
+  }
+
+  validarArchivoTema_(archivo, TIPOS_PRESENTACION_TEMA, 'PRESENTACION_INVALIDA');
+  const bytes = decodificarArchivoTema_(archivo);
+  const carpetas = crearCarpetasTemaSiNoExisten_(temaInicial, sesion);
+  const extension = obtenerExtensionArchivoTema_(archivo.nombre, archivo.tipo);
+  const nombreTemporal = limpiarNombreArchivoTema_(
+    temaInicial.id + '_TEMP_' + new Date().getTime() + '_' + temaInicial.nombre
+  ) + '.' + extension;
+
+  // La operación pesada de Drive se ejecuta fuera del bloqueo de Sheets.
+  // Así evitamos mantener el documento bloqueado durante la decodificación
+  // y creación física del archivo.
+  const file = carpetas.presentaciones.createFile(
+    Utilities.newBlob(bytes, archivo.tipo, nombreTemporal)
+  );
+
+  let registroConfirmado = false;
+
+  try {
+    const resultado = ejecutarCrudConBloqueo(function() {
+      const tema = validarTemaPerteneceASesion_(sesion, temaId);
+      const numero = obtenerSiguienteNumeroVersionTema_(tema.id);
+      const nombreDefinitivo = limpiarNombreArchivoTema_(
+        tema.id + '_V' + numero + '_' + tema.nombre
+      ) + '.' + extension;
+
+      desmarcarVersionActualTema_(tema.id, sesion.usuario);
+
+      const creado = crearRegistroSheet(HOJA_TEMA_VERSIONES, {
+        temaId: tema.id,
+        numeroVersion: numero,
+        nombreArchivo: nombreDefinitivo,
+        archivoDriveId: file.getId(),
+        archivoDriveUrl: file.getUrl(),
+        cargadoPorId: sesion.servidorId || '',
+        cargadoPorNombre: sesion.nombre || tema.servidorNombre || '',
+        origenCarga: 'Servidor',
+        comentarioCambio: String(comentario || '').trim(),
+        estadoVersion: 'Pendiente revisión audiovisual',
+        aprobadaConferencista: 'No',
+        aprobadaAudiovisuales: 'No',
+        esVersionActual: 'Sí',
+        fechaRegistro: new Date(),
+        fechaActualizacion: new Date(),
+        actualizadoPor: sesion.usuario || ''
+      }, opcionesCrudTemaVersion_(sesion.usuario));
+
+      actualizarRegistroSheet(HOJAS.TEMAS, tema.id, {
+        requierePresentacion: 'Sí',
+        estadoPreparacion: 'Pendiente revisión audiovisual',
+        aprobacionConferencista: 'No',
+        aprobacionAudiovisuales: 'No',
+        versionAprobadaId: '',
+        carpetaDriveId: carpetas.raiz.getId(),
+        carpetaDriveUrl: carpetas.raiz.getUrl(),
+        fechaActualizacion: new Date(),
+        actualizadoPor: sesion.usuario || ''
+      }, opcionesCrudTemas(sesion.usuario));
+
+      return {
+        versionId: creado.id,
+        numeroVersion: numero,
+        nombreDefinitivo: nombreDefinitivo
+      };
+    });
+
+    registroConfirmado = true;
+
+    // Renombrar y auditar no deben invalidar una versión que ya quedó registrada.
+    try { file.setName(resultado.nombreDefinitivo); } catch (ignoradoNombre) {}
+    try {
+      crearNotificacionTemaAudiovisuales_(
+        temaInicial,
+        {
+          tipo: 'NUEVA_VERSION_PRESENTACION',
+          titulo:
+            'Nueva presentación pendiente de revisión',
+          mensaje:
+            (
+              sesion.nombre ||
+              sesion.usuario ||
+              'Un servidor'
+            ) +
+            ' cargó la versión ' +
+            resultado.numeroVersion +
+            ' del tema “' +
+            temaInicial.nombre +
+            '”.',
+          ruta: '/presentaciones',
+          versionId: resultado.versionId
+        },
+        sesion.usuario
+      );
+    } catch (errorNotificacion) {
+      console.error(
+        'No fue posible crear la notificación de la presentación:',
+        errorNotificacion
+      );
+
+      throw crearErrorAplicacion(
+        'NOTIFICACION_PRESENTACION_NO_CREADA',
+        'La presentación fue guardada, pero no fue posible generar la notificación para Audiovisuales. Detalle: ' +
+          (
+            errorNotificacion.message ||
+            errorNotificacion
+          )
+      );
     }
-    validarArchivoTema_(archivo, TIPOS_PRESENTACION_TEMA, 'PRESENTACION_INVALIDA');
-    const bytes = decodificarArchivoTema_(archivo);
-    const carpetas = crearCarpetasTemaSiNoExisten_(tema, sesion);
-    const numero = obtenerSiguienteNumeroVersionTema_(tema.id);
-    const extension = obtenerExtensionArchivoTema_(archivo.nombre, archivo.tipo);
-    const nombre = limpiarNombreArchivoTema_(tema.id + '_V' + numero + '_' + tema.nombre) + '.' + extension;
-    const file = carpetas.presentaciones.createFile(Utilities.newBlob(bytes, archivo.tipo, nombre));
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    desmarcarVersionActualTema_(tema.id, sesion.usuario);
+    try {
+      auditarTema_(sesion, 'SUBIR_VERSION_PRESENTACION', temaId, {
+        versionId: resultado.versionId,
+        numeroVersion: resultado.numeroVersion
+      });
+    } catch (ignoradoAuditoria) {}
 
-    const creado = crearRegistroSheet(HOJA_TEMA_VERSIONES, {
-      temaId: tema.id,
-      numeroVersion: numero,
-      nombreArchivo: nombre,
-      archivoDriveId: file.getId(),
-      archivoDriveUrl: file.getUrl(),
-      cargadoPorId: sesion.servidorId || '',
-      cargadoPorNombre: sesion.nombre || tema.servidorNombre || '',
-      origenCarga: 'Conferencista',
-      comentarioCambio: String(comentario || '').trim(),
-      estadoVersion: 'En revisión',
-      aprobadaConferencista: 'Sí',
-      aprobadaAudiovisuales: 'No',
-      esVersionActual: 'Sí',
-      fechaRegistro: new Date(),
-      fechaActualizacion: new Date(),
-      actualizadoPor: sesion.usuario || ''
-    }, opcionesCrudTemaVersion_(sesion.usuario));
-
-    actualizarRegistroSheet(HOJAS.TEMAS, tema.id, {
-      requierePresentacion: 'Sí',
-      estadoPreparacion: 'En revisión',
-      aprobacionConferencista: 'Sí',
-      aprobacionAudiovisuales: 'No',
-      versionAprobadaId: '',
-      carpetaDriveId: carpetas.raiz.getId(),
-      carpetaDriveUrl: carpetas.raiz.getUrl(),
-      fechaActualizacion: new Date(),
-      actualizadoPor: sesion.usuario || ''
-    }, opcionesCrudTemas(sesion.usuario));
-
-    auditarTema_(sesion, 'SUBIR_VERSION_PRESENTACION', tema.id, { versionId: creado.id, numeroVersion: numero });
-    return listarVersionesTemaParaUsuario_(tema.id);
-  });
+    return listarVersionesTemaParaUsuario_(temaId);
+  } catch (error) {
+    // Evita archivos huérfanos únicamente si Sheets no alcanzó a confirmar el registro.
+    if (!registroConfirmado) {
+      try { file.setTrashed(true); } catch (ignorado) {}
+    }
+    throw error;
+  }
 }
 
 function actualizarPreferenciasMiTema(token, temaId, datos) {
@@ -128,7 +208,6 @@ function subirMusicaTema(token, temaId, archivo, observaciones) {
     const carpetas = crearCarpetasTemaSiNoExisten_(tema, sesion);
     const nombre = limpiarNombreArchivoTema_(tema.id + '_' + archivo.nombre);
     const file = carpetas.musica.createFile(Utilities.newBlob(bytes, archivo.tipo, nombre));
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     const creado = crearRegistroSheet(HOJA_TEMA_MUSICA, {
       temaId: tema.id,
       nombreCancion: archivo.nombre,
@@ -182,7 +261,7 @@ function crearCarpetasTemaSiNoExisten_(tema, sesion) {
   if (tema.carpetaDriveId) { try { raiz = DriveApp.getFolderById(tema.carpetaDriveId); } catch (e) {} }
   if (!raiz) {
     const padre = obtenerCarpetaRaizTemas_();
-    raiz = padre.createFolder(limpiarNombreArchivoTema_(String(tema.ordenGeneral || '') + ' - ' + tema.nombre));
+    raiz = padre.createFolder(limpiarNombreArchivoTema_(tema.nombre));
   }
   const resultado = { raiz:raiz };
   ['Presentaciones','Música','Recursos','Documentos','Archivos Finales'].forEach(function(nombre){

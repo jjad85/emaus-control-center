@@ -56,9 +56,9 @@ import AvatarServidor from '../components/servidores/AvatarServidor';
 import GestionEquiposServidorDialog from '../components/equipos/GestionEquiposServidorDialog';
 
 const CONFIG_ACCIONES = {
-  tema: { titulo: 'Asignar tema', permiso: 'EDITAR_SERVIDOR' },
-  mesa: { titulo: 'Asignar equipo', permiso: 'EDITAR_SERVIDOR' },
-  habitacion: { titulo: 'Asignar habitación', permiso: 'EDITAR_SERVIDOR' },
+  tema: { titulo: 'Asignar tema', permiso: 'SERVIDORES_EDITAR' },
+  mesa: { titulo: 'Asignar equipo', permiso: 'SERVIDORES_ASIGNAR_EQUIPO' },
+  habitacion: { titulo: 'Asignar habitación', permiso: 'SERVIDORES_ASIGNAR_HABITACION' },
 };
 
 function moneda(valor) {
@@ -435,10 +435,9 @@ export default function Servidores() {
                 </CardContent>
 
                 <CardActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
-                  <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<EditRounded />} onClick={() => abrirAccion('editar', servidor)}>Editar</ProtectedButton>
-                  <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<MenuBookRounded />} onClick={() => abrirTema(servidor)}>Tema</ProtectedButton>
+                  <ProtectedButton permiso="SERVIDORES_EDITAR" size="small" startIcon={<EditRounded />} onClick={() => abrirAccion('editar', servidor)}>Editar</ProtectedButton>
                   <ProtectedButton
-                    permiso="EDITAR_EQUIPOS"
+                    permiso="SERVIDORES_ASIGNAR_EQUIPO"
                     size="small"
                     startIcon={<GroupsRounded />}
                     onClick={() =>
@@ -449,7 +448,7 @@ export default function Servidores() {
                   >
                     Equipos
                   </ProtectedButton>
-                  <ProtectedButton permiso="EDITAR_SERVIDOR" size="small" startIcon={<BedRounded />} onClick={() => abrirHabitacion(servidor)}>Habitación</ProtectedButton>
+                  <ProtectedButton permiso="SERVIDORES_EDITAR" size="small" startIcon={<BedRounded />} onClick={() => abrirHabitacion(servidor)}>Habitación</ProtectedButton>
                 </CardActions>
               </Card>
             </Grid>

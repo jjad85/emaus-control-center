@@ -8,30 +8,16 @@
  * - Administradores
  */
 
-function validarAdministradorSistema(
-  token
-) {
-  const sesion =
-    obtenerSesion(token);
-
-  const rol =
-    normalizarTexto(
-      sesion.rol
-    );
-
-  if (
-    rol !== 'administrador' &&
-    rol !== 'administradores'
-  ) {
-    throw crearErrorAplicacion(
-      'ADMINISTRADOR_REQUERIDO',
-      'Esta funcionalidad es exclusiva para administradores.'
-    );
+function validarAdministradorSistema(token) {
+  const sesion = obtenerSesion(token);
+  const rol = normalizarTexto(sesion.rol);
+  const esAdmin = rol === 'admin' || rol === 'administrador' || rol === 'administradores';
+  const permisos = obtenerPermisosPorRol(sesion.rol);
+  if (!esAdmin && permisos.indexOf('SISTEMA_TODO') === -1) {
+    throw crearErrorAplicacion('ADMINISTRADOR_REQUERIDO','No tiene permisos para administrar el sistema.');
   }
-
   return sesion;
 }
-
 
 function obtenerAdministracionSistema(
   token
@@ -134,8 +120,7 @@ function guardarPermisosRolSistema(
       )
       .filter(Boolean);
 
-  const catalogo =
-    listarCatalogoPermisos_();
+  const catalogo = listarCatalogoPermisos_().map(function(item) { return typeof item === 'string' ? item : item.codigo; });
 
   const hoja =
     obtenerHoja(
@@ -487,32 +472,11 @@ function listarRolesAdministracion_() {
 
 
 function listarCatalogoPermisos_() {
-  const filas =
-    leerHojaComoObjetos(
-      HOJAS.PERMISOS_ROL
-    );
-
-  const unicos = {};
-
-  filas.forEach(
-    function(item) {
-      const permiso =
-        normalizarPermiso(
-          item.permiso
-        );
-
-      if (permiso) {
-        unicos[permiso] =
-          true;
-      }
-    }
-  );
-
-  return Object.keys(
-    unicos
-  ).sort();
+  if (typeof obtenerCatalogoPermisosDefinitivo_ === 'function') {
+    return obtenerCatalogoPermisosDefinitivo_();
+  }
+  return [];
 }
-
 
 function listarPermisosPorRolAdministracion_() {
   const filas =

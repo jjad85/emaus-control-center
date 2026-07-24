@@ -19,6 +19,8 @@ import {
   Stack,
   TextField,
   Typography,
+  DialogActions,
+  DialogTitle,
 } from '@mui/material';
 import UploadFileRounded from '@mui/icons-material/UploadFileRounded';
 import DownloadRounded from '@mui/icons-material/DownloadRounded';
@@ -28,6 +30,8 @@ import { useAuth } from '../auth/AuthContext';
 import PageHeader from '../components/PageHeader';
 import EstadoTemaChip from '../components/temas/EstadoTemaChip';
 import HistorialVersiones from '../components/temas/HistorialVersiones';
+import ComentariosPresentacion from '../components/temas/ComentariosPresentacion';
+import { responderRevisionServidor, comentarPresentacion } from '../api/entrega3PresentacionesApi';
 import {
   archivoABase64,
   actualizarPreferenciasMiTema,
@@ -38,20 +42,6 @@ import {
 
 const MAX_ARCHIVO_BYTES =
   15 * 1024 * 1024;
-
-function calcularPorcentaje(evento) {
-  if (!evento?.total) {
-    return null;
-  }
-
-  return Math.min(
-    100,
-    Math.round(
-      (evento.loaded * 100) /
-        evento.total
-    )
-  );
-}
 
 export default function MisTemas() {
   const { token } = useAuth();
@@ -67,8 +57,9 @@ export default function MisTemas() {
     useState('');
   const [comentario, setComentario] =
     useState({});
-  const [cargaArchivo, setCargaArchivo] =
-    useState(null);
+  const [cargaArchivo, setCargaArchivo] = useState(null);
+  const [dialogoRevision, setDialogoRevision] = useState(null);
+  const [textoRevision, setTextoRevision] = useState('');
 
   async function cargar() {
     setLoading(true);
@@ -153,27 +144,7 @@ export default function MisTemas() {
     });
   }
 
-  function actualizarProgreso(evento) {
-    const porcentaje =
-      calcularPorcentaje(evento);
 
-    setCargaArchivo((actual) => {
-      if (!actual) {
-        return actual;
-      }
-
-      return {
-        ...actual,
-        etapa:
-          porcentaje === 100
-            ? 'Procesando y guardando en Drive'
-            : 'Enviando archivo',
-        porcentaje:
-          porcentaje ??
-          actual.porcentaje,
-      };
-    });
-  }
 
   async function cargarPpt(
     tema,
@@ -199,7 +170,8 @@ export default function MisTemas() {
       setCargaArchivo(
         (actual) => ({
           ...actual,
-          etapa: 'Enviando archivo',
+          etapa: 'Enviando y guardando en Drive',
+          porcentaje: null,
         })
       );
 
@@ -207,8 +179,7 @@ export default function MisTemas() {
         token,
         tema.id,
         archivo,
-        comentario[tema.id] || '',
-        actualizarProgreso
+        comentario[tema.id] || ''
       );
 
       setMensaje(
@@ -255,7 +226,8 @@ export default function MisTemas() {
       setCargaArchivo(
         (actual) => ({
           ...actual,
-          etapa: 'Enviando archivo',
+          etapa: 'Enviando y guardando en Drive',
+          porcentaje: null,
         })
       );
 
@@ -263,8 +235,7 @@ export default function MisTemas() {
         token,
         tema.id,
         archivo,
-        'Archivo cargado por el conferencista',
-        actualizarProgreso
+        'Archivo cargado por el servidor'
       );
 
       setMensaje(
@@ -281,6 +252,21 @@ export default function MisTemas() {
       setSubiendo('');
       setCargaArchivo(null);
     }
+  }
+
+  async function responderRevision() {
+    const d = dialogoRevision;
+    if (!d) return;
+    try {
+      setSubiendo(d.tema.id + 'revision');
+      if (d.tipo === 'comentar') {
+        await comentarPresentacion(token, d.tema.id, d.version.id, textoRevision);
+      } else {
+        await responderRevisionServidor(token, d.tema.id, d.version.id, d.tipo, textoRevision);
+      }
+      setMensaje(d.tipo === 'aprobar' ? 'La presentación quedó aprobada.' : d.tipo === 'solicitar ajustes' ? 'La solicitud de ajustes fue enviada.' : 'Comentario registrado.');
+      setDialogoRevision(null); setTextoRevision(''); await cargar();
+    } catch (e) { setError(e.message); } finally { setSubiendo(''); }
   }
 
   if (loading && !data) {
@@ -300,7 +286,7 @@ export default function MisTemas() {
   return (
     <>
       <PageHeader
-        eyebrow="Conferencista"
+        eyebrow="Servidor"
         title="Mis temas"
         subtitle="Consulta tu asignación y gestiona los archivos de la charla"
         onRefresh={cargar}
@@ -652,6 +638,115 @@ export default function MisTemas() {
                     fontWeight={900}
                     mb={1.5}
                   >
+                    Comentarios y observaciones
+                  </Typography>
+
+                  <ComentariosPresentacion
+                    comentarios={tema.comentarios || []}
+                  />
+                </Box>
+
+                {tema.versionActual && (
+                  <Box>
+                    <Typography
+                      variant="h6"
+                      fontWeight={900}
+                      mb={1.5}
+                    >
+                      Acciones del servidor
+                    </Typography>
+
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'stretch', sm: 'center' }}
+                      flexWrap="wrap"
+                    >
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          setTextoRevision('');
+                          setDialogoRevision({
+                            tipo: 'comentar',
+                            tema,
+                            version: tema.versionActual,
+                          });
+                        }}
+                        disabled={subiendo !== ''}
+                      >
+                        Agregar comentario
+                      </Button>
+
+                      {!tema.versionActual.aprobadaConferencista && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            onClick={() => {
+                              setTextoRevision('');
+                              setDialogoRevision({
+                                tipo: 'solicitar ajustes',
+                                tema,
+                                version: tema.versionActual,
+                              });
+                            }}
+                            disabled={
+                              subiendo !== '' ||
+                              !tema.versionActual.aprobadaAudiovisuales
+                            }
+                          >
+                            Solicitar ajustes a Audiovisuales
+                          </Button>
+
+                          <Button
+                            variant="contained"
+                            onClick={() => {
+                              setTextoRevision('');
+                              setDialogoRevision({
+                                tipo: 'aprobar',
+                                tema,
+                                version: tema.versionActual,
+                              });
+                            }}
+                            disabled={
+                              subiendo !== '' ||
+                              !tema.versionActual.aprobadaAudiovisuales
+                            }
+                          >
+                            Aprobar como servidor
+                          </Button>
+                        </>
+                      )}
+                    </Stack>
+
+                    {!tema.versionActual.aprobadaAudiovisuales &&
+                      !tema.versionActual.aprobadaConferencista && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                          sx={{ mt: 1 }}
+                        >
+                          La aprobación del servidor se habilitará cuando
+                          Audiovisuales apruebe la versión vigente.
+                        </Typography>
+                      )}
+
+                    {tema.versionActual.aprobadaConferencista && (
+                      <Alert severity="success" sx={{ mt: 1.5 }}>
+                        Esta versión ya fue aprobada por el servidor.
+                      </Alert>
+                    )}
+                  </Box>
+                )}
+
+                <Divider />
+
+                <Box>
+                  <Typography
+                    variant="h6"
+                    fontWeight={900}
+                    mb={1.5}
+                  >
                     Historial de versiones
                   </Typography>
 
@@ -745,6 +840,13 @@ export default function MisTemas() {
             </Alert>
           </Stack>
         </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(dialogoRevision)} onClose={() => !subiendo && setDialogoRevision(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{dialogoRevision?.tipo === 'aprobar' ? 'Aprobar versión final' : dialogoRevision?.tipo === 'solicitar ajustes' ? 'Solicitar ajustes a Audiovisuales' : 'Agregar comentario'}</DialogTitle>
+        <DialogContent>
+          <TextField autoFocus fullWidth multiline minRows={4} sx={{ mt: 1 }} label={dialogoRevision?.tipo === 'aprobar' ? 'Comentario opcional' : 'Comentario'} value={textoRevision} onChange={(e) => setTextoRevision(e.target.value)} />
+        </DialogContent>
+        <DialogActions><Button onClick={() => setDialogoRevision(null)}>Cancelar</Button><Button variant="contained" onClick={responderRevision} disabled={Boolean(subiendo) || (dialogoRevision?.tipo !== 'aprobar' && !textoRevision.trim())}>Confirmar</Button></DialogActions>
       </Dialog>
     </>
   );
