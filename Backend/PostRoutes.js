@@ -541,6 +541,30 @@ function routePost(contenido) {
           'Permisos actualizados correctamente'
       };
 
+    case 'registrarfechaimportante':
+      return {
+        datos: registrarFechaImportante(contenido.token, contenido.datos),
+        mensaje: 'Fecha importante registrada correctamente'
+      };
+
+    case 'editarfechaimportante':
+      return {
+        datos: editarFechaImportante(contenido.token, contenido.id, contenido.datos),
+        mensaje: 'Fecha importante actualizada correctamente'
+      };
+
+    case 'eliminarfechaimportante':
+      return {
+        datos: eliminarFechaImportante(contenido.token, contenido.id),
+        mensaje: 'Fecha importante eliminada correctamente'
+      };
+
+    case 'restaurarfechaimportante':
+      return {
+        datos: restaurarFechaImportante(contenido.token, contenido.id),
+        mensaje: 'Fecha importante restaurada correctamente'
+      };
+
     case 'obtenerconfiguracionesadministracion':
       return {
         datos:

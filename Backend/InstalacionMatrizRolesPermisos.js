@@ -110,6 +110,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['PASO_A_PASO_INICIAR','Operación del retiro','Paso a paso','Iniciar'],
     ['PASO_A_PASO_EDITAR','Operación del retiro','Paso a paso','Editar'],
     ['SISTEMA_TODO','Sistema','Sistema','Acceso completo'],
+    ['FECHAS_IMPORTANTES_GESTIONAR','Sistema','Fechas importantes','Gestionar'],
     ['MI_CUENTA_VER','Mi menú','Mi cuenta','Ver'],
     ['MI_MENU_REPORTAR_PAGO','Mi menú','Reporte de pago','Ver y reportar'],
     ['CODIGO_VESTUARIO_VER','Mi menú','Código de vestuario','Ver'],
@@ -172,6 +173,7 @@ function obtenerMatrizInicialRolesPermisos_() {
   dar('PASO_A_PASO_INICIAR',['LIDER_RETIRO','CAMPANERO']);
   dar('PASO_A_PASO_EDITAR',['LIDER_RETIRO']);
   dar('SISTEMA_TODO',['LIDER_RETIRO']);
+  dar('FECHAS_IMPORTANTES_GESTIONAR',['LIDER_RETIRO']);
   ['MI_CUENTA_VER','MI_MENU_REPORTAR_PAGO','CODIGO_VESTUARIO_VER','MIS_TEMAS_VER'].forEach(function(p){dar(p,todosConsulta);});
   Object.keys(mapa).forEach(function(r){mapa[r]=Array.from(new Set(mapa[r]));});
   return mapa;

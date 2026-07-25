@@ -30,7 +30,8 @@ const HOJAS = {
   ASPIRANTES: 'Aspirantes',
   RECUPERACIONES_CLAVE: 'RecuperacionesClave',
   TEMAS: 'Temas',
-  PAGOS: 'Pagos'
+  PAGOS: 'Pagos',
+  FECHAS_IMPORTANTES: 'FechasImportantes'
 };
 
 

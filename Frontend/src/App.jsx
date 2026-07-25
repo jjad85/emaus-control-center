@@ -37,6 +37,7 @@ import CodigoVestuario from './pages/CodigoVestuario';
 import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
 import AutorizacionesCaminante from './pages/AutorizacionesCaminante';
 import Auditoria from './pages/Auditoria';
+import FechasImportantes from './pages/FechasImportantes';
 
 export default function App() {
   return (
@@ -165,6 +166,11 @@ export default function App() {
           <Route
             path="/auditoria"
             element={<PrivateRoute permiso="SISTEMA_TODO"><Auditoria /></PrivateRoute>}
+          />
+
+          <Route
+            path="/fechas-importantes"
+            element={<PrivateRoute permiso="FECHAS_IMPORTANTES_GESTIONAR"><FechasImportantes /></PrivateRoute>}
           />
 
           <Route path="/mi-cuenta" element={<PrivateRoute permiso="MI_CUENTA_VER"><MiCuenta /></PrivateRoute>} />

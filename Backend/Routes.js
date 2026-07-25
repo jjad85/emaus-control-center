@@ -145,6 +145,12 @@ function routeRequest(parametros) {
           'Estado en vivo consultado correctamente'
       };
 
+    case 'fechasimportantes':
+      return {
+        datos: obtenerFechasImportantes(parametros.token, parametros),
+        mensaje: 'Fechas importantes consultadas correctamente'
+      };
+
     case 'dashboard':
       return {
         datos:

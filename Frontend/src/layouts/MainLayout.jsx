@@ -43,6 +43,7 @@ import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import CheckroomRounded from '@mui/icons-material/CheckroomRounded';
 import FactCheckRounded from '@mui/icons-material/FactCheckRounded';
 import TopicRounded from '@mui/icons-material/TopicRounded';
+import EventNoteRounded from '@mui/icons-material/EventNoteRounded';
 
 import {
   Outlet,
@@ -178,6 +179,12 @@ const menuGroups = [
         path: '/configuracion',
         icon: <SettingsRounded />,
         permiso: 'SISTEMA_TODO',
+      },
+      {
+        label: 'Fechas importantes',
+        path: '/fechas-importantes',
+        icon: <EventNoteRounded />,
+        permiso: 'FECHAS_IMPORTANTES_GESTIONAR',
       },
       {
         label: 'Auditoría',
