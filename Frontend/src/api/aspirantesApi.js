@@ -54,3 +54,8 @@ export async function convertirAspiranteEnCaminanteApi(
 
   return response.datos;
 }
+
+export async function registrarAspiranteServidorApi(token, datos) {
+  const response = await postAction('registrarAspiranteServidor', { token, datos });
+  return response.datos;
+}

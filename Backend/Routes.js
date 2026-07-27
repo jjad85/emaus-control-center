@@ -151,6 +151,12 @@ function routeRequest(parametros) {
         mensaje: 'Fechas importantes consultadas correctamente'
       };
 
+    case 'documentos':
+      return {
+        datos: obtenerDocumentos(parametros.token, parametros),
+        mensaje: 'Biblioteca documental consultada correctamente'
+      };
+
     case 'dashboard':
       return {
         datos:

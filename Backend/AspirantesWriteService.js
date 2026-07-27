@@ -89,6 +89,70 @@ function registrarAspirantePublico(
   );
 }
 
+
+function registrarAspiranteServidor(token, datos) {
+  const sesion = validarPermiso(token, 'ASPIRANTES_REGISTRAR');
+  const servidorId = String(sesion.servidorId || '').trim();
+
+  if (!servidorId) {
+    throw crearErrorAplicacion(
+      'SERVIDOR_USUARIO_NO_CONFIGURADO',
+      'El usuario autenticado no tiene un servidor asociado.'
+    );
+  }
+
+  const servidor = obtenerServidorPorId(servidorId);
+  const nombreServidor = limpiarTextoAspirante(servidor.nombre || sesion.nombre || '');
+  const celularServidor = limpiarTextoAspirante(servidor.celular || servidor.telefono || '');
+
+  return ejecutarCrudConBloqueo(function() {
+    const entrada = Object.assign({}, datos || {}, {
+      tipoRegistrante: 'INVITADOR',
+      nombreRegistrante: nombreServidor,
+      telefonoRegistrante: celularServidor,
+      nombrePersonaInvito: limpiarTextoAspirante((datos || {}).nombrePersonaInvito) || nombreServidor,
+      celularPersonaInvito: limpiarTextoAspirante((datos || {}).celularPersonaInvito) || celularServidor
+    });
+
+    const registro = prepararAspirante(entrada);
+    validarAspirante(registro);
+    validarDuplicadoAspirante(registro);
+    completarEvidenciaConsentimientos(registro);
+
+    const creado = crearRegistroSheet(
+      HOJAS.ASPIRANTES,
+      registro,
+      opcionesCrudAspirante(sesion.usuario)
+    );
+
+    const numero = generarNumeroInscripcion(creado.id);
+    const actualizado = actualizarCampoSheet(
+      HOJAS.ASPIRANTES,
+      creado.id,
+      'numeroInscripcion',
+      numero,
+      opcionesCrudAspirante(sesion.usuario)
+    );
+
+    registrarAuditoria({
+      usuario: sesion.usuario,
+      nombre: sesion.nombre,
+      accion: 'REGISTRAR_ASPIRANTE_SERVIDOR',
+      entidad: 'Aspirantes',
+      idRegistro: actualizado.id,
+      detalle: 'Aspirante registrado por el servidor ' + nombreServidor + ' (ID ' + servidorId + ')'
+    });
+
+    return {
+      id: actualizado.id,
+      numeroInscripcion: actualizado.numeroInscripcion,
+      estadoSolicitud: actualizado.estadoSolicitud,
+      registradoPor: nombreServidor,
+      servidorId: servidorId
+    };
+  });
+}
+
 function actualizarEstadoAspirante(
   token,
   id,

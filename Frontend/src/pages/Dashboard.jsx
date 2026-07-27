@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Chip, Dialog, DialogContent, DialogTitle, Grid, IconButton,
-  Paper, Stack, Typography,
+  Button, Paper, Stack, Typography,
 } from '@mui/material';
 import {
   CalendarMonthRounded, CloseRounded, GroupsRounded, HotelRounded,
   MailRounded, PaymentsRounded, PersonRounded, PhotoRounded,
   ReportProblemRounded, SlideshowRounded, TableRestaurantRounded,
-  TaskAltRounded, WarningAmberRounded,
+  TaskAltRounded, WarningAmberRounded, DescriptionRounded, OpenInNewRounded,
 } from '@mui/icons-material';
 
 import { obtenerDashboard } from '../api/dashboardApi';
@@ -15,6 +15,8 @@ import { useApi } from '../hooks/useApi';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
+import { useAuth } from '../auth/AuthContext';
+import { obtenerDocumentos, obtenerUrlDescargaDocumento } from '../api/documentosApi';
 
 const panelSx = {
   border: '1px solid', borderColor: 'divider', borderRadius: 4,
@@ -82,8 +84,21 @@ function ModalFechas({ open, onClose, fechas = [] }) {
 }
 
 export default function Dashboard() {
+  const { token, tienePermiso } = useAuth();
   const [fechasOpen, setFechasOpen] = useState(false);
+  const [documentosImportantes, setDocumentosImportantes] = useState([]);
+  const puedeVerDocumentos = tienePermiso('DOCUMENTOS_CONSULTAR');
+  const puedeDescargarDocumentos = tienePermiso('DOCUMENTOS_DESCARGAR');
   const { data, loading, error, reload } = useApi(() => obtenerDashboard(), []);
+
+  useEffect(() => {
+    let activo = true;
+    if (!puedeVerDocumentos || !token) { setDocumentosImportantes([]); return undefined; }
+    obtenerDocumentos(token, { soloImportantes: true })
+      .then(respuesta => { if (activo) setDocumentosImportantes((respuesta?.items || []).slice(0, 6)); })
+      .catch(() => { if (activo) setDocumentosImportantes([]); });
+    return () => { activo = false; };
+  }, [token, puedeVerDocumentos]);
   if (loading && !data) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={reload} />;
 
@@ -134,6 +149,38 @@ export default function Dashboard() {
           </Grid>
         </Grid>
       </Paper>
+
+
+      {documentosImportantes.length > 0 && (
+        <Paper sx={{ ...panelSx, p: 2.5, borderTop: '4px solid', borderTopColor: 'warning.main' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1} mb={2}>
+            <Box>
+              <Typography variant="h6" fontWeight={950}>Documentos importantes</Typography>
+              <Typography variant="body2" color="text.secondary">Información que debes conocer para el retiro.</Typography>
+            </Box>
+            <DescriptionRounded color="warning" />
+          </Stack>
+          <Grid container spacing={1.5}>
+            {documentosImportantes.map(documento => (
+              <Grid key={documento.id} size={{ xs: 12, md: 6, lg: 4 }}>
+                <Paper variant="outlined" sx={{ p: 1.8, borderRadius: 3, height: '100%' }}>
+                  <Typography fontWeight={900}>{documento.nombre}</Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" mt={0.4}>
+                    {documento.temaNombre ? `Tema: ${documento.temaNombre}` : documento.categoria}
+                  </Typography>
+                  {documento.descripcion && <Typography variant="body2" color="text.secondary" mt={1}>{documento.descripcion}</Typography>}
+                  {puedeDescargarDocumentos && (
+                    <Button size="small" endIcon={<OpenInNewRounded />} sx={{ mt: 1.2 }} onClick={async () => {
+                      const datosDocumento = await obtenerUrlDescargaDocumento(token, documento.id);
+                      window.open(datosDocumento.url, '_blank', 'noopener,noreferrer');
+                    }}>Abrir</Button>
+                  )}
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Paper>
+      )}
 
       <Grid container spacing={2.5}>
         <Grid size={{xs:12,lg:5}}>

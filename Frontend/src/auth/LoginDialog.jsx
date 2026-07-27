@@ -6,12 +6,16 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  InputAdornment,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 
 import { useState } from 'react';
+import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
+import VisibilityOffRounded from '@mui/icons-material/VisibilityOffRounded';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import PasswordRecoveryDialog from './PasswordRecoveryDialog';
@@ -30,6 +34,9 @@ export default function LoginDialog() {
 
   const [clave, setClave] =
     useState('');
+
+  const [mostrarClave, setMostrarClave] =
+    useState(false);
 
   const [loading, setLoading] =
     useState(false);
@@ -101,6 +108,7 @@ export default function LoginDialog() {
 
     setError('');
     setClave('');
+    setMostrarClave(false);
     cerrarLogin();
   }
 
@@ -165,7 +173,7 @@ export default function LoginDialog() {
 
           <TextField
             label="Contraseña"
-            type="password"
+            type={mostrarClave ? 'text' : 'password'}
             value={clave}
             onChange={(event) =>
               setClave(
@@ -175,6 +183,23 @@ export default function LoginDialog() {
             autoComplete="current-password"
             disabled={loading}
             fullWidth
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      onClick={() => setMostrarClave((valor) => !valor)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      edge="end"
+                      disabled={loading}
+                    >
+                      {mostrarClave ? <VisibilityOffRounded /> : <VisibilityRounded />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
           <Button

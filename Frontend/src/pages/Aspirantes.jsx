@@ -30,11 +30,14 @@ import SearchRounded from '@mui/icons-material/SearchRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import PhoneRounded from '@mui/icons-material/PhoneRounded';
 import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
+import PersonAddRounded from '@mui/icons-material/PersonAddRounded';
 
 import {
   useMemo,
   useState,
 } from 'react';
+
+import { useNavigate } from 'react-router-dom';
 
 import {
   actualizarEstadoAspiranteApi,
@@ -845,6 +848,7 @@ function GrupoAspirantes({
 }
 
 export default function Aspirantes() {
+  const navigate = useNavigate();
   const {
     token,
     autenticado,
@@ -1043,9 +1047,21 @@ export default function Aspirantes() {
             }}
           />
 
-          <Typography color="text.secondary">
-            {items.length} registros totales
-          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+            <Typography color="text.secondary">
+              {items.length} registros totales
+            </Typography>
+
+            {puede('ASPIRANTES_REGISTRAR') && (
+              <Button
+                variant="contained"
+                startIcon={<PersonAddRounded />}
+                onClick={() => navigate('/aspirantes/nuevo')}
+              >
+                Registrar aspirante
+              </Button>
+            )}
+          </Stack>
         </Stack>
 
         <GrupoAspirantes

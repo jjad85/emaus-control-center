@@ -25,6 +25,7 @@ import DashboardRounded from '@mui/icons-material/DashboardRounded';
 import AssignmentIndRounded from '@mui/icons-material/AssignmentIndRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
+import PersonAddRounded from '@mui/icons-material/PersonAddRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
 import SlideshowRounded from '@mui/icons-material/SlideshowRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
@@ -44,6 +45,7 @@ import CheckroomRounded from '@mui/icons-material/CheckroomRounded';
 import FactCheckRounded from '@mui/icons-material/FactCheckRounded';
 import TopicRounded from '@mui/icons-material/TopicRounded';
 import EventNoteRounded from '@mui/icons-material/EventNoteRounded';
+import FolderRounded from '@mui/icons-material/FolderRounded';
 
 import {
   Outlet,
@@ -91,6 +93,12 @@ const menuGroups = [
         permiso: 'ASPIRANTES_VER_DETALLE',
       },
       {
+        label: 'Registrar aspirante',
+        path: '/aspirantes/nuevo',
+        icon: <PersonAddRounded />,
+        permiso: 'ASPIRANTES_REGISTRAR',
+      },
+      {
         label: 'Caminantes',
         path: '/caminantes',
         icon: <GroupsRounded />,
@@ -132,6 +140,12 @@ const menuGroups = [
         path: '/presentaciones',
         icon: <SlideshowRounded />,
         permiso: 'PRESENTACIONES_TODO',
+      },
+      {
+        label: 'Documentos',
+        path: '/documentos',
+        icon: <FolderRounded />,
+        permiso: 'DOCUMENTOS_CONSULTAR',
       },
     ],
   },

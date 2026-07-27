@@ -48,6 +48,9 @@ import {
   registrarAspirantePublico,
 } from '../api/publicApi';
 
+import { registrarAspiranteServidorApi } from '../api/aspirantesApi';
+import { useAuth } from '../auth/AuthContext';
+
 import { useApi } from '../hooks/useApi';
 
 const PASOS = [
@@ -213,9 +216,13 @@ function PreguntaSiNo({
   );
 }
 
-export default function RegistroAspirante() {
+export default function RegistroAspirante({ registroInterno = false }) {
   const navigate =
     useNavigate();
+
+  const { token, sesion } = useAuth();
+  const servidorSesion = sesion?.servidor || {};
+  const rutaRegreso = registroInterno ? '/aspirantes' : '/';
 
   const portalApi = useApi(
     () => obtenerPortalPublico(),
@@ -226,7 +233,18 @@ export default function RegistroAspirante() {
     useState(0);
 
   const [form, setForm] =
-    useState(INICIAL);
+    useState(() => ({
+      ...INICIAL,
+      ...(registroInterno
+        ? {
+            tipoRegistrante: 'INVITADOR',
+            nombreRegistrante: servidorSesion.nombre || sesion?.nombre || '',
+            telefonoRegistrante: servidorSesion.celular || servidorSesion.telefono || '',
+            nombrePersonaInvito: servidorSesion.nombre || sesion?.nombre || '',
+            celularPersonaInvito: servidorSesion.celular || servidorSesion.telefono || '',
+          }
+        : {}),
+    }));
 
   const [enviando, setEnviando] =
     useState(false);
@@ -250,7 +268,7 @@ export default function RegistroAspirante() {
   const [
     dialogoTipoRegistrante,
     setDialogoTipoRegistrante,
-  ] = useState(true);
+  ] = useState(!registroInterno);
 
   const [
     errorTipoRegistrante,
@@ -615,9 +633,9 @@ export default function RegistroAspirante() {
       delete datosFormulario.edad;
 
       const datos =
-        await registrarAspirantePublico(
-          datosFormulario
-        );
+        registroInterno
+          ? await registrarAspiranteServidorApi(token, datosFormulario)
+          : await registrarAspirantePublico(datosFormulario);
 
       setResultado(datos);
     } catch (err) {
@@ -788,7 +806,7 @@ export default function RegistroAspirante() {
             <Button
               variant="outlined"
               onClick={() =>
-                navigate('/')
+                navigate(rutaRegreso)
               }
             >
               Volver al inicio
@@ -818,7 +836,7 @@ export default function RegistroAspirante() {
                 <ArrowBackRounded />
               }
               onClick={() =>
-                navigate('/')
+                navigate(rutaRegreso)
               }
             >
               Volver
@@ -835,28 +853,31 @@ export default function RegistroAspirante() {
                 },
               }}
             >
-              Registro al retiro
+              {registroInterno ? 'Registrar aspirante' : 'Registro al retiro'}
             </Typography>
 
             <Typography
               color="text.secondary"
             >
-              Diligencia la información con calma y verifica los datos antes de enviar.
+              {registroInterno
+                ? `Estás registrando un caminante como ${servidorSesion.nombre || sesion?.nombre || 'servidor autenticado'}.`
+                : 'Diligencia la información con calma y verifica los datos antes de enviar.'}
             </Typography>
           </Box>
 
+          {!registroInterno && (
           <Dialog
             open={dialogoTipoRegistrante}
             fullWidth
             maxWidth="sm"
-            onClose={() => navigate('/')}
+            onClose={() => navigate(rutaRegreso)}
           >
             <DialogTitle sx={{ position: 'relative', pr: 6 }}>
               Antes de comenzar
 
               <IconButton
                 aria-label="Cerrar inscripción"
-                onClick={() => navigate('/')}
+                onClick={() => navigate(rutaRegreso)}
                 sx={{
                   position: 'absolute',
                   right: 8,
@@ -957,7 +978,7 @@ export default function RegistroAspirante() {
 
             <DialogActions sx={{ px: 3, pb: 3 }}>
               <Button
-                onClick={() => navigate('/')}
+                onClick={() => navigate(rutaRegreso)}
               >
                 Cancelar
               </Button>
@@ -971,6 +992,8 @@ export default function RegistroAspirante() {
               </Button>
             </DialogActions>
           </Dialog>
+          )}
+
 
           <Paper
             sx={{

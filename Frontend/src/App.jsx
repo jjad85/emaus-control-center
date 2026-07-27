@@ -38,6 +38,7 @@ import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
 import AutorizacionesCaminante from './pages/AutorizacionesCaminante';
 import Auditoria from './pages/Auditoria';
 import FechasImportantes from './pages/FechasImportantes';
+import Documentos from './pages/Documentos';
 
 export default function App() {
   return (
@@ -88,6 +89,11 @@ export default function App() {
           />
 
           <Route
+            path="/aspirantes/nuevo"
+            element={<PrivateRoute permiso="ASPIRANTES_REGISTRAR"><RegistroAspirante registroInterno /></PrivateRoute>}
+          />
+
+          <Route
             path="/equipos"
             element={<PrivateRoute permiso="EQUIPOS_VER_DETALLE"><Equipos /></PrivateRoute>}
           />
@@ -121,6 +127,11 @@ export default function App() {
                 <Presentaciones />
               </PrivateRoute>
             }
+          />
+
+          <Route
+            path="/documentos"
+            element={<PrivateRoute permiso="DOCUMENTOS_CONSULTAR"><Documentos /></PrivateRoute>}
           />
 
           <Route

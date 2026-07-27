@@ -322,6 +322,15 @@ function routePost(contenido) {
           'Registro recibido correctamente'
       };
 
+    case 'registraraspiranteservidor':
+      return {
+        datos: registrarAspiranteServidor(
+          contenido.token,
+          contenido.datos
+        ),
+        mensaje: 'Aspirante registrado correctamente'
+      };
+
     case 'actualizarestadoaspirante':
       return {
         datos:
@@ -478,6 +487,21 @@ function routePost(contenido) {
 
     case 'subirmusicatema':
       return { datos: subirMusicaTema(contenido.token, contenido.temaId, contenido.archivo, contenido.observaciones), mensaje: 'Música cargada correctamente' };
+
+    case 'creardocumento':
+      return { datos: crearDocumento(contenido.token, contenido.datos, contenido.archivo), mensaje: 'Documento cargado correctamente' };
+
+    case 'editardocumento':
+      return { datos: editarDocumento(contenido.token, contenido.id, contenido.datos, contenido.archivo), mensaje: 'Documento actualizado correctamente' };
+
+    case 'eliminardocumento':
+      return { datos: eliminarDocumento(contenido.token, contenido.id), mensaje: 'Documento eliminado correctamente' };
+
+    case 'restaurardocumento':
+      return { datos: restaurarDocumento(contenido.token, contenido.id), mensaje: 'Documento restaurado correctamente' };
+
+    case 'obtenerurldescargadocumento':
+      return { datos: obtenerUrlDescargaDocumento(contenido.token, contenido.id), mensaje: 'Descarga autorizada correctamente' };
 
     case 'obtenerrevisionpresentaciones':
       return { datos: obtenerRevisionPresentaciones(contenido.token), mensaje: 'Presentaciones consultadas correctamente' };
