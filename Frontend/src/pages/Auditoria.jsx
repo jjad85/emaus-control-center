@@ -26,16 +26,6 @@ import { obtenerAuditoriaApi } from '../api/auditoriaApi';
 
 const TAMANOS_PAGINA = [10, 25, 50, 100];
 
-function esAdministrador(rol) {
-  const valor = String(rol || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  return valor === 'administrador' || valor === 'administradores';
-}
-
 function formatearFecha(valor) {
   if (!valor) return '—';
   const fecha = new Date(valor);
@@ -93,7 +83,7 @@ function descargarCsv(items) {
 }
 
 export default function Auditoria() {
-  const { token, rol } = useAuth();
+  const { token } = useAuth();
   const [registros, setRegistros] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -136,8 +126,8 @@ export default function Auditoria() {
   }, [token, pagina, tamanoPagina, busquedaAplicada, fechaDesde, fechaHasta]);
 
   useEffect(() => {
-    if (token && esAdministrador(rol)) cargar();
-  }, [token, rol, cargar]);
+    if (token) cargar();
+  }, [token, cargar]);
 
   useEffect(() => {
     clearTimeout(temporizadorBusqueda.current);
@@ -200,10 +190,6 @@ export default function Auditoria() {
     } finally {
       setExportando(false);
     }
-  }
-
-  if (!esAdministrador(rol)) {
-    return <Alert severity="error">Esta sección es exclusiva para administradores.</Alert>;
   }
 
   const hayFiltros = Boolean(busqueda || fechaDesde || fechaHasta);

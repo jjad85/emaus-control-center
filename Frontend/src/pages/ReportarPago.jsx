@@ -332,6 +332,13 @@ export default function ReportarPago() {
                         Abonado: {moneda(persona.totalAprobado)} · Saldo: {moneda(persona.saldoPendiente)}
                       </Alert>
 
+                      {persona.exentoPago && (
+                        <Alert severity="info">
+                          Este servidor está exento de pago y no requiere reportar comprobantes.
+                          {persona.motivoExencionPago ? ` Motivo: ${persona.motivoExencionPago}` : ''}
+                        </Alert>
+                      )}
+
                       <Button
                         size="small"
                         onClick={() => {
@@ -428,6 +435,7 @@ export default function ReportarPago() {
                         onClick={enviar}
                         disabled={
                           loading ||
+                          Boolean(persona?.exentoPago) ||
                           !form.valorReportado ||
                           Number(form.valorReportado) <= 0 ||
                           !form.fechaPago ||

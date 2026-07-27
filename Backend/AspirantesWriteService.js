@@ -353,7 +353,22 @@ function convertirAspiranteEnCaminanteInterno(
       'Pendiente',
 
     foto:
-      'Pendiente'
+      'Pendiente',
+
+    tieneCondicionAlimentaria:
+      aspirante.tieneCondicionAlimentaria || 'No',
+
+    alergiasAlimentarias:
+      aspirante.alergiasAlimentarias || '',
+
+    restriccionesAlimentarias:
+      aspirante.restriccionesAlimentarias || '',
+
+    preferenciasAlimentarias:
+      aspirante.preferenciasAlimentarias || '',
+
+    dietaEspecial:
+      aspirante.dietaEspecial || ''
   };
 
   /*
@@ -554,6 +569,26 @@ function prepararAspirante(
     limitacionCual:
       limpiarTextoAspirante(
         entrada.limitacionCual
+      ),
+    tieneCondicionAlimentaria:
+      limpiarTextoAspirante(
+        entrada.tieneCondicionAlimentaria
+      ),
+    alergiasAlimentarias:
+      limpiarTextoAspirante(
+        entrada.alergiasAlimentarias
+      ),
+    restriccionesAlimentarias:
+      limpiarTextoAspirante(
+        entrada.restriccionesAlimentarias
+      ),
+    preferenciasAlimentarias:
+      limpiarTextoAspirante(
+        entrada.preferenciasAlimentarias
+      ),
+    dietaEspecial:
+      limpiarTextoAspirante(
+        entrada.dietaEspecial
       ),
 
     sacramentosRecibidos:
@@ -816,6 +851,10 @@ function validarAspirante(
       'Limitación física'
     ],
     [
+      registro.tieneCondicionAlimentaria,
+      'Información de alimentación'
+    ],
+    [
       registro.sacramentosRecibidos,
       'Sacramentos'
     ],
@@ -926,6 +965,20 @@ function validarAspirante(
     throw crearErrorAplicacion(
       'MEDICAMENTO_DETALLE_REQUERIDO',
       'Debe indicar cuál medicamento toma.'
+    );
+  }
+
+
+  if (
+    normalizarTexto(registro.tieneCondicionAlimentaria) === 'si' &&
+    !registro.alergiasAlimentarias &&
+    !registro.restriccionesAlimentarias &&
+    !registro.preferenciasAlimentarias &&
+    !registro.dietaEspecial
+  ) {
+    throw crearErrorAplicacion(
+      'ALIMENTACION_DETALLE_REQUERIDO',
+      'Debe indicar al menos una alergia, restricción, preferencia o dieta especial.'
     );
   }
 }

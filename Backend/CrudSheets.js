@@ -586,6 +586,9 @@ function convertirEncabezadoCrud(
     'telefono': 'telefono',
 
     'estado de pago': 'estadoPago',
+    'exento de pago': 'exentoPago',
+    'motivo exencion pago': 'motivoExencionPago',
+    'motivo exención pago': 'motivoExencionPago',
 
     'mesa': 'mesa',
 

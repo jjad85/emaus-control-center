@@ -98,7 +98,9 @@ function completarResumenPagosPersona_(persona, tipo) {
   });
   const aprobados = pagos.filter(function(p){ return normalizarTexto(p.estadoPagoReportado || p.estado) === 'aprobado'; });
   const totalAprobado = aprobados.reduce(function(s,p){ return s + Number(p.valorAprobado || p.valorReportado || 0); }, 0);
-  const valorRetiro = obtenerValorRetiroPorTipo_(tipoPersona);
+  const esExento = tipoPersona === 'Servidor' && Boolean(persona.exentoPago);
+  const valorRetiroConfigurado = obtenerValorRetiroPorTipo_(tipoPersona);
+  const valorRetiro = esExento ? 0 : valorRetiroConfigurado;
   return {
     id: persona.id,
     tipoPersona: tipoPersona,
@@ -107,7 +109,9 @@ function completarResumenPagosPersona_(persona, tipo) {
     documentoIdentidad: persona.documentoIdentidad || '',
     correo: persona.correo || '',
     celular: persona.celular || persona.telefono || '',
-    estadoPago: totalAprobado <= 0 ? 'Pendiente' : totalAprobado < valorRetiro ? 'Pago Parcial' : 'Pago Total',
+    exentoPago: esExento,
+    motivoExencionPago: persona.motivoExencionPago || '',
+    estadoPago: esExento ? 'Exento' : (totalAprobado <= 0 ? 'Pendiente' : totalAprobado < valorRetiro ? 'Pago Parcial' : 'Pago Total'),
     valorRetiro: valorRetiro,
     totalAprobado: totalAprobado,
     saldoPendiente: Math.max(valorRetiro - totalAprobado, 0),
@@ -184,6 +188,9 @@ function reportarPagoPublico(datos) {
   const entrada = datos || {};
   const tipoPersona = normalizarTipoPersonaPago_(entrada.tipoPersona);
   const resumen = buscarPersonaPago(tipoPersona, entrada.criterio, entrada.personaId);
+  if (tipoPersona === 'Servidor' && resumen.exentoPago) {
+    throw crearErrorAplicacion('SERVIDOR_EXENTO_PAGO', 'Este servidor está marcado como exento de pago y no tiene saldo pendiente.');
+  }
   const valor = Number(entrada.valorReportado);
   if (!valor || valor <= 0) throw crearErrorAplicacion('VALOR_PAGO_INVALIDO', 'Ingrese un valor de pago mayor a cero.');
   resumen.valorReportado = valor;
@@ -342,23 +349,28 @@ function construirGrupoReportePagos_(tipo, filtros) {
   });
   const detalle = personas.map(function(persona) {
     const recaudado = Number(recaudadoPorPersona[String(persona.id)] || 0);
+    const esExento = tipoPersona === 'Servidor' && Boolean(persona.exentoPago);
+    const esperadoPersona = esExento ? 0 : valorIndividual;
     return {
       id: persona.id,
       nombre: persona.nombreCompleto || persona.nombre || '',
       numeroInscripcion: persona.numeroInscripcion || '',
       documentoIdentidad: persona.documentoIdentidad || '',
-      valorEsperado: valorIndividual,
+      exentoPago: esExento,
+      motivoExencionPago: persona.motivoExencionPago || '',
+      valorEsperado: esperadoPersona,
       valorRecaudado: recaudado,
-      valorPendiente: Math.max(valorIndividual - recaudado, 0),
-      excedente: Math.max(recaudado - valorIndividual, 0),
-      estadoPago: recaudado <= 0 ? 'Pendiente' : recaudado < valorIndividual ? 'Pago Parcial' : 'Pago Total'
+      valorPendiente: Math.max(esperadoPersona - recaudado, 0),
+      excedente: Math.max(recaudado - esperadoPersona, 0),
+      estadoPago: esExento ? 'Exento' : (recaudado <= 0 ? 'Pendiente' : recaudado < valorIndividual ? 'Pago Parcial' : 'Pago Total')
     };
   });
   const valorRecaudado = detalle.reduce(function(suma, item) { return suma + item.valorRecaudado; }, 0);
-  const valorEsperado = personas.length * valorIndividual;
+  const valorEsperado = detalle.reduce(function(suma, item) { return suma + item.valorEsperado; }, 0);
   return {
     tipoPersona: tipoPersona,
     cantidadPersonas: personas.length,
+    cantidadExentos: detalle.filter(function(item) { return item.exentoPago; }).length,
     valorIndividual: valorIndividual,
     valorEsperado: valorEsperado,
     valorRecaudado: valorRecaudado,

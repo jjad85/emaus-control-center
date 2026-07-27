@@ -13,11 +13,13 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
   Grid,
   InputAdornment,
   MenuItem,
   Snackbar,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material';
@@ -168,6 +170,8 @@ export default function Servidores() {
       correo: servidor.correo || '',
       celular: servidor.celular || '',
       estadoPago: servidor.estadoPago || 'Pendiente',
+      exentoPago: Boolean(servidor.exentoPago),
+      motivoExencionPago: servidor.motivoExencionPago || '',
       temaId: '',
       destinoAsignacion: servidor.mesa ? 'Mesa' : (servidor.equipo || ''),
       mesa: servidor.mesa || '',
@@ -582,6 +586,11 @@ export default function Servidores() {
                       </Typography>
                       <StatusChip value={detalleServidor?.estadoPago || 'Pendiente'} />
                     </Stack>
+                    {detalleServidor?.exentoPago && detalleServidor?.motivoExencionPago && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Motivo de exención: {detalleServidor.motivoExencionPago}
+                      </Typography>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -611,6 +620,12 @@ export default function Servidores() {
 
                 {resumenPagos && (
                   <Stack spacing={1.5}>
+                    {resumenPagos.exentoPago && (
+                      <Alert severity="success">
+                        Este servidor está exento de pago y no genera saldo pendiente.
+                        {resumenPagos.motivoExencionPago ? ` Motivo: ${resumenPagos.motivoExencionPago}` : ''}
+                      </Alert>
+                    )}
                     <Grid container spacing={1.5}>
                       <Grid size={{ xs: 6, sm: 3 }}>
                         <Typography variant="caption" color="text.secondary">Valor retiro</Typography>
@@ -767,6 +782,29 @@ export default function Servidores() {
                 />
                 <TextField label="Correo" value={form.correo || ''} onChange={(e) => setForm({ ...form, correo: e.target.value })} />
                 <TextField label="Celular" value={form.celular || ''} onChange={(e) => setForm({ ...form, celular: e.target.value })} />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(form.exentoPago)}
+                      onChange={(e) => setForm({
+                        ...form,
+                        exentoPago: e.target.checked,
+                        motivoExencionPago: e.target.checked ? (form.motivoExencionPago || '') : '',
+                      })}
+                    />
+                  }
+                  label="Servidor exento de pago"
+                />
+                {form.exentoPago && (
+                  <TextField
+                    label="Motivo de la exención"
+                    value={form.motivoExencionPago || ''}
+                    onChange={(e) => setForm({ ...form, motivoExencionPago: e.target.value })}
+                    multiline
+                    minRows={2}
+                    helperText="El servidor no generará valor esperado ni saldo pendiente."
+                  />
+                )}
               </>
             )}
 

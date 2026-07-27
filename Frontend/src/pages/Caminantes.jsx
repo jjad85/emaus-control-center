@@ -1207,13 +1207,27 @@ export default function Caminantes() {
                 valor={detalleCaminante?.limitacionCual}
               />
               <CampoDetalle
-                etiqueta="Alergias"
-                valor={detalleCaminante?.alergias}
+                etiqueta="Tiene condición alimentaria"
+                valor={detalleCaminante?.tieneCondicionAlimentaria}
+              />
+              <CampoDetalle
+                etiqueta="Alergias alimentarias"
+                valor={detalleCaminante?.alergiasAlimentarias || detalleCaminante?.alergias}
                 anchoCompleto
               />
               <CampoDetalle
                 etiqueta="Restricciones alimentarias"
                 valor={detalleCaminante?.restriccionesAlimentarias}
+                anchoCompleto
+              />
+              <CampoDetalle
+                etiqueta="Preferencias alimentarias"
+                valor={detalleCaminante?.preferenciasAlimentarias}
+                anchoCompleto
+              />
+              <CampoDetalle
+                etiqueta="Dieta especial o indicaciones"
+                valor={detalleCaminante?.dietaEspecial}
                 anchoCompleto
               />
               <CampoDetalle

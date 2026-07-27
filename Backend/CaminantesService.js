@@ -203,6 +203,26 @@ function enriquecerCaminanteConAspirante(
   enriquecido.limitacionCual =
     aspirante.limitacionCual || '';
 
+  enriquecido.tieneCondicionAlimentaria =
+    aspirante.tieneCondicionAlimentaria || 'No';
+
+  enriquecido.alergiasAlimentarias =
+    aspirante.alergiasAlimentarias ||
+    aspirante.alergias ||
+    '';
+
+  enriquecido.alergias =
+    enriquecido.alergiasAlimentarias;
+
+  enriquecido.restriccionesAlimentarias =
+    aspirante.restriccionesAlimentarias || '';
+
+  enriquecido.preferenciasAlimentarias =
+    aspirante.preferenciasAlimentarias || '';
+
+  enriquecido.dietaEspecial =
+    aspirante.dietaEspecial || '';
+
   enriquecido.sacramentosRecibidos =
     aspirante.sacramentosRecibidos || '';
 

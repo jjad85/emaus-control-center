@@ -100,7 +100,9 @@ function descargarReporteCsv(reporte) {
     'Valor recaudado',
     'Valor pendiente',
     'Excedente',
-    'Estado de pago'
+    'Estado de pago',
+    'Exento de pago',
+    'Motivo de exención'
   ]];
 
   (reporte?.grupos || []).forEach(grupo => {
@@ -116,7 +118,9 @@ function descargarReporteCsv(reporte) {
         persona.valorRecaudado,
         persona.valorPendiente,
         persona.excedente,
-        persona.estadoPago
+        persona.estadoPago,
+        persona.exentoPago ? 'Sí' : 'No',
+        persona.motivoExencionPago || ''
       ]);
     });
   });
@@ -544,6 +548,7 @@ export default function Pagos() {
                             <TableCell align="right">Recaudado</TableCell>
                             <TableCell align="right">Pendiente</TableCell>
                             <TableCell>Estado</TableCell>
+                            <TableCell>Condición</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -559,11 +564,12 @@ export default function Pagos() {
                               <TableCell align="right">{formatearMoneda(persona.valorRecaudado)}</TableCell>
                               <TableCell align="right">{formatearMoneda(persona.valorPendiente)}</TableCell>
                               <TableCell>{persona.estadoPago}</TableCell>
+                              <TableCell>{persona.exentoPago ? 'Exento de pago' : 'Pago requerido'}</TableCell>
                             </TableRow>
                           ))}
                           {!grupo.detalle.length && (
                             <TableRow>
-                              <TableCell colSpan={5}>No hay personas activas en este grupo.</TableCell>
+                              <TableCell colSpan={6}>No hay personas activas en este grupo.</TableCell>
                             </TableRow>
                           )}
                         </TableBody>

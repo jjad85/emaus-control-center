@@ -618,7 +618,22 @@ function prepararDatosCaminante(
         datos.foto ||
           'Pendiente',
         ESTADOS_ENTREGABLE_CAMINANTE
-      )
+      ),
+
+    tieneCondicionAlimentaria:
+      String(datos.tieneCondicionAlimentaria || 'No').trim(),
+
+    alergiasAlimentarias:
+      String(datos.alergiasAlimentarias || datos.alergias || '').trim(),
+
+    restriccionesAlimentarias:
+      String(datos.restriccionesAlimentarias || '').trim(),
+
+    preferenciasAlimentarias:
+      String(datos.preferenciasAlimentarias || '').trim(),
+
+    dietaEspecial:
+      String(datos.dietaEspecial || '').trim()
   });
 }
 

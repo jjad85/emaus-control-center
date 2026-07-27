@@ -65,6 +65,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
   return [
     ['DASHBOARD_VER','Dashboard','Dashboard','Ver dashboard'],
     ['ASPIRANTES_VER_DETALLE','Personas','Aspirantes','Ver detalle'],
+    ['ALIMENTACION_EXPORTAR','Personas','Aspirantes','Exportar alimentación'],
     ['ASPIRANTES_NOTIFICAR_PREINSCRIPCION','Personas','Aspirantes','Notificar preinscripción'],
     ['ASPIRANTES_CAMBIAR_ESTADO','Personas','Aspirantes','Cambiar estado'],
     ['CAMINANTES_VER_DETALLE','Personas','Caminantes','Ver detalle'],

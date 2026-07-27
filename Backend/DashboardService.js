@@ -207,6 +207,7 @@ function construirAlertasDashboard(
     contexto.servidores.filter(
       function(item) {
         return (
+          !item.exentoPago &&
           normalizarTexto(
             item.estadoPago
           ) === 'pendiente'

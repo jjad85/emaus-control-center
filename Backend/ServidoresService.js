@@ -87,7 +87,9 @@ function convertirServidor(registro) {
     correo: registro.correo || '',
     celular: registro.celular || registro.telefono || '',
     contacto: registro.contacto || '',
-    estadoPago: registro.estadoPago || 'Pendiente',
+    exentoPago: convertirBooleano(registro.exentoPago),
+    motivoExencionPago: registro.motivoExencionPago || '',
+    estadoPago: convertirBooleano(registro.exentoPago) ? 'Exento' : (registro.estadoPago || 'Pendiente'),
     equipo: registro.equipo || '',
     rol: rolEquipo || rolMesa || rolLegacy,
     rolEquipo: rolEquipo,
@@ -128,7 +130,9 @@ function resumirServidor(servidor) {
     rol: servidor.rol || '',
     rolMesa: servidor.rolMesa || '',
     rolEquipo: servidor.rolEquipo || '',
-    estadoPago: servidor.estadoPago || 'Pendiente',
+    exentoPago: Boolean(servidor.exentoPago),
+    motivoExencionPago: servidor.motivoExencionPago || '',
+    estadoPago: servidor.exentoPago ? 'Exento' : (servidor.estadoPago || 'Pendiente'),
     temas: servidor.temas || [],
     mesa: servidor.mesa || '',
     equipo: servidor.equipo || '',
@@ -183,7 +187,14 @@ function editarServidor(token, id, datos) {
         documentoIdentidad: documentoIdentidad,
         correo: String(entrada.correo || '').trim(),
         celular: String(entrada.celular || '').trim(),
-        contacto: String(entrada.contacto || '').trim()
+        contacto: String(entrada.contacto || '').trim(),
+        exentoPago: convertirBooleano(entrada.exentoPago) ? 'Sí' : 'No',
+        motivoExencionPago: convertirBooleano(entrada.exentoPago)
+          ? String(entrada.motivoExencionPago || '').trim()
+          : '',
+        estadoPago: convertirBooleano(entrada.exentoPago)
+          ? 'Exento'
+          : (normalizarTexto(entrada.estadoPago) === 'exento' ? 'Pendiente' : String(entrada.estadoPago || 'Pendiente')) 
       },
       opcionesCrudServidores_(sesion.usuario)
     );

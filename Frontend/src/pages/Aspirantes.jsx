@@ -31,6 +31,7 @@ import PersonRounded from '@mui/icons-material/PersonRounded';
 import PhoneRounded from '@mui/icons-material/PhoneRounded';
 import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
 import PersonAddRounded from '@mui/icons-material/PersonAddRounded';
+import DownloadRounded from '@mui/icons-material/DownloadRounded';
 
 import {
   useMemo,
@@ -486,6 +487,10 @@ function coincideBusqueda(aspirante, busqueda) {
     aspirante?.numeroInscripcion,
     aspirante?.celular,
     aspirante?.telefono,
+    aspirante?.alergiasAlimentarias,
+    aspirante?.restriccionesAlimentarias,
+    aspirante?.preferenciasAlimentarias,
+    aspirante?.dietaEspecial,
   ].some((valor) =>
     normalizarBusqueda(valor).includes(termino)
   );
@@ -847,6 +852,56 @@ function GrupoAspirantes({
   );
 }
 
+
+function escaparCsv(valor) {
+  const texto = String(valor ?? '').replace(/\r?\n/g, ' ').trim();
+  return `"${texto.replace(/"/g, '""')}"`;
+}
+
+function descargarReporteAlimentacion(items) {
+  const encabezados = [
+    'Número de inscripción',
+    'Nombre',
+    'Documento',
+    'Celular',
+    'Estado de solicitud',
+    'Tiene condición alimentaria',
+    'Alergias alimentarias',
+    'Restricciones alimentarias',
+    'Preferencias alimentarias',
+    'Dieta especial o indicaciones',
+  ];
+
+  const filas = items.map((item) => [
+    item.numeroInscripcion,
+    item.nombreCompleto,
+    item.documentoIdentidad,
+    item.celular,
+    item.estadoSolicitud,
+    item.tieneCondicionAlimentaria,
+    item.alergiasAlimentarias || item.alergias,
+    item.restriccionesAlimentarias,
+    item.preferenciasAlimentarias,
+    item.dietaEspecial,
+  ]);
+
+  const contenido = [encabezados, ...filas]
+    .map((fila) => fila.map(escaparCsv).join(';'))
+    .join('\n');
+
+  const blob = new Blob(['\ufeff' + contenido], {
+    type: 'text/csv;charset=utf-8;',
+  });
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = `alimentacion-retiro-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function Aspirantes() {
   const navigate = useNavigate();
   const {
@@ -1051,6 +1106,17 @@ export default function Aspirantes() {
             <Typography color="text.secondary">
               {items.length} registros totales
             </Typography>
+
+            {puede('ALIMENTACION_EXPORTAR') && (
+              <Button
+                variant="outlined"
+                startIcon={<DownloadRounded />}
+                onClick={() => descargarReporteAlimentacion(items)}
+                disabled={!items.length}
+              >
+                Exportar alimentación
+              </Button>
+            )}
 
             {puede('ASPIRANTES_REGISTRAR') && (
               <Button
@@ -1267,6 +1333,30 @@ export default function Aspirantes() {
                 <CampoDetalle
                   etiqueta="Limitación"
                   valor={seleccionado.limitacionCual}
+                />
+                <CampoDetalle
+                  etiqueta="Tiene condición alimentaria"
+                  valor={seleccionado.tieneCondicionAlimentaria}
+                />
+                <CampoDetalle
+                  etiqueta="Alergias alimentarias"
+                  valor={seleccionado.alergiasAlimentarias || seleccionado.alergias}
+                  anchoCompleto
+                />
+                <CampoDetalle
+                  etiqueta="Restricciones alimentarias"
+                  valor={seleccionado.restriccionesAlimentarias}
+                  anchoCompleto
+                />
+                <CampoDetalle
+                  etiqueta="Preferencias alimentarias"
+                  valor={seleccionado.preferenciasAlimentarias}
+                  anchoCompleto
+                />
+                <CampoDetalle
+                  etiqueta="Dieta especial o indicaciones"
+                  valor={seleccionado.dietaEspecial}
+                  anchoCompleto
                 />
               </SeccionDetalle>
 

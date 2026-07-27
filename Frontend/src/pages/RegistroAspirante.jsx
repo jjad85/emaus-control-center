@@ -117,6 +117,11 @@ const INICIAL = {
   profesionOcupacion: '',
   tieneLimitacionFisica: '',
   limitacionCual: '',
+  tieneCondicionAlimentaria: '',
+  alergiasAlimentarias: '',
+  restriccionesAlimentarias: '',
+  preferenciasAlimentarias: '',
+  dietaEspecial: '',
 
   sacramentosRecibidos: [],
   tallaCamisa: '',
@@ -538,7 +543,15 @@ export default function RegistroAspirante({ registroInterno = false }) {
           form.tomaMedicamento &&
           form.eps &&
           form.profesionOcupacion &&
-          form.tieneLimitacionFisica
+          form.tieneLimitacionFisica &&
+          form.tieneCondicionAlimentaria &&
+          (
+            form.tieneCondicionAlimentaria === 'No' ||
+            form.alergiasAlimentarias ||
+            form.restriccionesAlimentarias ||
+            form.preferenciasAlimentarias ||
+            form.dietaEspecial
+          )
         );
       }
 
@@ -1428,6 +1441,67 @@ export default function RegistroAspirante({ registroInterno = false }) {
                     />
                   </Grid>
                 </Grid>
+
+                <PreguntaSiNo
+                  label="¿Tiene alergias, restricciones, preferencias o alguna dieta especial?"
+                  value={form.tieneCondicionAlimentaria}
+                  onChange={(valor) => {
+                    cambiar('tieneCondicionAlimentaria', valor);
+                    if (valor === 'No') {
+                      cambiar('alergiasAlimentarias', '');
+                      cambiar('restriccionesAlimentarias', '');
+                      cambiar('preferenciasAlimentarias', '');
+                      cambiar('dietaEspecial', '');
+                    }
+                  }}
+                  required
+                  error={errorObligatorio('tieneCondicionAlimentaria')}
+                />
+
+                {form.tieneCondicionAlimentaria === 'Sí' && (
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Campo
+                        label="Alergias alimentarias"
+                        value={form.alergiasAlimentarias}
+                        onChange={(valor) => cambiar('alergiasAlimentarias', valor)}
+                        helperText="Ejemplo: maní, mariscos, leche o huevo."
+                        multiline
+                        minRows={2}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Campo
+                        label="Restricciones alimentarias"
+                        value={form.restriccionesAlimentarias}
+                        onChange={(valor) => cambiar('restriccionesAlimentarias', valor)}
+                        helperText="Ejemplo: sin gluten, sin lactosa o bajo en sodio."
+                        multiline
+                        minRows={2}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Campo
+                        label="Preferencias alimentarias"
+                        value={form.preferenciasAlimentarias}
+                        onChange={(valor) => cambiar('preferenciasAlimentarias', valor)}
+                        helperText="Ejemplo: vegetariana o no consume cerdo."
+                        multiline
+                        minRows={2}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Campo
+                        label="Dieta especial o indicaciones"
+                        value={form.dietaEspecial}
+                        onChange={(valor) => cambiar('dietaEspecial', valor)}
+                        helperText="Indique cualquier preparación o cuidado especial."
+                        multiline
+                        minRows={2}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
 
                 <PreguntaSiNo
                   label="¿Tiene alguna limitación física?"

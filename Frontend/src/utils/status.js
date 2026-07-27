@@ -8,7 +8,7 @@ export function normalize(value) {
 
 export function statusStyle(value) {
   const key = normalize(value);
-  if (['completado', 'aprobado', 'pago total', 'entregado', 'entregada', 'recibido', 'recibida'].includes(key)) {
+  if (['completado', 'aprobado', 'pago total', 'exento', 'entregado', 'entregada', 'recibido', 'recibida'].includes(key)) {
     return { backgroundColor: '#0B7D4F', color: '#fff' };
   }
   if (['en proceso', 'en revision', 'pago parcial', 'solicitada', 'solicitado'].includes(key)) {

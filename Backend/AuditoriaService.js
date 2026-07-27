@@ -38,7 +38,7 @@ function convertirFechaFiltroAuditoria(valor, finDelDia) {
 }
 
 function obtenerAuditoriaSistema(token, filtros) {
-  validarAdministradorSistema(token);
+  validarPermiso(token, 'SISTEMA_TODO');
 
   filtros = filtros || {};
 
