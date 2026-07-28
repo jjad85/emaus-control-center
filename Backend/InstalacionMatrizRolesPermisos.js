@@ -98,6 +98,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['EQUIPOS_CREAR','Logística','Equipos','Crear equipo'],
     ['EQUIPOS_ASIGNAR_SERVIDOR','Logística','Equipos','Asignar servidor'],
     ['EQUIPOS_EDITAR','Logística','Equipos','Editar'],
+    ['EQUIPOS_RETIRAR_SERVIDOR','Logística','Equipos','Retirar servidor'],
     ['HABITACIONES_VER_DETALLE','Logística','Habitaciones','Ver detalle'],
     ['HABITACIONES_EDITAR','Logística','Habitaciones','Editar'],
     ['HABITACIONES_ASIGNAR_PERSONA','Logística','Habitaciones','Asignar persona'],

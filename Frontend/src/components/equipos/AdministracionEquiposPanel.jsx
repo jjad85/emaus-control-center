@@ -40,7 +40,7 @@ const FORM_INICIAL = {
   nombre: '',
   tipo: 'Principal',
   descripcion: '',
-  orden: '',
+  
   activo: true,
 };
 

@@ -10,6 +10,8 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Tooltip,
   Divider,
   Grid,
   Stack,
@@ -20,6 +22,7 @@ import {
   EditRounded,
   GroupsRounded,
   PersonAddAltRounded,
+  CloseRounded,
 } from '@mui/icons-material';
 import { useMemo, useState } from 'react';
 
@@ -28,10 +31,12 @@ import { obtenerConfiguraciones } from '../api/configuracionesApi';
 import {
   listarEquiposAdministrables,
   obtenerResumenAsignacionEquipos,
+  retirarServidorDeEquipo,
 } from '../api/equiposAdministracionApi';
 import { useApi } from '../hooks/useApi';
 
 import PageHeader from '../components/PageHeader';
+import Can from '../security/Can';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import StatusChip from '../components/StatusChip';
@@ -121,6 +126,7 @@ export default function Equipos() {
 
   const [selected, setSelected] =
     useState(null);
+  const [retirandoId, setRetirandoId] = useState('');
   const [equipoEditar, setEquipoEditar] =
     useState(null);
   const [equipoAsignar, setEquipoAsignar] =
@@ -238,6 +244,29 @@ export default function Equipos() {
         }}
       />
     );
+  }
+
+  async function retirarIntegrante(integrante) {
+    if (!selected?.id || !integrante?.id) return;
+    if (!window.confirm(`¿Retirar a ${integrante.nombre} de ${nombreVisible(selected)}?`)) return;
+
+    try {
+      setRetirandoId(integrante.id);
+      await retirarServidorDeEquipo(token, selected.id, integrante.id);
+      const nuevos = await listarEquiposAdministrables(token);
+      const actualizado = (nuevos || []).find(item => String(item.id) === String(selected.id));
+      setSelected(actualizado || null);
+      await recargar();
+    } catch (err) {
+      // Libera primero el estado de procesamiento para que el overlay desaparezca
+      // antes de mostrar el mensaje del navegador.
+      setRetirandoId('');
+      const mensaje = err?.message || 'No fue posible retirar el servidor del equipo.';
+      window.setTimeout(() => window.alert(mensaje), 0);
+      return;
+    } finally {
+      setRetirandoId('');
+    }
   }
 
   function TarjetaEquipo({ equipo }) {
@@ -831,6 +860,22 @@ export default function Equipos() {
                         )}
                       </Box>
                     </Stack>
+
+                    <Can permiso="EQUIPOS_RETIRAR_SERVIDOR">
+                      <Tooltip title="Retirar del equipo">
+                        <span>
+                          <IconButton
+                            color="error"
+                            size="small"
+                            aria-label={`Retirar a ${integrante.nombre}`}
+                            onClick={() => retirarIntegrante(integrante)}
+                            disabled={retirandoId === integrante.id}
+                          >
+                            <CloseRounded />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </Can>
 
                     <StatusChip
                       value={

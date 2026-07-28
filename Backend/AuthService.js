@@ -798,6 +798,13 @@ function obtenerSesion(token) {
     sesion.rol
   );
 
+  // Sesión deslizante: cada actividad autenticada renueva el tiempo de inactividad.
+  var duracion = Number(sesion.duracionSesionSegundos || 0);
+  if (duracion > 0) {
+    sesion.fechaExpiracion = new Date(Date.now() + duracion * 1000).toISOString();
+    guardarSesion(tokenLimpio, sesion, duracion);
+  }
+
   return sesion;
 }
 

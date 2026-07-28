@@ -1159,7 +1159,7 @@ export default function MainLayout() {
 
         <MenuItem
           onClick={() =>
-            navegarDesdeMenuUsuario('/reportar-pago')
+            navegarDesdeMenuUsuario('/mi-cuenta/reportar-pago')
           }
           sx={{ py: 1.15 }}
         >

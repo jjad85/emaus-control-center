@@ -47,6 +47,7 @@ import PageHeader from '../components/PageHeader';
 
 const FORMULARIO_INICIAL = {
   fecha: '',
+  hora: '',
   descripcion: '',
 };
 
@@ -135,7 +136,7 @@ export default function FechasImportantes() {
 
   function abrirEdicion(item) {
     setEditando(item);
-    setFormulario({ fecha: item.fecha || '', descripcion: item.descripcion || '' });
+    setFormulario({ fecha: item.fecha || '', hora: item.hora || '', descripcion: item.descripcion || '' });
     setErrorAccion('');
     setDialogoAbierto(true);
   }
@@ -168,6 +169,7 @@ export default function FechasImportantes() {
     try {
       const datos = {
         fecha: formulario.fecha,
+        hora: formulario.hora,
         descripcion: formulario.descripcion.replace(/\s+/g, ' ').trim(),
       };
       if (editando) await editarFechaImportanteApi(token, editando.id, datos);
@@ -286,7 +288,7 @@ export default function FechasImportantes() {
                 <CardContent>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                     <Box>
-                      <Typography variant="overline" color="text.secondary">{item.fechaTexto}</Typography>
+                      <Typography variant="overline" color="text.secondary">{item.fechaTexto}{item.horaTexto ? ` • ${item.horaTexto}` : ''}</Typography>
                       <Typography variant="h6" fontWeight={850} sx={{ mt: -0.25 }}>{item.descripcion}</Typography>
                     </Box>
                     <Chip size="small" label={etiquetaEstado(item)} color={colorEstado(item)} variant={item.activo ? 'filled' : 'outlined'} />
@@ -326,6 +328,15 @@ export default function FechasImportantes() {
               inputProps={{ min: '2000-01-01', max: '2100-12-31' }}
               helperText="Esta fecha se usará para calcular los días restantes en el dashboard."
             />
+            <TextField
+              label="Hora (opcional)"
+              type="time"
+              InputLabelProps={{ shrink: true }}
+              value={formulario.hora}
+              onChange={(event) => setFormulario((actual) => ({ ...actual, hora: event.target.value }))}
+              fullWidth
+            />
+
             <TextField
               label="Descripción"
               required

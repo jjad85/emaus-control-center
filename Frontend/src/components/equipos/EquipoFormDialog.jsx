@@ -20,7 +20,7 @@ const FORM_INICIAL = {
   nombre: '',
   tipo: 'Principal',
   descripcion: '',
-  orden: '',
+  
   activo: true,
 };
 
@@ -164,18 +164,6 @@ export default function EquipoFormDialog({
             }
             multiline
             minRows={3}
-          />
-
-          <TextField
-            label="Orden"
-            type="number"
-            value={form.orden}
-            onChange={(event) =>
-              setForm((actual) => ({
-                ...actual,
-                orden: event.target.value,
-              }))
-            }
           />
 
           <FormControlLabel

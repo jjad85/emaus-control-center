@@ -12,15 +12,13 @@ import {
   Paper,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
+
   Typography
 } from '@mui/material';
 import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
-import PersonRounded from '@mui/icons-material/PersonRounded';
-import GroupsRounded from '@mui/icons-material/GroupsRounded';
+
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   buscarPersonaPago,
@@ -59,11 +57,14 @@ function moneda(valor) {
 
 export default function ReportarPago() {
   const nav = useNavigate();
+  const location = useLocation();
   const { autenticado, token, loading: authLoading } = useAuth();
 
-  // En la ruta pública continúa siendo un reporte para caminante.
-  // Al ingresar autenticado se solicita expresamente escoger el tipo de persona.
-  const [tipoPersona, setTipoPersona] = useState('');
+  const esMiCuenta = location.pathname === '/mi-cuenta/reportar-pago';
+  const esTesoreria = location.pathname === '/tesoreria/reportar-pago';
+  const esPublico = !autenticado && location.pathname === '/reportar-pago';
+
+  const [tipoPersona, setTipoPersona] = useState(esMiCuenta ? 'Servidor' : 'Caminante');
   const [criterio, setCriterio] = useState('');
   const [persona, setPersona] = useState(null);
   const [valorRetiro, setValorRetiro] = useState(null);
@@ -74,8 +75,13 @@ export default function ReportarPago() {
 
   useEffect(() => {
     if (authLoading) return;
-    setTipoPersona(autenticado ? '' : 'Caminante');
+    setTipoPersona(esMiCuenta ? 'Servidor' : 'Caminante');
   }, [autenticado, authLoading]);
+
+  useEffect(() => {
+    if (!authLoading && esMiCuenta && autenticado && token) cargarMiServidor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, autenticado, token, esMiCuenta]);
 
   useEffect(() => {
     let vigente = true;
@@ -125,8 +131,8 @@ export default function ReportarPago() {
       setValorRetiro(datos?.valorRetiro || valorRetiro);
       setForm(actual => ({
         ...actual,
-        nombrePagador: actual.nombrePagador || datos?.nombre || '',
-        telefonoPagador: actual.telefonoPagador || datos?.celular || ''
+        nombrePagador: esMiCuenta ? (actual.nombrePagador || datos?.nombre || '') : '',
+        telefonoPagador: esMiCuenta ? (actual.telefonoPagador || datos?.celular || '') : ''
       }));
     } catch (e) {
       setPersona(null);
@@ -145,8 +151,8 @@ export default function ReportarPago() {
       setValorRetiro(datos?.valorRetiro || valorRetiro);
       setForm(actual => ({
         ...actual,
-        nombrePagador: actual.nombrePagador || datos?.nombre || '',
-        telefonoPagador: actual.telefonoPagador || datos?.celular || ''
+        nombrePagador: esMiCuenta ? (actual.nombrePagador || datos?.nombre || '') : '',
+        telefonoPagador: esMiCuenta ? (actual.telefonoPagador || datos?.celular || '') : ''
       }));
     } catch (e) {
       setPersona(null);
@@ -228,52 +234,30 @@ export default function ReportarPago() {
             Reportar pago
           </Typography>
 
-          {autenticado && !tipoPersona && (
-            <Paper sx={{ p: 3, borderRadius: 4 }}>
-              <Stack spacing={2}>
-                <Typography variant="h6" fontWeight={800}>
-                  ¿Para quién vas a reportar el pago?
-                </Typography>
-                <Typography color="text.secondary">
-                  Selecciona si el comprobante corresponde a un caminante o a un servidor.
-                </Typography>
-                <ToggleButtonGroup
-                  exclusive
-                  fullWidth
-                  value={tipoPersona}
-                  onChange={cambiarTipo}
-                >
-                  <ToggleButton value="Caminante">
-                    <GroupsRounded sx={{ mr: 1 }} /> Caminante
-                  </ToggleButton>
-                  <ToggleButton value="Servidor">
-                    <PersonRounded sx={{ mr: 1 }} /> Servidor
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </Stack>
+          {!esMiCuenta && (
+            <Paper sx={{ p: 2, borderRadius: 3 }}>
+              <TextField
+                select
+                fullWidth
+                label="¿Para quién se reporta el pago?"
+                value={tipoPersona}
+                onChange={e => cambiarTipo(null, e.target.value)}
+              >
+                <MenuItem value="Caminante">Caminante</MenuItem>
+                <MenuItem value="Servidor">Servidor</MenuItem>
+              </TextField>
             </Paper>
           )}
 
           {tipoPersona && (
             <>
-              {autenticado && (
-                <ToggleButtonGroup
-                  exclusive
-                  fullWidth
-                  value={tipoPersona}
-                  onChange={cambiarTipo}
-                >
-                  <ToggleButton value="Caminante">Caminante</ToggleButton>
-                  <ToggleButton value="Servidor">Servidor</ToggleButton>
-                </ToggleButtonGroup>
-              )}
 
               <Alert severity="info">
                 El retiro para {etiquetaPersona} tiene un costo de{' '}
                 <strong>
                   {valorInformativo ? moneda(valorInformativo) : 'valor parametrizado'}
                 </strong>.
-                Puedes realizar el pago total o hacer abonos parciales. Cada comprobante será revisado por Tesorería.
+                Puedes realizar el pago total o hacer abonos parciales. El reporte será revisado por Tesorería. El comprobante es obligatorio.
               </Alert>
 
               {error && <Alert severity="error">{error}</Alert>}
@@ -290,14 +274,8 @@ export default function ReportarPago() {
                     </Button>
                   )}
 
-                  {!persona && (
+                  {!persona && !esMiCuenta && (
                     <>
-                      {tipoPersona === 'Servidor' && autenticado && (
-                        <Typography variant="body2" color="text.secondary">
-                          También puedes buscar otro servidor por documento o número de inscripción.
-                        </Typography>
-                      )}
-
                       <TextField
                         label={
                           tipoPersona === 'Servidor'
@@ -339,17 +317,19 @@ export default function ReportarPago() {
                         </Alert>
                       )}
 
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setPersona(null);
-                          setCriterio('');
-                          setForm(FORM_INICIAL);
-                          setError('');
-                        }}
-                      >
-                        Cambiar persona
-                      </Button>
+                      {!esMiCuenta && (
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setPersona(null);
+                            setCriterio('');
+                            setForm(FORM_INICIAL);
+                            setError('');
+                          }}
+                        >
+                          Cambiar persona
+                        </Button>
+                      )}
 
                       <TextField
                         label="Valor pagado"
@@ -408,7 +388,7 @@ export default function ReportarPago() {
                       />
 
                       <Button component="label" variant="outlined">
-                        Adjuntar comprobante
+                        Adjuntar comprobante *
                         <input
                           hidden
                           type="file"
@@ -439,12 +419,12 @@ export default function ReportarPago() {
                           !form.valorReportado ||
                           Number(form.valorReportado) <= 0 ||
                           !form.fechaPago ||
+                          !form.archivo ||
                           !form.nombrePagador.trim() ||
-                          !/^3\d{9}$/.test(form.telefonoPagador) ||
-                          !form.archivo
+                          !/^3\d{9}$/.test(form.telefonoPagador)
                         }
                       >
-                        {loading ? 'Enviando...' : 'Enviar comprobante de pago'}
+                        {loading ? 'Enviando...' : 'Reportar pago'}
                       </Button>
                     </>
                   )}
@@ -460,10 +440,10 @@ export default function ReportarPago() {
         onClose={cerrarConfirmacion}
         aria-labelledby="confirmacion-pago-titulo"
       >
-        <DialogTitle id="confirmacion-pago-titulo">Comprobante recibido</DialogTitle>
+        <DialogTitle id="confirmacion-pago-titulo">Pago reportado</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Hemos recibido correctamente tu comprobante de pago. Estamos pendientes de validar la información y actualizar el estado del pago. Muchas gracias.
+            Hemos recibido correctamente tu reporte de pago. Estamos pendientes de validar la información y actualizar el estado del pago. Muchas gracias.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

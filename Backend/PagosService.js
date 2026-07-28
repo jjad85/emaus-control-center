@@ -165,7 +165,9 @@ function normalizarPagoRespuesta(p, persona) {
 }
 
 function guardarComprobantePago(archivo, persona) {
-  if (!archivo || !archivo.base64 || !archivo.nombre || !archivo.tipo) throw crearErrorAplicacion('COMPROBANTE_REQUERIDO', 'Adjunte el comprobante de pago.');
+  if (!archivo || !archivo.base64 || !archivo.nombre || !archivo.tipo) {
+    return { id:'', url:'', nombre:'', tipo:'', tamano:0 };
+  }
   if (!TIPOS_COMPROBANTE.includes(String(archivo.tipo).toLowerCase())) throw crearErrorAplicacion('TIPO_COMPROBANTE_INVALIDO', 'Solo se permiten PDF, JPG, JPEG y PNG.');
   const bytes = Utilities.base64Decode(String(archivo.base64).replace(/^data:[^;]+;base64,/, ''));
   if (bytes.length > TAMANO_MAXIMO_COMPROBANTE) throw crearErrorAplicacion('COMPROBANTE_MUY_GRANDE', 'El comprobante no puede superar 5 MB.');
@@ -186,6 +188,7 @@ function guardarComprobantePago(archivo, persona) {
 
 function reportarPagoPublico(datos) {
   const entrada = datos || {};
+  if (!entrada.archivo || !entrada.archivo.base64) throw crearErrorAplicacion('COMPROBANTE_REQUERIDO', 'Debe adjuntar el comprobante del pago.');
   const tipoPersona = normalizarTipoPersonaPago_(entrada.tipoPersona);
   const resumen = buscarPersonaPago(tipoPersona, entrada.criterio, entrada.personaId);
   if (tipoPersona === 'Servidor' && resumen.exentoPago) {

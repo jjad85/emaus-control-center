@@ -26,6 +26,7 @@ function obtenerFechasImportantes(token, parametros) {
       const numeroFila = indice + 2;
       const fecha = normalizarFechaImportante_(fila[contexto.indices.fecha]);
       const descripcion = String(fila[contexto.indices.descripcion] || '').trim();
+      const hora = contexto.indices.hora >= 0 ? String(fila[contexto.indices.hora] || '').trim() : '';
       const id = contexto.indices.id >= 0
         ? String(fila[contexto.indices.id] || '').trim()
         : '';
@@ -45,6 +46,8 @@ function obtenerFechasImportantes(token, parametros) {
         fecha: Utilities.formatDate(fechaDia, zonaHoraria, 'yyyy-MM-dd'),
         fechaTexto: Utilities.formatDate(fechaDia, zonaHoraria, 'dd/MM/yyyy'),
         descripcion: descripcion,
+        hora: hora,
+        horaTexto: hora ? formatearHoraImportante_(hora) : '',
         activo: activo,
         diasRestantes: diasRestantes,
         estado: !activo
@@ -89,6 +92,7 @@ function registrarFechaImportante(token, datos) {
 
   fila[contexto.indices.fecha] = entrada.fecha;
   fila[contexto.indices.descripcion] = entrada.descripcion;
+  if (contexto.indices.hora >= 0) fila[contexto.indices.hora] = entrada.hora;
   if (contexto.indices.id >= 0) fila[contexto.indices.id] = id;
   if (contexto.indices.activo >= 0) fila[contexto.indices.activo] = 'Sí';
   if (contexto.indices.creadoEn >= 0) fila[contexto.indices.creadoEn] = ahora;
@@ -136,6 +140,7 @@ function editarFechaImportante(token, idIngresado, datos) {
 
   contexto.hoja.getRange(registro.numeroFila, contexto.indices.fecha + 1).setValue(entrada.fecha);
   contexto.hoja.getRange(registro.numeroFila, contexto.indices.descripcion + 1).setValue(entrada.descripcion);
+  if (contexto.indices.hora >= 0) contexto.hoja.getRange(registro.numeroFila, contexto.indices.hora + 1).setValue(entrada.hora);
   if (contexto.indices.actualizadoEn >= 0) contexto.hoja.getRange(registro.numeroFila, contexto.indices.actualizadoEn + 1).setValue(new Date());
   if (contexto.indices.actualizadoPor >= 0) contexto.hoja.getRange(registro.numeroFila, contexto.indices.actualizadoPor + 1).setValue(sesion.usuario || sesion.nombre || '');
 
@@ -219,6 +224,7 @@ function obtenerContextoFechasImportantes_() {
   const indices = {
     fecha: encabezados.indexOf('fecha'),
     descripcion: encabezados.indexOf('descripcion'),
+    hora: encabezados.indexOf('hora'),
     id: encabezados.indexOf('id'),
     activo: encabezados.indexOf('activo'),
     creadoEn: encabezados.indexOf('creadoen'),
@@ -332,4 +338,13 @@ function registrarAuditoriaFechaImportante_(sesion, accion, id, detalle) {
     idRegistro: id,
     detalle: JSON.stringify(detalle || {})
   });
+}
+
+function formatearHoraImportante_(hora) {
+  var partes = String(hora || '').split(':');
+  if (partes.length !== 2) return String(hora || '');
+  var h = Number(partes[0]); var m = partes[1];
+  var sufijo = h >= 12 ? 'p. m.' : 'a. m.';
+  var h12 = h % 12 || 12;
+  return h12 + ':' + m + ' ' + sufijo;
 }

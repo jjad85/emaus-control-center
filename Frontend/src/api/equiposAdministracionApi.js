@@ -102,6 +102,8 @@ export async function obtenerCandidatosAsignacionEquipo(
 export async function asignarServidoresAEquipo(
   token,
   equipoId,
+  equipoNombre,
+  rol,
   servidorIds
 ) {
   const respuesta = await postAction(
@@ -109,6 +111,8 @@ export async function asignarServidoresAEquipo(
     {
       token,
       equipoId,
+      equipoNombre,
+      rol,
       servidorIds,
     }
   );
@@ -125,5 +129,18 @@ export async function obtenerResumenAsignacionEquipos(
     { token }
   );
 
+  return respuesta.datos;
+}
+
+
+export async function retirarServidorDeEquipo(
+  token,
+  equipoId,
+  servidorId
+) {
+  const respuesta = await postAction(
+    'retirarservidordeequipo',
+    { token, equipoId, servidorId }
+  );
   return respuesta.datos;
 }

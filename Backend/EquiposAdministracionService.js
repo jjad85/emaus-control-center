@@ -102,13 +102,6 @@ function listarEquiposAdministrables(token) {
         return tipoA - tipoB;
       }
 
-      var ordenA = Number(a.orden) || 9999;
-      var ordenB = Number(b.orden) || 9999;
-
-      if (ordenA !== ordenB) {
-        return ordenA - ordenB;
-      }
-
       return String(a.nombre || '').localeCompare(
         String(b.nombre || ''),
         'es'
@@ -123,7 +116,6 @@ function asegurarEstructuraHojaEquipos_() {
     'Nombre',
     'Tipo',
     'Descripción',
-    'Orden',
     'Activo',
     'Fecha Registro',
     'Fecha Actualización',
@@ -189,7 +181,6 @@ function guardarEquipoAdministrable(token, datos) {
   var nombre = String(entrada.nombre || '').trim();
   var tipo = normalizarTipoEquipo_(entrada.tipo);
   var descripcion = String(entrada.descripcion || '').trim();
-  var orden = Number(entrada.orden || 0);
   var activo = convertirBooleanoEquipo_(entrada.activo, true);
 
   if (!nombre) {
@@ -250,7 +241,8 @@ function guardarEquipoAdministrable(token, datos) {
         );
       }
     } else {
-      id = generarIdEquipoAdministrable_();
+      id = String(generarIdEquipoAdministrable_() || Utilities.getUuid()).trim();
+      if (!id) id = Utilities.getUuid();
       fila = Math.max(hoja.getLastRow() + 1, 2);
     }
 
@@ -259,7 +251,6 @@ function guardarEquipoAdministrable(token, datos) {
       nombre: nombre,
       tipo: tipo,
       descripcion: descripcion,
-      orden: orden,
       activo: activo ? 'Sí' : 'No',
       fechaRegistro: entrada.id ? undefined : ahora,
       fechaActualizacion: ahora,
@@ -1456,7 +1447,8 @@ function leerHojaAdministracionEquipos_() {
        * - edición y cambio de estado por ID.
        */
       if (!id) {
-        id = generarIdEquipoAdministrable_();
+        id = String(generarIdEquipoAdministrable_() || Utilities.getUuid()).trim();
+      if (!id) id = Utilities.getUuid();
 
         if (columnaId >= 0) {
           valores[indice][columnaId] = id;
@@ -1621,15 +1613,57 @@ function obtenerEncabezadosEquipo_(hoja) {
 }
 
 function normalizarEncabezadoEquipo_(valor) {
-  var texto = String(valor || '')
+  var original = String(valor || '')
     .trim()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9]+(.)/g, function(_, caracter) {
-      return caracter.toUpperCase();
-    });
+    .replace(/[\u0300-\u036f]/g, '');
 
-  return texto.charAt(0).toLowerCase() + texto.slice(1);
+  /*
+   * Normalización explícita para evitar que "Servidor ID" y "Equipo ID"
+   * se conviertan en servidorID/equipoID. El servicio usa servidorId/equipoId.
+   */
+  var clave = original
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  var aliases = {
+    id: 'id',
+    nombre: 'nombre',
+    tipo: 'tipo',
+    descripcion: 'descripcion',
+    orden: 'orden',
+    activo: 'activo',
+    fecharegistro: 'fechaRegistro',
+    fechaactualizacion: 'fechaActualizacion',
+    actualizadopor: 'actualizadoPor',
+    servidorid: 'servidorId',
+    servidornombre: 'servidorNombre',
+    equipoid: 'equipoId',
+    tipoasignacion: 'tipoAsignacion',
+    fechainicio: 'fechaInicio',
+    fechafin: 'fechaFin'
+  };
+
+  if (aliases[clave]) {
+    return aliases[clave];
+  }
+
+  var palabras = original
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean);
+
+  if (!palabras.length) {
+    return '';
+  }
+
+  return palabras
+    .map(function(palabra, indice) {
+      var minuscula = palabra.toLowerCase();
+      return indice === 0
+        ? minuscula
+        : minuscula.charAt(0).toUpperCase() + minuscula.slice(1);
+    })
+    .join('');
 }
 
 function buscarFilaPorIdEquipo_(hoja, encabezados, id) {
@@ -1752,4 +1786,67 @@ function registrarAuditoriaEquipo_(
     idRegistro: idRegistro,
     detalle: detalle
   });
+}
+
+
+function retirarServidorDeEquipo(token, equipoId, servidorId) {
+  var sesion = validarPermiso(token, 'EQUIPOS_RETIRAR_SERVIDOR');
+  var equipo = obtenerEquipoAdministrablePorId_(equipoId);
+  if (!equipo) throw crearErrorAplicacion('EQUIPO_NO_ENCONTRADO', 'El equipo no existe.');
+
+  if (normalizarTexto(equipo.tipo) === 'apoyo') {
+    var hoja = obtenerHojaServidorEquipos_();
+    var encabezados = obtenerEncabezadosEquipo_(hoja);
+    var asignacion = leerAsignacionesEquiposApoyo_().find(function(item) {
+      return String(item.equipoId) === String(equipoId) &&
+        String(item.servidorId) === String(servidorId) &&
+        item.activo;
+    });
+    if (!asignacion) throw crearErrorAplicacion('ASIGNACION_NO_ENCONTRADA', 'El servidor no está asignado a este equipo.');
+    escribirValoresEquipo_(hoja, encabezados, asignacion._fila, {
+      activo: 'No',
+      fechaFin: new Date(),
+      fechaActualizacion: new Date(),
+      actualizadoPor: sesion.usuario || ''
+    });
+  } else {
+    var servidor = leerHojaComoObjetos(HOJAS.SERVIDORES).find(function(item) {
+      return String(item.id) === String(servidorId);
+    });
+    if (!servidor) throw crearErrorAplicacion('SERVIDOR_NO_ENCONTRADO', 'El servidor no existe.');
+    actualizarRegistroSheet(HOJAS.SERVIDORES, servidorId, {
+      equipo: '',
+      rol: '',
+      rolEquipo: '',
+      rolMesa: '',
+      fechaActualizacion: new Date(),
+      actualizadoPor: sesion.usuario || ''
+    }, opcionesCrudServidores_(sesion.usuario));
+  }
+
+  registrarAuditoriaEquipo_(sesion, 'RETIRAR_SERVIDOR_EQUIPO', equipoId,
+    'Servidor ' + servidorId + ' retirado de ' + equipo.nombre);
+
+  return { retirado: true, equipoId: equipoId, servidorId: servidorId };
+}
+
+function obtenerEquipoAdministrablePorId_(equipoId) {
+  /*
+   * Esta función se ejecuta después de validar la sesión y el permiso en la
+   * operación pública. No debe llamar listarEquiposAdministrables() porque esa
+   * función exige nuevamente el token; al invocarla sin token el backend
+   * respondía SESION_REQUERIDA y el frontend cerraba la sesión del usuario.
+   */
+  if (
+    typeof leerHojaAdministracionEquipos_ === 'function' &&
+    typeof resolverEquipoAdministrable_ === 'function'
+  ) {
+    var equipos = leerHojaAdministracionEquipos_();
+    return resolverEquipoAdministrable_(equipos, equipoId, null);
+  }
+
+  throw crearErrorAplicacion(
+    'EQUIPO_NO_RESUELTO',
+    'No fue posible consultar el equipo seleccionado.'
+  );
 }

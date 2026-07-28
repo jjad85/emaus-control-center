@@ -766,6 +766,20 @@ function routePost(contenido) {
           'Servidores disponibles consultados correctamente'
       };
 
+    // Se aceptan los nombres históricos para evitar errores entre versiones
+    // del frontend y despliegues anteriores del backend.
+    case 'retirarservidorequipo':
+    case 'retirarservidordeequipo':
+    case 'retirarservidordelequipo':
+      return {
+        datos: retirarServidorDeEquipo(
+          contenido.token,
+          contenido.equipoId,
+          contenido.servidorId
+        ),
+        mensaje: 'Servidor retirado del equipo correctamente'
+      };
+
     case 'asignarservidoresequipo':
       return {
         datos: asignarServidoresAEquipo(

@@ -93,6 +93,9 @@ export function AuthProvider({
   const cerrandoSesionRef =
     useRef(false);
 
+  const ultimoHeartbeatRef =
+    useRef(0);
+
   const limpiarTemporizadores =
     useCallback(() => {
       if (
@@ -192,6 +195,61 @@ export function AuthProvider({
       ]
     );
 
+  const programarInactividad =
+    useCallback(
+      (duracionSegundos) => {
+        limpiarTemporizadores();
+        const duracionMs = Math.max(1, Number(duracionSegundos || 0)) * 1000;
+        const avisoMs = Math.min(AVISO_ANTES_EXPIRAR_MS, Math.floor(duracionMs / 2));
+
+        if (duracionMs > avisoMs) {
+          timerAvisoRef.current = window.setTimeout(
+            () => setAvisoSesion('Tu sesión se cerrará pronto por inactividad.'),
+            duracionMs - avisoMs
+          );
+        }
+
+        timerExpiracionRef.current = window.setTimeout(
+          () => expirarSesion('Tu sesión expiró por inactividad. Inicia sesión nuevamente para continuar.'),
+          duracionMs
+        );
+      },
+      [expirarSesion, limpiarTemporizadores]
+    );
+
+  useEffect(() => {
+    if (!sesion?.token || !sesion?.duracionSesionSegundos) return undefined;
+
+    let cancelado = false;
+    const registrarActividad = async () => {
+      programarInactividad(sesion.duracionSesionSegundos);
+      setAvisoSesion('');
+
+      const ahora = Date.now();
+      if (ahora - ultimoHeartbeatRef.current < 30000) return;
+      ultimoHeartbeatRef.current = ahora;
+
+      try {
+        const datos = await consultarSesionApi(sesion.token);
+        if (cancelado) return;
+        const actualizada = { ...sesion, ...datos, token: sesion.token };
+        guardarSesionLocal(actualizada);
+        setSesion(actualizada);
+      } catch {
+        if (!cancelado) expirarSesion('Tu sesión expiró. Inicia sesión nuevamente.');
+      }
+    };
+
+    const eventos = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+    eventos.forEach(evento => window.addEventListener(evento, registrarActividad, { passive: true }));
+    programarInactividad(sesion.duracionSesionSegundos);
+
+    return () => {
+      cancelado = true;
+      eventos.forEach(evento => window.removeEventListener(evento, registrarActividad));
+    };
+  }, [sesion?.token, sesion?.duracionSesionSegundos, programarInactividad, expirarSesion]);
+
   useEffect(() => {
     return escucharSesionExpirada(
       (event) => {
@@ -239,9 +297,8 @@ export function AuthProvider({
           sesionActualizada
         );
 
-        programarExpiracion(
-          sesionActualizada
-            .fechaExpiracion
+        programarInactividad(
+          sesionActualizada.duracionSesionSegundos
         );
       } catch {
         if (activo) {
@@ -261,25 +318,6 @@ export function AuthProvider({
     };
   }, []);
 
-  useEffect(() => {
-    if (
-      sesion?.token &&
-      sesion?.fechaExpiracion
-    ) {
-      programarExpiracion(
-        sesion.fechaExpiracion
-      );
-    }
-
-    return () => {
-      limpiarTemporizadores();
-    };
-  }, [
-    sesion?.token,
-    sesion?.fechaExpiracion,
-    programarExpiracion,
-    limpiarTemporizadores,
-  ]);
 
   const login = useCallback(
     async (
@@ -338,8 +376,8 @@ export function AuthProvider({
       setAvisoSesion('');
       setLoginOpen(false);
 
-      programarExpiracion(
-        nuevaSesion.fechaExpiracion
+      programarInactividad(
+        nuevaSesion.duracionSesionSegundos
       );
 
       const accion =
@@ -361,7 +399,7 @@ export function AuthProvider({
     },
     [
       pendingAction,
-      programarExpiracion,
+      programarInactividad,
     ]
   );
 
@@ -481,7 +519,7 @@ export function AuthProvider({
           ACTUALIZAR_FOTO: ['CAMINANTES_REPORTAR_FOTO'],
           CONSULTAR_SERVIDORES: ['SERVIDORES_VER_DETALLE'],
           EDITAR_SERVIDOR: ['SERVIDORES_EDITAR'],
-          EDITAR_EQUIPOS: ['EQUIPOS_CREAR', 'EQUIPOS_ASIGNAR_SERVIDOR', 'EQUIPOS_EDITAR'],
+          EDITAR_EQUIPOS: ['EQUIPOS_CREAR', 'EQUIPOS_ASIGNAR_SERVIDOR', 'EQUIPOS_EDITAR', 'EQUIPOS_RETIRAR_SERVIDOR'],
           GESTIONAR_PRESENTACIONES: ['PRESENTACIONES_TODO'],
           GESTIONAR_PAGOS: ['PAGOS_VER_ESTADOS_CUENTA'],
           ADMINISTRAR_TEMAS: ['TEMAS_VER_DETALLE', 'TEMAS_EDITAR', 'TEMAS_CREAR', 'TEMAS_DESACTIVAR'],
