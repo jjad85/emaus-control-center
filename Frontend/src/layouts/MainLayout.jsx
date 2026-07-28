@@ -32,7 +32,9 @@ import SlideshowRounded from '@mui/icons-material/SlideshowRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
 import ConstructionRounded from '@mui/icons-material/ConstructionRounded';
 import SettingsRounded from '@mui/icons-material/SettingsRounded';
-import AdminPanelSettingsRounded from '@mui/icons-material/AdminPanelSettingsRounded';
+import PeopleRounded from '@mui/icons-material/PeopleRounded';
+import SecurityRounded from '@mui/icons-material/SecurityRounded';
+import LockRounded from '@mui/icons-material/LockRounded';
 import LoginRounded from '@mui/icons-material/LoginRounded';
 import LogoutRounded from '@mui/icons-material/LogoutRounded';
 import MenuRounded from '@mui/icons-material/MenuRounded';
@@ -48,6 +50,7 @@ import TopicRounded from '@mui/icons-material/TopicRounded';
 import EventNoteRounded from '@mui/icons-material/EventNoteRounded';
 import FolderRounded from '@mui/icons-material/FolderRounded';
 import Inventory2Rounded from '@mui/icons-material/Inventory2Rounded';
+import MonitorHeartRounded from '@mui/icons-material/MonitorHeartRounded';
 
 import {
   Outlet,
@@ -191,14 +194,26 @@ const menuGroups = [
     icon: <SettingsRounded />,
     items: [
       {
-        label: 'Administración',
-        path: '/administracion',
-        icon: <AdminPanelSettingsRounded />,
+        label: 'Usuarios',
+        path: '/sistema/usuarios',
+        icon: <PeopleRounded />,
         permiso: 'SISTEMA_TODO',
       },
       {
-        label: 'Configuración de alertas',
-        path: '/administracion/alertas',
+        label: 'Roles y permisos',
+        path: '/sistema/roles-permisos',
+        icon: <SecurityRounded />,
+        permiso: 'SISTEMA_TODO',
+      },
+      {
+        label: 'Seguridad',
+        path: '/sistema/seguridad',
+        icon: <LockRounded />,
+        permiso: 'SISTEMA_TODO',
+      },
+      {
+        label: 'Alertas y notificaciones',
+        path: '/sistema/alertas',
         icon: <NotificationsActiveRounded />,
         permiso: 'SISTEMA_TODO',
       },
@@ -213,6 +228,12 @@ const menuGroups = [
         path: '/fechas-importantes',
         icon: <EventNoteRounded />,
         permiso: 'FECHAS_IMPORTANTES_GESTIONAR',
+      },
+      {
+        label: 'Estado de la aplicación',
+        path: '/sistema/estado-aplicacion',
+        icon: <MonitorHeartRounded />,
+        permiso: 'SISTEMA_TODO',
       },
       {
         label: 'Auditoría',

@@ -29,6 +29,9 @@ import Campanero from './pages/Campanero';
 import PantallaPublica from './pages/PantallaPublica';
 import Configuracion from './pages/Configuracion';
 import Administracion from './pages/Administracion';
+import UsuariosAdministracion from './pages/UsuariosAdministracion';
+import RolesPermisos from './pages/RolesPermisos';
+import SeguridadAdministracion from './pages/SeguridadAdministracion';
 import NotificacionesWhatsApp from './pages/NotificacionesWhatsApp';
 import Temas from './pages/Temas';
 import MisTemas from './pages/MisTemas';
@@ -41,6 +44,7 @@ import FechasImportantes from './pages/FechasImportantes';
 import Documentos from './pages/Documentos';
 import CentroLogistico from './pages/CentroLogistico';
 import ConfiguracionAlertas from './pages/ConfiguracionAlertas';
+import EstadoAplicacion from './pages/EstadoAplicacion';
 
 export default function App() {
   return (
@@ -177,13 +181,38 @@ export default function App() {
           />
 
           <Route
+            path="/sistema/usuarios"
+            element={<PrivateRoute permiso="SISTEMA_TODO"><UsuariosAdministracion /></PrivateRoute>}
+          />
+
+          <Route
+            path="/sistema/roles-permisos"
+            element={<PrivateRoute permiso="SISTEMA_TODO"><RolesPermisos /></PrivateRoute>}
+          />
+
+          <Route
+            path="/sistema/seguridad"
+            element={<PrivateRoute permiso="SISTEMA_TODO"><SeguridadAdministracion /></PrivateRoute>}
+          />
+
+          <Route
             path="/configuracion"
             element={<PrivateRoute permiso="SISTEMA_TODO"><Configuracion /></PrivateRoute>}
           />
 
           <Route
-            path="/administracion/alertas"
+            path="/sistema/alertas"
             element={<PrivateRoute permiso="SISTEMA_TODO"><ConfiguracionAlertas /></PrivateRoute>}
+          />
+
+          <Route
+            path="/sistema/estado-aplicacion"
+            element={<PrivateRoute permiso="SISTEMA_TODO"><EstadoAplicacion /></PrivateRoute>}
+          />
+
+          <Route
+            path="/administracion/alertas"
+            element={<Navigate to="/sistema/alertas" replace />}
           />
 
           <Route
