@@ -7,7 +7,7 @@ import {
   CalendarMonthRounded, CloseRounded, GroupsRounded, HotelRounded,
   MailRounded, PaymentsRounded, PersonRounded, PhotoRounded,
   ReportProblemRounded, SlideshowRounded, TableRestaurantRounded,
-  TaskAltRounded, WarningAmberRounded, DescriptionRounded, OpenInNewRounded, Inventory2Rounded, CheckCircleRounded,
+  TaskAltRounded, WarningAmberRounded, DescriptionRounded, OpenInNewRounded, Inventory2Rounded, CheckCircleRounded, PersonAddAltRounded,
 } from '@mui/icons-material';
 
 import { obtenerDashboard } from '../api/dashboardApi';
@@ -18,10 +18,14 @@ import PageHeader from '../components/PageHeader';
 import { useAuth } from '../auth/AuthContext';
 import { obtenerDocumentos, obtenerUrlDescargaDocumento } from '../api/documentosApi';
 import { obtenerPendientesLogisticaApi, aprobarEntregableLogisticaApi } from '../api/caminantesApi';
+import { obtenerAspirantes } from '../api/aspirantesApi';
 
 const panelSx = {
-  border: '1px solid', borderColor: 'divider', borderRadius: 4,
-  bgcolor: 'background.paper', boxShadow: '0 12px 34px rgba(18,73,44,.07)',
+  border: '1px solid',
+  borderColor: 'divider',
+  borderRadius: 2,
+  bgcolor: 'background.paper',
+  boxShadow: '0 4px 18px rgba(15, 23, 42, .045)',
 };
 
 const moneda = (v) => new Intl.NumberFormat('es-CO', {
@@ -31,62 +35,82 @@ const moneda = (v) => new Intl.NumberFormat('es-CO', {
 function CuentaRegresiva({ item }) {
   if (!item) return <Typography color="text.secondary">No hay fechas configuradas.</Typography>;
   const dias = Number(item.diasRestantes || 0);
-  const texto = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : `En ${dias} días`;
+  const texto = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : `${dias} días`;
   return (
     <Stack direction="row" spacing={1.5} alignItems="center">
-      <Box sx={{ minWidth: 76, p: 1.2, borderRadius: 3, bgcolor: 'primary.main', color: 'primary.contrastText', textAlign: 'center' }}>
-        <Typography fontWeight={950} fontSize={dias > 1 ? 28 : 18} lineHeight={1}>{dias > 1 ? dias : texto}</Typography>
-        {dias > 1 && <Typography variant="caption" fontWeight={800}>días</Typography>}
+      <Box sx={{ minWidth: 62, height: 48, px: 1.2, borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText', display: 'grid', placeItems: 'center', textAlign: 'center' }}>
+        <Typography fontWeight={900} fontSize={dias > 1 ? 21 : 15} lineHeight={1}>{texto}</Typography>
       </Box>
       <Box minWidth={0}>
-        <Typography fontWeight={900}>{item.descripcion}</Typography>
-        <Typography variant="body2" color="text.secondary">{item.fechaTexto}</Typography>
+        <Typography fontWeight={800} noWrap>{item.descripcion}</Typography>
+        <Typography variant="caption" color="text.secondary">{item.fechaTexto}</Typography>
       </Box>
     </Stack>
   );
 }
 
 function Dato({ valor, etiqueta, color = 'text.primary' }) {
-  return <Box><Typography variant="h4" fontWeight={950} color={color}>{valor}</Typography><Typography variant="body2" color="text.secondary">{etiqueta}</Typography></Box>;
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography fontSize={{ xs: 21, md: 24 }} fontWeight={900} color={color} lineHeight={1.1} noWrap>{valor}</Typography>
+      <Typography variant="caption" color="text.secondary">{etiqueta}</Typography>
+    </Box>
+  );
 }
 
 function FilaEstado({ icono, texto, valor, alerta = false }) {
   return (
-    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} sx={{ py: 1.15, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}>
-      <Stack direction="row" spacing={1.1} alignItems="center" minWidth={0}>
-        <Box sx={{ color: alerta ? 'warning.main' : 'primary.main', display: 'grid' }}>{icono}</Box>
-        <Typography variant="body2" fontWeight={750}>{texto}</Typography>
+    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1.5} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}>
+      <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
+        <Box sx={{ color: alerta ? 'warning.main' : 'text.secondary', display: 'grid' }}>{icono}</Box>
+        <Typography variant="body2" fontWeight={700} noWrap>{texto}</Typography>
       </Stack>
-      <Typography fontWeight={950} color={alerta ? 'warning.main' : 'text.primary'}>{valor}</Typography>
+      <Typography variant="body2" fontWeight={900} color={alerta ? 'warning.main' : 'text.primary'}>{valor}</Typography>
     </Stack>
   );
 }
 
 function TarjetaOperacion({ titulo, icono, children, accent = 'primary.main' }) {
   return (
-    <Paper sx={{ ...panelSx, p: 2.4, height: '100%', borderTop: '4px solid', borderTopColor: accent }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6" fontWeight={950}>{titulo}</Typography>
-        <Box sx={{ width: 42, height: 42, borderRadius: 3, display: 'grid', placeItems: 'center', bgcolor: 'action.hover', color: accent }}>{icono}</Box>
+    <Paper sx={{ ...panelSx, height: '100%', overflow: 'hidden' }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2, py: 1.35, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'action.hover' }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Box sx={{ color: accent, display: 'grid' }}>{icono}</Box>
+          <Typography fontWeight={900}>{titulo}</Typography>
+        </Stack>
       </Stack>
-      {children}
+      <Box sx={{ p: 2 }}>{children}</Box>
     </Paper>
+  );
+}
+
+function MiniMetrica({ icono, etiqueta, valor, alerta = false }) {
+  return (
+    <Box sx={{ px: 1.7, py: 1.45, borderRight: { md: '1px solid' }, borderBottom: { xs: '1px solid', md: 0 }, borderColor: 'divider', '&:last-child': { borderRight: 0, borderBottom: 0 } }}>
+      <Stack direction="row" spacing={1.1} alignItems="center">
+        <Box sx={{ color: alerta ? 'warning.main' : 'primary.main', display: 'grid' }}>{icono}</Box>
+        <Box minWidth={0}>
+          <Typography fontSize={21} fontWeight={900} lineHeight={1}>{valor}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap>{etiqueta}</Typography>
+        </Box>
+      </Stack>
+    </Box>
   );
 }
 
 function ModalFechas({ open, onClose, fechas = [] }) {
   const futuras = useMemo(() => [...fechas].filter(x => Number(x.diasRestantes) >= 0).sort((a,b) => Number(a.diasRestantes)-Number(b.diasRestantes)), [fechas]);
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 5 } }}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 2 } }}>
       <DialogTitle sx={{ pr: 7 }}><Typography variant="h5" fontWeight={950}>Próximas fechas</Typography><Typography variant="body2" color="text.secondary">De la más próxima a la más lejana.</Typography><IconButton onClick={onClose} sx={{ position:'absolute', right:14, top:14 }}><CloseRounded /></IconButton></DialogTitle>
-      <DialogContent><Stack spacing={1.4}>{futuras.map((x,i)=><Paper key={`${x.fecha}-${x.descripcion}`} variant="outlined" sx={{ p:2, borderRadius:4, borderColor:i===0?'primary.main':'divider' }}><CuentaRegresiva item={x}/></Paper>)}{!futuras.length&&<Alert severity="info">No hay fechas próximas configuradas.</Alert>}</Stack></DialogContent>
+      <DialogContent><Stack spacing={1.4}>{futuras.map((x,i)=><Paper key={`${x.fecha}-${x.descripcion}`} variant="outlined" sx={{ p:2, borderRadius:2, borderColor:i===0?'primary.main':'divider' }}><CuentaRegresiva item={x}/></Paper>)}{!futuras.length&&<Alert severity="info">No hay fechas próximas configuradas.</Alert>}</Stack></DialogContent>
     </Dialog>
   );
 }
 
 function ModalAprobacionesLogistica({ open, onClose, items, procesando, onAprobar }) {
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ sx: { borderRadius: 5 } }}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ sx: { borderRadius: 2 } }}>
       <DialogTitle sx={{ pr: 7 }}>
         <Typography variant="h5" fontWeight={950}>Aprobaciones de Logística</Typography>
         <Typography variant="body2" color="text.secondary">Cartas y fotografías que ya fueron entregadas físicamente.</Typography>
@@ -95,7 +119,7 @@ function ModalAprobacionesLogistica({ open, onClose, items, procesando, onAproba
       <DialogContent>
         <Stack spacing={1.4}>
           {items.map(item => (
-            <Paper key={item.id} variant="outlined" sx={{ p: 2, borderRadius: 4 }}>
+            <Paper key={item.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction={{ xs:'column', md:'row' }} justifyContent="space-between" gap={2}>
                 <Box>
                   <Typography fontWeight={950}>{item.nombre}</Typography>
@@ -122,10 +146,12 @@ export default function Dashboard() {
   const [pendientesLogistica, setPendientesLogistica] = useState([]);
   const [logisticaOpen, setLogisticaOpen] = useState(false);
   const [procesandoLogistica, setProcesandoLogistica] = useState('');
+  const [aspirantesPendientes, setAspirantesPendientes] = useState(0);
   const puedeVerDocumentos = tienePermiso('DOCUMENTOS_CONSULTAR');
   const puedeDescargarDocumentos = tienePermiso('DOCUMENTOS_DESCARGAR');
   const puedeVerBandejaLogistica = tienePermiso('LOGISTICA_CONSULTAR_BANDEJA');
   const puedeAprobarLogistica = tienePermiso('CAMINANTES_APROBAR_ENTREGA_LOGISTICA');
+  const puedeVerAspirantes = tienePermiso('ASPIRANTES_VER_DETALLE');
   const { data, loading, error, reload } = useApi(() => obtenerDashboard(), []);
 
   useEffect(() => {
@@ -150,6 +176,40 @@ export default function Dashboard() {
   useEffect(() => {
     cargarPendientesLogistica();
   }, [token, puedeVerBandejaLogistica]);
+
+  useEffect(() => {
+    let activo = true;
+
+    if (!token || !puedeVerAspirantes) {
+      setAspirantesPendientes(0);
+      return undefined;
+    }
+
+    obtenerAspirantes(token)
+      .then((respuesta) => {
+        if (!activo) return;
+
+        const items = respuesta?.items || [];
+        const totalPendientes = items.filter((item) => {
+          const estado = String(item?.estadoSolicitud || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+
+          return estado === 'pendiente' || estado === 'en revision';
+        }).length;
+
+        setAspirantesPendientes(totalPendientes);
+      })
+      .catch(() => {
+        if (activo) setAspirantesPendientes(0);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [token, puedeVerAspirantes]);
 
   const aprobarPendienteLogistica = async (id, tipo) => {
     if (!puedeAprobarLogistica) return;
@@ -191,108 +251,125 @@ export default function Dashboard() {
   ].filter(Boolean);
 
   return (
-    <Stack spacing={3}>
-      <PageHeader eyebrow="Centro de operaciones" title={['EMAÚS', data.configuracion?.tipoRetiro && `Retiro ${data.configuracion.tipoRetiro}`, data.configuracion?.anioRetiro].filter(Boolean).join(' - ')} subtitle="Lo importante, lo pendiente y lo próximo en una sola vista" onRefresh={reload} loading={loading} />
+    <Stack spacing={2.25}>
+      <PageHeader eyebrow="Centro de operaciones" title={['EMAÚS', data.configuracion?.tipoRetiro && `Retiro ${data.configuracion.tipoRetiro}`, data.configuracion?.anioRetiro].filter(Boolean).join(' - ')} subtitle="Estado operativo del retiro en tiempo real" onRefresh={reload} loading={loading} />
 
-      <Paper sx={{ ...panelSx, p:{xs:2.5,md:3.2}, backgroundImage:'linear-gradient(135deg, rgba(46,125,50,.08), rgba(255,255,255,1) 55%)' }}>
-        <Grid container spacing={3} alignItems="center">
-          <Grid size={{xs:12,md:7}}>
-            <Typography variant="overline" color="primary" fontWeight={950}>ESTADO GENERAL</Typography>
-            <Typography variant="h3" fontWeight={950} mt={0.5}>{tareas.length ? `${tareas.length} asuntos requieren atención` : 'La operación está bajo control'}</Typography>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mt={2}>
-              <Chip icon={<ReportProblemRounded/>} label={`${criticas} críticas`} color={criticas?'error':'success'} sx={{fontWeight:900}}/>
-              <Chip icon={<WarningAmberRounded/>} label={`${advertencias} advertencias`} color="warning" variant="outlined" sx={{fontWeight:900}}/>
-              <Chip icon={<PaymentsRounded/>} label={`${moneda(financiero.valorPendiente)} por recaudar`} variant="outlined" sx={{fontWeight:900}}/>
-            </Stack>
+      <Paper sx={{ ...panelSx, overflow: 'hidden' }}>
+        <Grid container>
+          <Grid size={{ xs: 12, md: 7.5 }}>
+            <Box sx={{ px: { xs: 2, md: 2.5 }, py: 2.1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderRight: { md: '1px solid' }, borderColor: 'divider' }}>
+              <Stack direction="row" alignItems="center" spacing={1} mb={0.8}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tareas.length ? 'warning.main' : 'success.main', boxShadow: tareas.length ? '0 0 0 5px rgba(237,108,2,.10)' : '0 0 0 5px rgba(46,125,50,.10)' }} />
+                <Typography variant="overline" color="text.secondary" fontWeight={900}>ESTADO OPERATIVO</Typography>
+              </Stack>
+              <Typography variant="h4" fontWeight={900} lineHeight={1.15}>{tareas.length ? `${tareas.length} asuntos requieren atención` : 'La operación está bajo control'}</Typography>
+              <Stack direction="row" spacing={2.2} useFlexGap flexWrap="wrap" mt={1.4}>
+                <Typography variant="body2"><Box component="span" fontWeight={900} color={criticas ? 'error.main' : 'success.main'}>{criticas}</Box> críticas</Typography>
+                <Typography variant="body2"><Box component="span" fontWeight={900} color="warning.main">{advertencias}</Box> advertencias</Typography>
+                <Typography variant="body2"><Box component="span" fontWeight={900}>{pagosPorValidar}</Box> pagos por validar</Typography>
+              </Stack>
+            </Box>
           </Grid>
-          <Grid size={{xs:12,md:5}}>
-            <Paper onClick={()=>setFechasOpen(true)} role="button" tabIndex={0} sx={{p:2.2,borderRadius:4,border:'1px solid',borderColor:'primary.main',cursor:'pointer','&:hover':{boxShadow:'0 14px 35px rgba(46,125,50,.15)'}}}>
-              <Stack direction="row" justifyContent="space-between" mb={1.5}><Typography fontWeight={950} color="primary">LO PRÓXIMO</Typography><CalendarMonthRounded color="primary"/></Stack>
-              <CuentaRegresiva item={proxima}/>
-              <Typography variant="caption" color="primary" fontWeight={850} display="block" mt={1.5}>Ver todas las fechas</Typography>
-            </Paper>
+          <Grid size={{ xs: 12, md: 4.5 }}>
+            <Box onClick={() => setFechasOpen(true)} role="button" tabIndex={0} sx={{ px: 2.2, py: 1.8, height: '100%', cursor: 'pointer', bgcolor: 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                <Typography variant="overline" color="primary" fontWeight={900}>PRÓXIMO HITO</Typography>
+                <CalendarMonthRounded color="primary" fontSize="small" />
+              </Stack>
+              <CuentaRegresiva item={proxima} />
+            </Box>
           </Grid>
         </Grid>
       </Paper>
 
+      <Paper sx={{ ...panelSx, overflow: 'hidden' }}>
+        <Grid container columns={{ xs: 1, sm: 2, lg: puedeVerAspirantes ? 5 : 4 }}>
+          <Grid size={1}><MiniMetrica icono={<GroupsRounded fontSize="small" />} etiqueta="Caminantes" valor={caminantes.total || 0} /></Grid>
+          <Grid size={1}><MiniMetrica icono={<GroupsRounded fontSize="small" />} etiqueta="Servidores" valor={servidores.total || 0} /></Grid>
+          {puedeVerAspirantes && <Grid size={1}><MiniMetrica icono={<PersonAddAltRounded fontSize="small" />} etiqueta="Aspirantes pendientes" valor={aspirantesPendientes} alerta={aspirantesPendientes > 0} /></Grid>}
+          <Grid size={1}><MiniMetrica icono={<TableRestaurantRounded fontSize="small" />} etiqueta="Mesas completas" valor={`${mesas.mesasCompletas || 0}/${mesas.totalMesas || 0}`} alerta={(mesas.mesasIncompletas || 0) > 0} /></Grid>
+          <Grid size={1}><MiniMetrica icono={<PaymentsRounded fontSize="small" />} etiqueta="Pendiente por recaudar" valor={moneda(financiero.valorPendiente)} alerta={(financiero.valorPendiente || 0) > 0} /></Grid>
+        </Grid>
+      </Paper>
 
-      {documentosImportantes.length > 0 && (
-        <Paper sx={{ ...panelSx, p: 2.5, borderTop: '4px solid', borderTopColor: 'warning.main' }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1} mb={2}>
-            <Box>
-              <Typography variant="h6" fontWeight={950}>Documentos importantes</Typography>
-              <Typography variant="body2" color="text.secondary">Información que debes conocer para el retiro.</Typography>
-            </Box>
-            <DescriptionRounded color="warning" />
-          </Stack>
-          <Grid container spacing={1.5}>
-            {documentosImportantes.map(documento => (
-              <Grid key={documento.id} size={{ xs: 12, md: 6, lg: 4 }}>
-                <Paper variant="outlined" sx={{ p: 1.8, borderRadius: 3, height: '100%' }}>
-                  <Typography fontWeight={900}>{documento.nombre}</Typography>
-                  <Typography variant="caption" color="text.secondary" display="block" mt={0.4}>
-                    {documento.temaNombre ? `Tema: ${documento.temaNombre}` : documento.categoria}
-                  </Typography>
-                  {documento.descripcion && <Typography variant="body2" color="text.secondary" mt={1}>{documento.descripcion}</Typography>}
-                  {puedeDescargarDocumentos && (
-                    <Button size="small" endIcon={<OpenInNewRounded />} sx={{ mt: 1.2 }} onClick={async () => {
-                      const datosDocumento = await obtenerUrlDescargaDocumento(token, documento.id);
-                      window.open(datosDocumento.url, '_blank', 'noopener,noreferrer');
-                    }}>Abrir</Button>
-                  )}
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Paper>
-      )}
-
-      <Grid container spacing={2.5}>
-        <Grid size={{xs:12,lg:5}}>
-          <TarjetaOperacion titulo="Lo que debes resolver" icono={<TaskAltRounded/>} accent="warning.main">
-            <Stack>{tareas.slice(0,8).map((t,i)=><FilaEstado key={t} icono={<WarningAmberRounded fontSize="small"/>} texto={t} valor="Pendiente" alerta/>)}{!tareas.length&&<Alert severity="success">No hay pendientes operativos importantes.</Alert>}</Stack>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, lg: 5 }}>
+          <TarjetaOperacion titulo="Prioridades" icono={<TaskAltRounded fontSize="small" />} accent="warning.main">
+            <Stack>{tareas.slice(0, 8).map(t => <FilaEstado key={t} icono={<WarningAmberRounded fontSize="small" />} texto={t} valor="Pendiente" alerta />)}{!tareas.length && <Alert severity="success">No hay pendientes operativos importantes.</Alert>}</Stack>
           </TarjetaOperacion>
         </Grid>
-        <Grid size={{xs:12,lg:7}}>
-          <TarjetaOperacion titulo="Tesorería" icono={<PaymentsRounded/>}>
-            <Grid container spacing={2.5}>
-              <Grid size={{xs:12,sm:4}}><Dato valor={moneda(financiero.valorEsperado)} etiqueta="Esperado"/></Grid>
-              <Grid size={{xs:12,sm:4}}><Dato valor={moneda(financiero.valorRecaudado)} etiqueta="Recibido" color="success.main"/></Grid>
-              <Grid size={{xs:12,sm:4}}><Dato valor={moneda(financiero.valorPendiente)} etiqueta="Pendiente" color="warning.main"/></Grid>
+        <Grid size={{ xs: 12, lg: 7 }}>
+          <TarjetaOperacion titulo="Tesorería" icono={<PaymentsRounded fontSize="small" />}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6, sm: 4 }}><Dato valor={moneda(financiero.valorEsperado)} etiqueta="Esperado" /></Grid>
+              <Grid size={{ xs: 6, sm: 4 }}><Dato valor={moneda(financiero.valorRecaudado)} etiqueta="Recibido" color="success.main" /></Grid>
+              <Grid size={{ xs: 12, sm: 4 }}><Dato valor={moneda(financiero.valorPendiente)} etiqueta="Pendiente" color="warning.main" /></Grid>
             </Grid>
-            <Grid container spacing={2} mt={1}>
-              <Grid size={{xs:12,md:6}}><FilaEstado icono={<PersonRounded fontSize="small"/>} texto="Caminantes" valor={`${moneda(financiero.caminantes?.valorRecaudado)} de ${moneda(financiero.caminantes?.valorEsperado)}`}/></Grid>
-              <Grid size={{xs:12,md:6}}><FilaEstado icono={<GroupsRounded fontSize="small"/>} texto="Servidores" valor={`${moneda(financiero.servidores?.valorRecaudado)} de ${moneda(financiero.servidores?.valorEsperado)}`}/></Grid>
-            </Grid>
+            <Box mt={1.5}>
+              <FilaEstado icono={<PersonRounded fontSize="small" />} texto="Caminantes" valor={`${moneda(financiero.caminantes?.valorRecaudado)} de ${moneda(financiero.caminantes?.valorEsperado)}`} />
+              <FilaEstado icono={<GroupsRounded fontSize="small" />} texto="Servidores" valor={`${moneda(financiero.servidores?.valorRecaudado)} de ${moneda(financiero.servidores?.valorEsperado)}`} />
+            </Box>
           </TarjetaOperacion>
         </Grid>
       </Grid>
 
-      {puedeVerBandejaLogistica && (
-        <Paper sx={{ ...panelSx, p: 2.5, borderTop: '4px solid', borderTopColor: pendientesLogistica.length ? 'warning.main' : 'success.main' }}>
-          <Stack direction={{ xs:'column', md:'row' }} justifyContent="space-between" alignItems={{ md:'center' }} gap={2}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Inventory2Rounded color={pendientesLogistica.length ? 'warning' : 'success'} />
-              <Box>
-                <Typography variant="h6" fontWeight={950}>Aprobaciones de Logística</Typography>
-                <Typography variant="body2" color="text.secondary">{pendientesLogistica.length ? `${pendientesLogistica.length} caminantes tienen cartas o fotografías por aprobar.` : 'No hay entregas pendientes de aprobación.'}</Typography>
-              </Box>
+      {puedeVerBandejaLogistica && pendientesLogistica.length > 0 && (
+        <Paper sx={{ ...panelSx, px: 2, py: 1.4, borderLeft: '3px solid', borderLeftColor: 'warning.main' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1.5}>
+            <Stack direction="row" spacing={1.2} alignItems="center">
+              <Inventory2Rounded color="warning" fontSize="small" />
+              <Box><Typography fontWeight={900}>Aprobaciones de Logística</Typography><Typography variant="caption" color="text.secondary">{pendientesLogistica.length} caminantes con entregables por aprobar</Typography></Box>
             </Stack>
-            <Button variant={pendientesLogistica.length ? 'contained' : 'outlined'} startIcon={pendientesLogistica.length ? <TaskAltRounded /> : <CheckCircleRounded />} onClick={() => setLogisticaOpen(true)}>Ver bandeja</Button>
+            <Button size="small" variant="contained" startIcon={<TaskAltRounded />} onClick={() => setLogisticaOpen(true)}>Revisar bandeja</Button>
           </Stack>
         </Paper>
       )}
 
-      <Grid container spacing={2.5}>
-        <Grid size={{xs:12,md:6,lg:4}}><TarjetaOperacion titulo="Personas" icono={<GroupsRounded/>}><Grid container spacing={2}><Grid size={{xs:6}}><Dato valor={caminantes.total||0} etiqueta="Caminantes"/></Grid><Grid size={{xs:6}}><Dato valor={servidores.total||0} etiqueta="Servidores"/></Grid></Grid><Box mt={1}><FilaEstado icono={<TableRestaurantRounded fontSize="small"/>} texto="Caminantes sin mesa" valor={caminantes.sinMesa||0} alerta={(caminantes.sinMesa||0)>0}/><FilaEstado icono={<GroupsRounded fontSize="small"/>} texto="Servidores sin equipo" valor={servidores.sinEquipo||0} alerta={(servidores.sinEquipo||0)>0}/><FilaEstado icono={<HotelRounded fontSize="small"/>} texto="Personas sin habitación" valor={(caminantes.sinHabitacion||0)+(servidores.sinHabitacion||0)} alerta={((caminantes.sinHabitacion||0)+(servidores.sinHabitacion||0))>0}/></Box></TarjetaOperacion></Grid>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <TarjetaOperacion titulo="Personas" icono={<GroupsRounded fontSize="small" />}>
+            <FilaEstado icono={<TableRestaurantRounded fontSize="small" />} texto="Caminantes sin mesa" valor={caminantes.sinMesa || 0} alerta={(caminantes.sinMesa || 0) > 0} />
+            <FilaEstado icono={<GroupsRounded fontSize="small" />} texto="Servidores sin equipo" valor={servidores.sinEquipo || 0} alerta={(servidores.sinEquipo || 0) > 0} />
+            <FilaEstado icono={<HotelRounded fontSize="small" />} texto="Sin habitación" valor={(caminantes.sinHabitacion || 0) + (servidores.sinHabitacion || 0)} alerta={((caminantes.sinHabitacion || 0) + (servidores.sinHabitacion || 0)) > 0} />
+          </TarjetaOperacion>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <TarjetaOperacion titulo="Mesas y entregables" icono={<TableRestaurantRounded fontSize="small" />}>
+            <FilaEstado icono={<WarningAmberRounded fontSize="small" />} texto="Mesas incompletas" valor={mesas.mesasIncompletas || 0} alerta={(mesas.mesasIncompletas || 0) > 0} />
+            <FilaEstado icono={<MailRounded fontSize="small" />} texto="Cartas pendientes" valor={mesas.cartasPendientes || 0} alerta={(mesas.cartasPendientes || 0) > 0} />
+            <FilaEstado icono={<PhotoRounded fontSize="small" />} texto="Fotografías pendientes" valor={mesas.fotosPendientes || 0} alerta={(mesas.fotosPendientes || 0) > 0} />
+          </TarjetaOperacion>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <TarjetaOperacion titulo="Alojamiento" icono={<HotelRounded fontSize="small" />}>
+            <FilaEstado icono={<HotelRounded fontSize="small" />} texto="Habitaciones ocupadas" valor={habitaciones.ocupadas || 0} />
+            <FilaEstado icono={<ReportProblemRounded fontSize="small" />} texto="Conflictos" valor={habitaciones.conConflicto || 0} alerta={(habitaciones.conConflicto || 0) > 0} />
+            <FilaEstado icono={<PersonRounded fontSize="small" />} texto="Personas sin habitación" valor={(caminantes.sinHabitacion || 0) + (servidores.sinHabitacion || 0)} alerta={((caminantes.sinHabitacion || 0) + (servidores.sinHabitacion || 0)) > 0} />
+          </TarjetaOperacion>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <TarjetaOperacion titulo="Audiovisuales" icono={<SlideshowRounded fontSize="small" />}>
+            <FilaEstado icono={<SlideshowRounded fontSize="small" />} texto="Sin entregar" valor={(presentaciones.totalPresentaciones || 0) - (presentaciones.entregadas || 0)} alerta={(presentaciones.totalPresentaciones || 0) > (presentaciones.entregadas || 0)} />
+            <FilaEstado icono={<TaskAltRounded fontSize="small" />} texto="Pendientes de ajuste" valor={(presentaciones.totalPresentaciones || 0) - (presentaciones.ajustadas || 0)} alerta={(presentaciones.totalPresentaciones || 0) > (presentaciones.ajustadas || 0)} />
+            <FilaEstado icono={<TaskAltRounded fontSize="small" />} texto="Sin aprobar" valor={(presentaciones.totalPresentaciones || 0) - (presentaciones.aprobadas || 0)} alerta={(presentaciones.totalPresentaciones || 0) > (presentaciones.aprobadas || 0)} />
+          </TarjetaOperacion>
+        </Grid>
+      </Grid>
 
-        <Grid size={{xs:12,md:6,lg:4}}><TarjetaOperacion titulo="Mesas y entregables" icono={<TableRestaurantRounded/>}><Grid container spacing={2}><Grid size={{xs:6}}><Dato valor={`${mesas.caminantesAsignados||0}/${mesas.capacidadTotal||0}`} etiqueta="Caminantes asignados"/></Grid><Grid size={{xs:6}}><Dato valor={mesas.mesasCompletas||0} etiqueta={`de ${mesas.totalMesas||0} mesas completas`}/></Grid></Grid><Box mt={1}><FilaEstado icono={<WarningAmberRounded fontSize="small"/>} texto="Mesas incompletas" valor={mesas.mesasIncompletas||0} alerta={(mesas.mesasIncompletas||0)>0}/><FilaEstado icono={<MailRounded fontSize="small"/>} texto="Cartas pendientes" valor={mesas.cartasPendientes||0} alerta={(mesas.cartasPendientes||0)>0}/><FilaEstado icono={<PhotoRounded fontSize="small"/>} texto="Fotografías pendientes" valor={mesas.fotosPendientes||0} alerta={(mesas.fotosPendientes||0)>0}/></Box></TarjetaOperacion></Grid>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, lg: documentosImportantes.length > 0 ? 7 : 12 }}>
+          <TarjetaOperacion titulo="Radar de alertas" icono={<ReportProblemRounded fontSize="small" />} accent="error.main">
+            <Grid container spacing={1}>{alertas.slice(0, 8).map((a, i) => <Grid key={`${a.modulo}-${i}`} size={{ xs: 12, md: 6 }}><Alert severity={a.tipo} variant="outlined" sx={{ borderRadius: 1.5, py: .25, height: '100%' }}><Typography variant="caption" fontWeight={900}>{a.modulo}</Typography><Typography variant="body2">{a.mensaje}</Typography></Alert></Grid>)}{!alertas.length && <Grid size={{ xs: 12 }}><Alert severity="success">No hay alertas activas.</Alert></Grid>}</Grid>
+          </TarjetaOperacion>
+        </Grid>
 
-        <Grid size={{xs:12,md:6,lg:4}}><TarjetaOperacion titulo="Alojamiento" icono={<HotelRounded/>}><Grid container spacing={2}><Grid size={{xs:6}}><Dato valor={habitaciones.ocupadas||0} etiqueta="Habitaciones ocupadas"/></Grid><Grid size={{xs:6}}><Dato valor={habitaciones.disponibles||0} etiqueta="Con cupos disponibles"/></Grid></Grid><Box mt={1}><FilaEstado icono={<HotelRounded fontSize="small"/>} texto="Habitaciones registradas" valor={habitaciones.total||0}/><FilaEstado icono={<ReportProblemRounded fontSize="small"/>} texto="Conflictos de asignación" valor={habitaciones.conConflicto||0} alerta={(habitaciones.conConflicto||0)>0}/><FilaEstado icono={<PersonRounded fontSize="small"/>} texto="Personas sin habitación" valor={(caminantes.sinHabitacion||0)+(servidores.sinHabitacion||0)} alerta={((caminantes.sinHabitacion||0)+(servidores.sinHabitacion||0))>0}/></Box></TarjetaOperacion></Grid>
-
-        <Grid size={{xs:12,md:6,lg:4}}><TarjetaOperacion titulo="Audiovisuales" icono={<SlideshowRounded/>}><Grid container spacing={2}><Grid size={{xs:6}}><Dato valor={presentaciones.totalPresentaciones||0} etiqueta="Presentaciones"/></Grid><Grid size={{xs:6}}><Dato valor={presentaciones.aprobadas||0} etiqueta="Aprobadas" color="success.main"/></Grid></Grid><Box mt={1}><FilaEstado icono={<SlideshowRounded fontSize="small"/>} texto="Sin entregar" valor={(presentaciones.totalPresentaciones||0)-(presentaciones.entregadas||0)} alerta={(presentaciones.totalPresentaciones||0)>(presentaciones.entregadas||0)}/><FilaEstado icono={<TaskAltRounded fontSize="small"/>} texto="Pendientes de ajuste" valor={(presentaciones.totalPresentaciones||0)-(presentaciones.ajustadas||0)} alerta={(presentaciones.totalPresentaciones||0)>(presentaciones.ajustadas||0)}/><FilaEstado icono={<TaskAltRounded fontSize="small"/>} texto="Pendientes de aprobación" valor={(presentaciones.totalPresentaciones||0)-(presentaciones.aprobadas||0)} alerta={(presentaciones.totalPresentaciones||0)>(presentaciones.aprobadas||0)}/></Box></TarjetaOperacion></Grid>
-
-        <Grid size={{xs:12,lg:8}}><TarjetaOperacion titulo="Radar de alertas" icono={<ReportProblemRounded/>} accent="error.main"><Grid container spacing={1.4}>{alertas.slice(0,10).map((a,i)=><Grid key={`${a.modulo}-${i}`} size={{xs:12,md:6}}><Alert severity={a.tipo} sx={{borderRadius:3,height:'100%'}}><Typography variant="caption" fontWeight={900}>{a.modulo}</Typography><Typography variant="body2" fontWeight={650}>{a.mensaje}</Typography></Alert></Grid>)}{!alertas.length&&<Grid size={{xs:12}}><Alert severity="success">No hay alertas activas.</Alert></Grid>}</Grid></TarjetaOperacion></Grid>
+        {documentosImportantes.length > 0 && (
+          <Grid size={{ xs: 12, lg: 5 }}>
+            <TarjetaOperacion titulo="Documentos importantes" icono={<DescriptionRounded fontSize="small" />} accent="warning.main">
+              <Stack spacing={0}>{documentosImportantes.slice(0, 5).map(documento => <Stack key={documento.id} direction="row" justifyContent="space-between" alignItems="center" gap={1.5} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}><Box minWidth={0}><Typography variant="body2" fontWeight={800} noWrap>{documento.nombre}</Typography><Typography variant="caption" color="text.secondary" noWrap>{documento.temaNombre ? `Tema: ${documento.temaNombre}` : documento.categoria}</Typography></Box>{puedeDescargarDocumentos && <IconButton size="small" onClick={async () => { const datosDocumento = await obtenerUrlDescargaDocumento(token, documento.id); window.open(datosDocumento.url, '_blank', 'noopener,noreferrer'); }}><OpenInNewRounded fontSize="small" /></IconButton>}</Stack>)}</Stack>
+            </TarjetaOperacion>
+          </Grid>
+        )}
       </Grid>
 
       <ModalAprobacionesLogistica open={logisticaOpen} onClose={()=>setLogisticaOpen(false)} items={pendientesLogistica} procesando={procesandoLogistica} onAprobar={aprobarPendienteLogistica} />

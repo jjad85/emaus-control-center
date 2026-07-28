@@ -15,6 +15,7 @@ import ToggleOffRounded from '@mui/icons-material/ToggleOffRounded';
 import ToggleOnRounded from '@mui/icons-material/ToggleOnRounded';
 import { crearUsuarioSistemaApi, editarUsuarioSistemaApi } from '../../api/administracionApi';
 import { useAuth } from '../../auth/AuthContext';
+import AvatarServidor from '../servidores/AvatarServidor';
 
 const VACIO = { id:'', usuario:'', nombre:'', rol:'', servidorId:'', correo:'', celular:'', activo:true };
 
@@ -55,6 +56,14 @@ export default function UsuariosSistema({ usuarios = [], servidores = [], roles 
   const puedeCrear = tienePermiso('USUARIOS_CREAR') || tienePermiso('SISTEMA_TODO');
   const puedeEditar = tienePermiso('USUARIOS_EDITAR') || tienePermiso('SISTEMA_TODO');
   const servidoresOrdenados = useMemo(() => [...servidores].sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''))), [servidores]);
+  const servidoresPorId = useMemo(() => {
+    const mapa = new Map();
+    servidores.forEach((servidor) => {
+      const id = textoLimpio(servidor?.id || servidor?.servidorId || servidor?.['Servidor ID']);
+      if (id) mapa.set(id, servidor);
+    });
+    return mapa;
+  }, [servidores]);
 
   const resumen = useMemo(() => ({
     total: usuarios.length,
@@ -227,11 +236,21 @@ export default function UsuariosSistema({ usuarios = [], servidores = [], roles 
               const activo = u.activo !== false;
               const asociado = Boolean(u.tieneServidorAsociado || u.servidorId);
               const nombre = nombreVisible(u);
+              const servidorAsociado = servidoresPorId.get(textoLimpio(u.servidorId)) || null;
+              const fotoPerfilUrl = textoLimpio(
+                servidorAsociado?.fotoPerfilUrl || servidorAsociado?.fotoUrl || u.fotoPerfilUrl || u.fotoUrl
+              );
               return (
                 <Paper key={u.id||u.usuario} variant="outlined" sx={{ p:2, borderRadius:3, minWidth:0 }}>
                   <Stack spacing={1.5}>
                     <Stack direction="row" alignItems="flex-start" spacing={1.5}>
-                      <Avatar sx={{ width:46, height:46, fontWeight:900 }}>{iniciales(nombre)}</Avatar>
+                      <AvatarServidor
+                        servidor={servidorAsociado}
+                        nombre={nombre}
+                        fotoPerfilUrl={fotoPerfilUrl}
+                        size={46}
+                        mostrarTooltip={false}
+                      />
                       <Box sx={{ minWidth:0, flex:1 }}>
                         <Typography fontWeight={900} noWrap title={nombre}>{nombre}</Typography>
                         <Typography variant="body2" color="text.secondary" noWrap>@{u.usuario}</Typography>
