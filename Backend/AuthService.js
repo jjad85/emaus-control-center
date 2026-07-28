@@ -212,19 +212,18 @@ function iniciarSesion(
       registro.servidorId || ''
     ).trim();
 
-    if (!servidorId) {
-      throw crearErrorAplicacion(
-        'SERVIDOR_USUARIO_NO_CONFIGURADO',
-        'El usuario no tiene un Servidor ID asociado en la hoja Usuarios.'
-      );
-    }
-
-    if (!registro.servidor) {
+    // La relación con un servidor es opcional. Si se configuró un ID,
+    // este sí debe existir para evitar sesiones con una relación inválida.
+    if (servidorId && !registro.servidor) {
       throw crearErrorAplicacion(
         'SERVIDOR_USUARIO_NO_ENCONTRADO',
         'El Servidor ID asociado al usuario no existe en la hoja Servidores.'
       );
     }
+
+    const nombreVisible = servidorId && registro.servidor
+      ? String(registro.servidor.nombre || registro.nombre || registro.usuario).trim()
+      : String(registro.nombre || registro.usuario).trim();
 
     const permisos =
       obtenerPermisosPorRol(
@@ -252,7 +251,7 @@ function iniciarSesion(
         registro.usuario,
 
       nombre:
-        registro.nombre,
+        nombreVisible,
 
       rol:
         registro.rol,
@@ -292,7 +291,7 @@ function iniciarSesion(
         registro.usuario,
 
       nombre:
-        registro.nombre,
+        nombreVisible,
 
       accion:
         'INICIAR_SESION',

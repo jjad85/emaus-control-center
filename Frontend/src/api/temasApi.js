@@ -19,3 +19,17 @@ export async function cambiarEstadoTema(token, id, activo) {
   const response = await postAction('cambiarEstadoTema', { token, id, activo });
   return response.datos;
 }
+
+
+export async function actualizarPreferenciasMultimediaTema(token, temaId, datos) {
+  const response = await postAction('actualizarPreferenciasMultimediaTema', { token, temaId, datos });
+  return response.datos;
+}
+export async function cambiarEstadoPalancaTema(token, temaId, estado) {
+  const response = await postAction('cambiarEstadoPalancaTema', { token, temaId, estado });
+  return response.datos;
+}
+export async function aprobarPalancaLogistica(token, temaId) {
+  const response = await postAction('aprobarPalancaLogistica', { token, temaId });
+  return response.datos;
+}

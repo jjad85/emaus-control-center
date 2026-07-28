@@ -47,3 +47,14 @@ export async function guardarPermisosRolSistemaApi(
 
   return response.datos;
 }
+
+
+export async function crearUsuarioSistemaApi(token, datos) {
+  const response = await postAction('crearUsuarioSistema', { token, datos });
+  return response.datos;
+}
+
+export async function editarUsuarioSistemaApi(token, id, datos) {
+  const response = await postAction('editarUsuarioSistema', { token, id, datos });
+  return response.datos;
+}

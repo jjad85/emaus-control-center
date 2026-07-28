@@ -14,8 +14,10 @@ const ESTADOS_PAGO_CAMINANTE = [
 
 const ESTADOS_ENTREGABLE_CAMINANTE = [
   'Pendiente',
-  'En Proceso',
-  'Completado'
+  'Solicitada',
+  'Entregada',
+  'Empaquetada',
+  'Entregada a Logística'
 ];
 
 /**
@@ -386,7 +388,8 @@ function actualizarCartaCaminante(
     );
   }
 
-  return actualizarCampoCaminanteConAuditoria(
+  return actualizarEntregableCaminanteConAprobacion_(
+    token,
     sesion,
     id,
     'carta',
@@ -422,7 +425,8 @@ function actualizarFotoCaminante(
     );
   }
 
-  return actualizarCampoCaminanteConAuditoria(
+  return actualizarEntregableCaminanteConAprobacion_(
+    token,
     sesion,
     id,
     'foto',
@@ -430,6 +434,69 @@ function actualizarFotoCaminante(
     'CAMINANTES_REPORTAR_FOTO'
   );
 }
+
+
+/**
+ * Actualiza carta o fotografía. El estado final constituye la aprobación
+ * formal de Logística y requiere el permiso correspondiente.
+ */
+function actualizarEntregableCaminanteConAprobacion_(
+  token,
+  sesion,
+  id,
+  campo,
+  valor,
+  accion
+) {
+  return ejecutarCrudConBloqueo(function() {
+    const esEntregaLogistica =
+      normalizarTexto(valor) === normalizarTexto('Entregada a Logística');
+
+    const campoAprobadoPor = campo === 'carta'
+      ? 'cartaAprobadaLogisticaPor'
+      : 'fotoAprobadaLogisticaPor';
+    const campoFechaAprobacion = campo === 'carta'
+      ? 'cartaFechaAprobacionLogistica'
+      : 'fotoFechaAprobacionLogistica';
+
+    const anterior = leerRegistroPorIdSheet(
+      HOJAS.CAMINANTES,
+      id,
+      opcionesCrudCaminante(sesion.usuario)
+    );
+
+    const cambios = {};
+    cambios[campo] = valor;
+    // Marcar "Entregada a Logística" crea una solicitud pendiente.
+    // La aprobación se realiza después desde la bandeja de Logística.
+    cambios[campoAprobadoPor] = '';
+    cambios[campoFechaAprobacion] = '';
+
+    const actualizado = actualizarRegistroSheet(
+      HOJAS.CAMINANTES,
+      id,
+      cambios,
+      opcionesCrudCaminante(sesion.usuario)
+    );
+
+    auditarCaminanteCrud(
+      sesion,
+      esEntregaLogistica
+        ? 'SOLICITAR_APROBACION_LOGISTICA_' + campo.toUpperCase()
+        : accion,
+      id,
+      {
+        campo: campo,
+        anterior: anterior[campo],
+        nuevo: actualizado[campo],
+        aprobacionPendiente: esEntregaLogistica
+      }
+    );
+
+    return convertirRegistroCaminanteRespuesta(actualizado);
+  });
+}
+
 
 /**
  * Cancela la participación de un caminante sin eliminar su historial.
@@ -1069,7 +1136,17 @@ function convertirRegistroCaminanteRespuesta(
 
       foto:
         registro.foto ||
-        'Pendiente'
+        'Pendiente',
+
+      aprobacionCartaLogistica: {
+        aprobadoPor: registro.cartaAprobadaLogisticaPor || '',
+        fecha: registro.cartaFechaAprobacionLogistica || ''
+      },
+
+      aprobacionFotoLogistica: {
+        aprobadoPor: registro.fotoAprobadaLogisticaPor || '',
+        fecha: registro.fotoFechaAprobacionLogistica || ''
+      }
     },
 
     activo:

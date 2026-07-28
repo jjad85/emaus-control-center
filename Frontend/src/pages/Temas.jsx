@@ -27,7 +27,7 @@ import PageHeader from '../components/PageHeader';
 const FORMULARIO_INICIAL = {
   nombre: '', descripcion: '', duracionMinutos: '', diaDelTema: 'Sin definir',
   horaPropuesta: '', servidorId: '', requierePresentacion: 'Pendiente',
-  requiereTestimonio: false, requiereMusica: 'Pendiente', observaciones: '',
+  requiereTestimonio: false, requiereMusica: 'Pendiente', tieneCancionEstandar: false, cancionDocumentoId: '', usaCancionEstandar: true, tieneVideoEstandar: false, videoDocumentoId: '', usaVideoEstandar: true, requierePalanca: false, palancaNombre: '', palancaInstrucciones: '', palancaEstado: 'Pendiente', observaciones: '',
 };
 
 const OPCIONES_SI_NO_PENDIENTE = ['Pendiente', 'Sí', 'No'];
@@ -95,6 +95,7 @@ export default function Temas() {
 
   const api = useApi(() => obtenerTemas(token, { incluirInactivos }), [token, incluirInactivos]);
   const items = api.data?.items || [];
+  const documentos = api.data?.documentos || [];
 
   const servidores = useMemo(() => {
     const origen = api.data?.servidores || [];
@@ -180,6 +181,9 @@ export default function Temas() {
       requierePresentacion: item.requierePresentacion || 'Pendiente',
       requiereTestimonio: Boolean(item.requiereTestimonio),
       requiereMusica: item.requiereMusica || 'Pendiente',
+      tieneCancionEstandar: Boolean(item.tieneCancionEstandar), cancionDocumentoId: item.cancionDocumentoId || '', usaCancionEstandar: Boolean(item.usaCancionEstandar),
+      tieneVideoEstandar: Boolean(item.tieneVideoEstandar), videoDocumentoId: item.videoDocumentoId || '', usaVideoEstandar: Boolean(item.usaVideoEstandar),
+      requierePalanca: Boolean(item.requierePalanca), palancaNombre: item.palancaNombre || '', palancaInstrucciones: item.palancaInstrucciones || '', palancaEstado: item.palancaEstado || 'Pendiente',
       observaciones: item.observaciones || '',
     });
     setErrorAccion('');
@@ -196,6 +200,9 @@ export default function Temas() {
 
   async function guardar() {
     if (!formulario.nombre.trim()) return setErrorAccion('El nombre del tema es obligatorio.');
+    if (formulario.tieneCancionEstandar && !formulario.cancionDocumentoId) return setErrorAccion('Seleccione la canción estándar.');
+    if (formulario.tieneVideoEstandar && !formulario.videoDocumentoId) return setErrorAccion('Seleccione el video estándar.');
+    if (formulario.requierePalanca && (!formulario.palancaNombre.trim() || !formulario.palancaInstrucciones.trim())) return setErrorAccion('Nombre e instrucciones de la palanca son obligatorios.');
     if (formulario.duracionMinutos !== '' && Number(formulario.duracionMinutos) <= 0) {
       return setErrorAccion('La duración debe ser mayor que cero.');
     }
@@ -365,6 +372,9 @@ export default function Temas() {
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                               <Chip size="small" icon={<SlideshowRounded />} label={`Presentación: ${item.requierePresentacion}`} variant="outlined" />
                               <Chip size="small" icon={<MusicNoteRounded />} label={`Música: ${item.requiereMusica}`} variant="outlined" />
+                              {item.tieneCancionEstandar && <Chip size="small" label={`Canción estándar: ${item.cancionDocumentoNombre || 'configurada'}`} color="secondary" variant="outlined" />}
+                              {item.tieneVideoEstandar && <Chip size="small" label={`Video estándar: ${item.videoDocumentoNombre || 'configurado'}`} color="secondary" variant="outlined" />}
+                              {item.requierePalanca && <Chip size="small" label={`Palanca: ${item.palancaEstado || 'Pendiente'}`} color="warning" variant="outlined" />}
                               {item.requiereTestimonio && <Chip size="small" label="Requiere testimonio" color="secondary" variant="outlined" />}
                             </Stack>
 
@@ -422,6 +432,12 @@ export default function Temas() {
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}><TextField select label="Requiere presentación" value={formulario.requierePresentacion} onChange={(event) => cambiarCampo('requierePresentacion', event.target.value)} fullWidth>{OPCIONES_SI_NO_PENDIENTE.map((valor) => <MenuItem key={valor} value={valor}>{valor}</MenuItem>)}</TextField></Grid>
               <Grid size={{ xs: 12, sm: 6 }}><TextField select label="Requiere música" value={formulario.requiereMusica} onChange={(event) => cambiarCampo('requiereMusica', event.target.value)} fullWidth>{OPCIONES_SI_NO_PENDIENTE.map((valor) => <MenuItem key={valor} value={valor}>{valor}</MenuItem>)}</TextField></Grid>
+              <Grid size={{ xs: 12 }}><Typography variant="subtitle1" fontWeight={800}>Recursos estándar desde Documentos</Typography></Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><FormControlLabel control={<Switch checked={formulario.tieneCancionEstandar} onChange={(e) => cambiarCampo('tieneCancionEstandar', e.target.checked)} />} label="Tiene canción estándar" />{formulario.tieneCancionEstandar && <TextField select label="Canción estándar" value={formulario.cancionDocumentoId} onChange={(e) => cambiarCampo('cancionDocumentoId', e.target.value)} fullWidth><MenuItem value="">Seleccione</MenuItem>{documentos.map((d) => <MenuItem key={d.id} value={d.id}>{d.nombre}</MenuItem>)}</TextField>}</Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><FormControlLabel control={<Switch checked={formulario.tieneVideoEstandar} onChange={(e) => cambiarCampo('tieneVideoEstandar', e.target.checked)} />} label="Tiene video estándar" />{formulario.tieneVideoEstandar && <TextField select label="Video estándar" value={formulario.videoDocumentoId} onChange={(e) => cambiarCampo('videoDocumentoId', e.target.value)} fullWidth><MenuItem value="">Seleccione</MenuItem>{documentos.map((d) => <MenuItem key={d.id} value={d.id}>{d.nombre}</MenuItem>)}</TextField>}</Grid>
+              <Grid size={{ xs: 12 }}><FormControlLabel control={<Switch checked={formulario.requierePalanca} onChange={(e) => cambiarCampo('requierePalanca', e.target.checked)} />} label="Requiere palanca" /></Grid>
+              {formulario.requierePalanca && <><Grid size={{ xs: 12, sm: 6 }}><TextField label="Nombre de la palanca" required value={formulario.palancaNombre} onChange={(e) => cambiarCampo('palancaNombre', e.target.value)} fullWidth /></Grid><Grid size={{ xs: 12, sm: 6 }}><TextField select label="Estado inicial" value={formulario.palancaEstado} onChange={(e) => cambiarCampo('palancaEstado', e.target.value)} fullWidth>{['Pendiente','Solicitada','Entregada','Empaquetada','Entregada a Logística'].map((v)=><MenuItem key={v} value={v}>{v}</MenuItem>)}</TextField></Grid><Grid size={{ xs: 12 }}><TextField label="Instrucciones de la palanca" required multiline minRows={3} value={formulario.palancaInstrucciones} onChange={(e) => cambiarCampo('palancaInstrucciones', e.target.value)} fullWidth /></Grid></>}
+
             </Grid>
             <FormControlLabel control={<Switch checked={formulario.requiereTestimonio} onChange={(event) => cambiarCampo('requiereTestimonio', event.target.checked)} />} label="Requiere testimonio" />
             <TextField label="Observaciones" value={formulario.observaciones} onChange={(event) => cambiarCampo('observaciones', event.target.value)} multiline minRows={3} fullWidth />

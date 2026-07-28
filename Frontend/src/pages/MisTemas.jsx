@@ -32,6 +32,7 @@ import EstadoTemaChip from '../components/temas/EstadoTemaChip';
 import HistorialVersiones from '../components/temas/HistorialVersiones';
 import ComentariosPresentacion from '../components/temas/ComentariosPresentacion';
 import { responderRevisionServidor, comentarPresentacion } from '../api/entrega3PresentacionesApi';
+import { actualizarPreferenciasMultimediaTema } from '../api/temasApi';
 import {
   archivoABase64,
   actualizarPreferenciasMiTema,
@@ -95,15 +96,11 @@ export default function MisTemas() {
         tema.id + campo
       );
 
-      await actualizarPreferenciasMiTema(
-        token,
-        tema.id,
-        {
-          [campo]: valor
-            ? 'Sí'
-            : 'No',
-        }
-      );
+      if (campo === 'usaCancionEstandar' || campo === 'usaVideoEstandar') {
+        await actualizarPreferenciasMultimediaTema(token, tema.id, { [campo]: valor });
+      } else {
+        await actualizarPreferenciasMiTema(token, tema.id, { [campo]: valor ? 'Sí' : 'No' });
+      }
 
       await cargar();
     } catch (e) {
@@ -750,6 +747,11 @@ export default function MisTemas() {
                     Historial de versiones
                   </Typography>
 
+                  <Stack spacing={1} sx={{ mb: 2 }}>
+                    {tema.tieneCancionEstandar && <FormControlLabel control={<Checkbox checked={Boolean(tema.usaCancionEstandar)} onChange={(e) => cambiar(tema, 'usaCancionEstandar', e.target.checked)} />} label={`Usar canción estándar: ${tema.cancionDocumentoNombre || 'Documento asociado'}`} />}
+                    {tema.tieneVideoEstandar && <FormControlLabel control={<Checkbox checked={Boolean(tema.usaVideoEstandar)} onChange={(e) => cambiar(tema, 'usaVideoEstandar', e.target.checked)} />} label={`Usar video estándar: ${tema.videoDocumentoNombre || 'Documento asociado'}`} />}
+                    {tema.requierePalanca && <Alert severity="info"><strong>Palanca: {tema.palancaNombre}</strong><br />{tema.palancaInstrucciones}<br />Estado: {tema.palancaEstado || 'Pendiente'}</Alert>}
+                  </Stack>
                   <HistorialVersiones
                     versiones={
                       tema.versiones

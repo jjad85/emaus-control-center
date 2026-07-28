@@ -305,6 +305,12 @@ export function AuthProvider({
         rol:
           datos.rol,
 
+        servidorId:
+          datos.servidorId || '',
+
+        servidor:
+          datos.servidor || null,
+
         permisos:
           datos.permisos || [],
 
@@ -575,6 +581,12 @@ export function AuthProvider({
 
       rol:
         sesion?.rol || null,
+
+      servidorId:
+        sesion?.servidorId || '',
+
+      servidor:
+        sesion?.servidor || null,
 
       permisos:
         sesion?.permisos || [],

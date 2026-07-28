@@ -241,7 +241,7 @@ export default function CaminanteFormDialog({
   const esMenor = edad !== null && edad < 18;
 
   const estadosPago = opciones?.estadosPago || ['Pendiente', 'Pago Parcial', 'Pago Total'];
-  const estadosEntregables = opciones?.estadosEntregables || ['Pendiente', 'En Proceso', 'Completado'];
+  const estadosEntregables = opciones?.estadosEntregables || ['Pendiente', 'Solicitada', 'Entregada', 'Empaquetada', 'Entregada a Logística'];
   const mesas = opciones?.mesasDisponibles || [];
   const habitaciones = opciones?.habitacionesDisponibles || [];
 

@@ -88,17 +88,21 @@ function obtenerNotificacionesWhatsapp(token, filtros) {
   sincronizarNotificacionesWhatsappPendientes_();
 
   const sesion = obtenerSesion(token);
-  const permisos = obtenerPermisosPorRol(sesion.rol);
+  const mapaAlertasWhatsapp = {
+    INSCRIPCION: 'WHATSAPP_INSCRIPCION_PENDIENTE',
+    APROBACION: 'WHATSAPP_APROBACION_PENDIENTE',
+    CANCELACION: 'WHATSAPP_CANCELACION_PENDIENTE',
+    PAGO_RECHAZADO: 'WHATSAPP_PAGO_RECHAZADO_PENDIENTE'
+  };
 
-  const puedeVer =
-    permisos.includes('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
-    permisos.includes('NOTIFICAR_CAMINANTE') ||
-    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO');
+  const puedeVer = Object.keys(mapaAlertasWhatsapp).some(function(tipo) {
+    return estaAlertaHabilitadaParaRol_(mapaAlertasWhatsapp[tipo], sesion.rol);
+  });
 
   if (!puedeVer) {
     throw crearErrorAplicacion(
       'PERMISO_DENEGADO',
-      'No tiene permisos para consultar notificaciones de WhatsApp.'
+      'Su rol no tiene notificaciones de WhatsApp habilitadas.'
     );
   }
 
@@ -110,6 +114,11 @@ function obtenerNotificacionesWhatsapp(token, filtros) {
   const items = leerNotificacionesWhatsapp_()
     .filter(function(item) {
       if (!convertirBooleano(item.activo)) {
+        return false;
+      }
+
+      const codigoAlerta = mapaAlertasWhatsapp[String(item.tipo || '').toUpperCase()];
+      if (codigoAlerta && !estaAlertaHabilitadaParaRol_(codigoAlerta, sesion.rol)) {
         return false;
       }
 

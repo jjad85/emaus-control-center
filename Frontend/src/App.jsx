@@ -39,6 +39,8 @@ import AutorizacionesCaminante from './pages/AutorizacionesCaminante';
 import Auditoria from './pages/Auditoria';
 import FechasImportantes from './pages/FechasImportantes';
 import Documentos from './pages/Documentos';
+import CentroLogistico from './pages/CentroLogistico';
+import ConfiguracionAlertas from './pages/ConfiguracionAlertas';
 
 export default function App() {
   return (
@@ -91,6 +93,11 @@ export default function App() {
           <Route
             path="/aspirantes/nuevo"
             element={<PrivateRoute permiso="ASPIRANTES_REGISTRAR"><RegistroAspirante registroInterno /></PrivateRoute>}
+          />
+
+          <Route
+            path="/centro-logistico"
+            element={<PrivateRoute permiso="CENTRO_LOGISTICO_VER"><CentroLogistico /></PrivateRoute>}
           />
 
           <Route
@@ -172,6 +179,11 @@ export default function App() {
           <Route
             path="/configuracion"
             element={<PrivateRoute permiso="SISTEMA_TODO"><Configuracion /></PrivateRoute>}
+          />
+
+          <Route
+            path="/administracion/alertas"
+            element={<PrivateRoute permiso="SISTEMA_TODO"><ConfiguracionAlertas /></PrivateRoute>}
           />
 
           <Route

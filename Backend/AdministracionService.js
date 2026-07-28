@@ -30,6 +30,9 @@ function obtenerAdministracionSistema(
     usuarios:
       listarUsuariosAdministracion_(),
 
+    servidores:
+      obtenerServidores({}).filter(function(item) { return item.activo !== false; }),
+
     roles:
       listarRolesAdministracion_(),
 
@@ -334,6 +337,15 @@ function listarUsuariosAdministracion_() {
   const indiceRol =
     indice('rol');
 
+  const indiceServidorId =
+    indice('servidorid');
+
+  const indiceCorreo =
+    indice('correo');
+
+  const indiceCelular =
+    indice('celular');
+
   const indiceActivo =
     indice('activo');
 
@@ -348,6 +360,11 @@ function listarUsuariosAdministracion_() {
 
   const ahora =
     Date.now();
+
+  const servidoresPorId = {};
+  obtenerServidores({}).forEach(function(servidor) {
+    servidoresPorId[String(servidor.id || '').trim()] = servidor;
+  });
 
   return datos
     .slice(1)
@@ -397,9 +414,34 @@ function listarUsuariosAdministracion_() {
               : '',
 
           nombre:
+            (function() {
+              const servidorId = indiceServidorId >= 0
+                ? String(fila[indiceServidorId] || '').trim()
+                : '';
+              const servidor = servidoresPorId[servidorId];
+              return servidor
+                ? servidor.nombre
+                : (indiceNombre >= 0 ? fila[indiceNombre] : '');
+            })(),
+
+          nombreUsuario:
             indiceNombre >= 0
               ? fila[indiceNombre]
               : '',
+
+          servidorId:
+            indiceServidorId >= 0
+              ? fila[indiceServidorId]
+              : '',
+
+          tieneServidorAsociado:
+            indiceServidorId >= 0 && Boolean(String(fila[indiceServidorId] || '').trim()),
+
+          correo:
+            indiceCorreo >= 0 ? fila[indiceCorreo] : '',
+
+          celular:
+            indiceCelular >= 0 ? fila[indiceCelular] : '',
 
           rol:
             indiceRol >= 0
@@ -569,4 +611,87 @@ function obtenerEncabezadosAdministracion_(
           campo;
       }
     );
+}
+
+
+/**
+ * Crea un usuario con asociación opcional a un servidor.
+ */
+function crearUsuarioSistema(token, datosEntrada) {
+  const sesion = validarAdministradorSistema(token);
+  const datos = datosEntrada || {};
+  const usuario = normalizarTexto(datos.usuario);
+  const rol = validarRolActivo(datos.rol);
+  const servidorId = String(datos.servidorId || '').trim();
+  const nombre = String(datos.nombre || '').trim();
+
+  if (!usuario) throw crearErrorAplicacion('USUARIO_REQUERIDO', 'Debe ingresar el usuario.');
+  if (buscarUsuarioPorUsuario(usuario)) throw crearErrorAplicacion('USUARIO_DUPLICADO', 'Ya existe un usuario con ese nombre de acceso.');
+
+  var servidor = null;
+  if (servidorId) servidor = obtenerServidorPorId(servidorId);
+  if (!servidorId && !nombre) throw crearErrorAplicacion('NOMBRE_REQUERIDO', 'Los usuarios sin servidor asociado deben tener un nombre.');
+
+  const passwordInicial = String(obtenerConfiguracion('passwordInicialUsuarios', 'Bienvenido2026*'));
+  validarPoliticaPassword(passwordInicial);
+  const credencial = crearCredencialPassword(passwordInicial);
+  const hoja = obtenerHoja(HOJAS.USUARIOS);
+  const encabezadosOriginales = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getDisplayValues()[0];
+  const mapa = {
+    id: Utilities.getUuid(),
+    usuario: usuario,
+    nombre: servidor ? '' : nombre,
+    salt: credencial.salt,
+    clavehash: credencial.claveHash,
+    rol: rol.rol,
+    activo: 'Sí',
+    correo: String(datos.correo || '').trim(),
+    celular: String(datos.celular || '').trim(),
+    servidorid: servidorId,
+    versionsesion: 1,
+    intentosfallidos: 0,
+    ultimointentofallido: '',
+    bloqueadohasta: '',
+    debecambiarpassword: 'Sí'
+  };
+  hoja.appendRow(encabezadosOriginales.map(function(h) {
+    const k = normalizarEncabezadoUsuarioAdministracion_(h);
+    return Object.prototype.hasOwnProperty.call(mapa, k) ? mapa[k] : '';
+  }));
+
+  registrarAuditoria({usuario:sesion.usuario,nombre:sesion.nombre,accion:'CREAR_USUARIO',entidad:'Usuarios',idRegistro:mapa.id,detalle:JSON.stringify({usuario:usuario,rol:rol.rol,servidorId:servidorId})});
+  return { id: mapa.id, usuario: usuario, nombre: servidor ? servidor.nombre : nombre, rol: rol.rol, servidorId: servidorId, passwordInicial: passwordInicial };
+}
+
+/** Actualiza los datos administrativos de un usuario. */
+function editarUsuarioSistema(token, id, datosEntrada) {
+  const sesion = validarAdministradorSistema(token);
+  const datos = datosEntrada || {};
+  const hoja = obtenerHoja(HOJAS.USUARIOS);
+  const valores = hoja.getDataRange().getValues();
+  const headers = valores[0].map(normalizarEncabezadoUsuarioAdministracion_);
+  const iId = headers.indexOf('id');
+  const filaIndice = valores.findIndex(function(f, i) { return i > 0 && String(f[iId]) === String(id); });
+  if (filaIndice < 1) throw crearErrorAplicacion('USUARIO_NO_ENCONTRADO', 'No existe el usuario indicado.');
+
+  const servidorId = String(datos.servidorId || '').trim();
+  const nombre = String(datos.nombre || '').trim();
+  const rol = validarRolActivo(datos.rol);
+  if (servidorId) obtenerServidorPorId(servidorId);
+  if (!servidorId && !nombre) throw crearErrorAplicacion('NOMBRE_REQUERIDO', 'Los usuarios sin servidor asociado deben tener un nombre.');
+
+  const cambios = { nombre: servidorId ? '' : nombre, rol: rol.rol, activo: convertirBooleano(datos.activo) ? 'Sí' : 'No', correo:String(datos.correo||'').trim(), celular:String(datos.celular||'').trim(), servidorid:servidorId };
+  Object.keys(cambios).forEach(function(campo) {
+    const col = headers.indexOf(campo);
+    if (col >= 0) hoja.getRange(filaIndice + 1, col + 1).setValue(cambios[campo]);
+  });
+  const colVersion = headers.indexOf('versionsesion');
+  if (colVersion >= 0) hoja.getRange(filaIndice + 1, colVersion + 1).setValue(Number(valores[filaIndice][colVersion] || 0) + 1);
+
+  registrarAuditoria({usuario:sesion.usuario,nombre:sesion.nombre,accion:'EDITAR_USUARIO',entidad:'Usuarios',idRegistro:id,detalle:JSON.stringify(cambios)});
+  return { id:id, actualizado:true };
+}
+
+function normalizarEncabezadoUsuarioAdministracion_(valor) {
+  return String(valor || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 }

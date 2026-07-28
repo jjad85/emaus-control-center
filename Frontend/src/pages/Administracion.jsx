@@ -2,14 +2,17 @@ import { Alert, Box, Button, Checkbox, CircularProgress, Divider, Paper, Stack, 
 import SecurityRounded from '@mui/icons-material/SecurityRounded';
 import LockOpenRounded from '@mui/icons-material/LockOpenRounded';
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useApi } from '../hooks/useApi';
 import PageHeader from '../components/PageHeader';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import { desbloquearUsuarioSistemaApi, guardarPermisosRolSistemaApi, obtenerAdministracionSistemaApi } from '../api/administracionApi';
+import UsuariosSistema from '../components/administracion/UsuariosSistema';
 
 export default function Administracion() {
+  const navigate = useNavigate();
   const { token, tienePermiso } = useAuth();
   const api = useApi(() => obtenerAdministracionSistemaApi(token), [token]);
   const [matriz, setMatriz] = useState({});
@@ -74,6 +77,7 @@ export default function Administracion() {
     <Stack spacing={2.5}>
       {mensaje && <Alert severity="success">{mensaje}</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
+      <UsuariosSistema usuarios={datos.usuarios || []} servidores={datos.servidores || []} roles={roles} token={token} onActualizado={api.reload} />
       <Paper sx={{ p: 2.5 }}>
         <Typography variant="h6" fontWeight={900}>Usuarios bloqueados</Typography>
         <Divider sx={{ my: 2 }} />
@@ -82,7 +86,10 @@ export default function Administracion() {
       <Paper sx={{ p: 2.5 }}>
         <Stack direction={{ xs:'column', md:'row' }} justifyContent="space-between" gap={2} mb={2}>
           <Box><Typography variant="h6" fontWeight={900}>Roles y permisos</Typography><Typography variant="body2" color="text.secondary">Marque las acciones permitidas para cada rol. El control aplica al menú, páginas, botones y backend.</Typography></Box>
-          <Button variant="contained" startIcon={procesando ? <CircularProgress size={18} color="inherit" /> : <SecurityRounded />} disabled={procesando} onClick={guardarTodo}>Guardar matriz</Button>
+          <Stack direction={{ xs:'column', sm:'row' }} spacing={1}>
+            <Button variant="outlined" onClick={() => navigate('/administracion/alertas')}>Configurar alertas</Button>
+            <Button variant="contained" startIcon={procesando ? <CircularProgress size={18} color="inherit" /> : <SecurityRounded />} disabled={procesando} onClick={guardarTodo}>Guardar matriz</Button>
+          </Stack>
         </Stack>
         <TableContainer sx={{ maxHeight: '68vh', border: 1, borderColor: 'divider', borderRadius: 2 }}>
           <Table stickyHeader size="small">

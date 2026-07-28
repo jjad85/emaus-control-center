@@ -1,3 +1,4 @@
+import NotificationsActiveRounded from '@mui/icons-material/NotificationsActiveRounded';
 import {
   Alert,
   AppBar,
@@ -46,6 +47,7 @@ import FactCheckRounded from '@mui/icons-material/FactCheckRounded';
 import TopicRounded from '@mui/icons-material/TopicRounded';
 import EventNoteRounded from '@mui/icons-material/EventNoteRounded';
 import FolderRounded from '@mui/icons-material/FolderRounded';
+import Inventory2Rounded from '@mui/icons-material/Inventory2Rounded';
 
 import {
   Outlet,
@@ -118,6 +120,12 @@ const menuGroups = [
     icon: <ConstructionRounded />,
     items: [
       {
+        label: 'Centro Logístico',
+        path: '/centro-logistico',
+        icon: <Inventory2Rounded />,
+        permiso: 'CENTRO_LOGISTICO_VER',
+      },
+      {
         label: 'Equipos',
         path: '/equipos',
         icon: <GroupsRounded />,
@@ -186,6 +194,12 @@ const menuGroups = [
         label: 'Administración',
         path: '/administracion',
         icon: <AdminPanelSettingsRounded />,
+        permiso: 'SISTEMA_TODO',
+      },
+      {
+        label: 'Configuración de alertas',
+        path: '/administracion/alertas',
+        icon: <NotificationsActiveRounded />,
         permiso: 'SISTEMA_TODO',
       },
       {

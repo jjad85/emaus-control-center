@@ -18,10 +18,7 @@ function obtenerNotificaciones(token) {
   const items = [];
   let totalPendientes = 0;
 
-  if (
-    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO') ||
-    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO')
-  ) {
+  if (estaAlertaHabilitadaParaRol_('ASPIRANTES_PENDIENTES_GESTION', sesion.rol)) {
     const aspirantes = leerHojaComoObjetos(HOJAS.ASPIRANTES)
       .filter(function(item) {
         return convertirBooleano(item.activo);
@@ -48,7 +45,7 @@ function obtenerNotificaciones(token) {
     }
   }
 
-  if (permisos.includes('PAGOS_VER_ESTADOS_CUENTA')) {
+  if (estaAlertaHabilitadaParaRol_('PAGOS_PENDIENTES_VALIDACION', sesion.rol)) {
     const pagosPendientes = leerHojaComoObjetos(HOJAS.PAGOS).filter(function(p) {
       return normalizarTexto(p.estadoPagoReportado || p.estado) === 'pendiente';
     });
@@ -60,6 +57,7 @@ function obtenerNotificaciones(token) {
 
   // Entrega 3: notificaciones del flujo colaborativo de presentaciones.
   try {
+    if (estaAlertaHabilitadaParaRol_('PRESENTACIONES_NOVEDADES', sesion.rol)) {
     const notificacionesTemas = obtenerNotificacionesTemas(token).filter(function(n) { return !n.leida; });
     if (notificacionesTemas.length) {
       items.push({
@@ -72,24 +70,32 @@ function obtenerNotificaciones(token) {
       });
       totalPendientes += notificacionesTemas.length;
     }
+    }
   } catch (ignoradoTemas) {}
 
   // WhatsApp es un tipo específico de notificación y no todos los roles
   // tienen permiso para consultarlo. No debe bloquear la campana general.
-  const puedeConsultarWhatsapp =
-    permisos.includes('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
-    permisos.includes('NOTIFICAR_CAMINANTE') ||
-    permisos.includes('ASPIRANTES_CAMBIAR_ESTADO');
+  const alertasWhatsappPorId = {
+    WHATSAPP_INSCRIPCION: 'WHATSAPP_INSCRIPCION_PENDIENTE',
+    WHATSAPP_APROBACION: 'WHATSAPP_APROBACION_PENDIENTE',
+    WHATSAPP_CANCELACION: 'WHATSAPP_CANCELACION_PENDIENTE',
+    WHATSAPP_PAGO_RECHAZADO: 'WHATSAPP_PAGO_RECHAZADO_PENDIENTE'
+  };
+  const algunaWhatsappHabilitada = Object.keys(alertasWhatsappPorId).some(function(id) {
+    return estaAlertaHabilitadaParaRol_(alertasWhatsappPorId[id], sesion.rol);
+  });
 
-  if (puedeConsultarWhatsapp) {
-    const resumenWhatsapp =
-      obtenerResumenNotificacionesWhatsappParaCampana(token);
-
-    resumenWhatsapp.items.forEach(function(item) {
-      items.push(item);
-    });
-
-    totalPendientes += resumenWhatsapp.totalPendientes;
+  if (algunaWhatsappHabilitada) {
+    try {
+      const resumenWhatsapp = obtenerResumenNotificacionesWhatsappParaCampana(token);
+      resumenWhatsapp.items.forEach(function(item) {
+        const codigo = alertasWhatsappPorId[item.id];
+        if (codigo && estaAlertaHabilitadaParaRol_(codigo, sesion.rol)) {
+          items.push(item);
+          totalPendientes += Number(item.cantidad || 0);
+        }
+      });
+    } catch (ignoradoWhatsapp) {}
   }
 
   return {

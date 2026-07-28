@@ -174,6 +174,22 @@ function routePost(contenido) {
           'Foto actualizada correctamente'
       };
 
+    case 'obtenerpendienteslogistica':
+      return {
+        datos: obtenerPendientesLogistica(contenido.token),
+        mensaje: 'Pendientes consultados correctamente'
+      };
+
+    case 'aprobarentregablelogistica':
+      return {
+        datos: aprobarEntregableLogistica(
+          contenido.token,
+          contenido.id,
+          contenido.tipo
+        ),
+        mensaje: 'Entrega aprobada correctamente'
+      };
+
 
     case 'desactivarcaminante':
       return {
@@ -457,6 +473,16 @@ function routePost(contenido) {
       };
 
 
+
+    case 'actualizarpreferenciasmultimediatema':
+      return { datos: actualizarPreferenciasMultimediaTema(contenido.token, contenido.temaId, contenido.datos), mensaje: 'Preferencias actualizadas correctamente' };
+
+    case 'cambiarestadopalancatema':
+      return { datos: cambiarEstadoPalancaTema(contenido.token, contenido.temaId, contenido.estado), mensaje: 'Estado de palanca actualizado correctamente' };
+
+    case 'aprobarpalancalogistica':
+      return { datos: aprobarPalancaLogistica(contenido.token, contenido.temaId), mensaje: 'Palanca aprobada correctamente' };
+
     case 'movertema':
       return {
         datos: moverTema(contenido.token, contenido.id, contenido.direccion),
@@ -521,6 +547,18 @@ function routePost(contenido) {
     case 'marcarnotificaciontemaleida':
       return { datos: marcarNotificacionTemaLeida(contenido.token, contenido.id), mensaje: 'Notificación actualizada correctamente' };
 
+    case 'obtenerconfiguracionalertas':
+      return {
+        datos: obtenerConfiguracionAlertas(contenido.token),
+        mensaje: 'Configuración de alertas consultada correctamente'
+      };
+
+    case 'guardarconfiguracionalertas':
+      return {
+        datos: guardarConfiguracionAlertas(contenido.token, contenido.configuracion),
+        mensaje: 'Configuración de alertas actualizada correctamente'
+      };
+
     case 'obteneradministracionsistema':
       return {
         datos:
@@ -563,6 +601,19 @@ function routePost(contenido) {
           ),
         mensaje:
           'Permisos actualizados correctamente'
+      };
+
+
+    case 'crearusuariosistema':
+      return {
+        datos: crearUsuarioSistema(contenido.token, contenido.datos),
+        mensaje: 'Usuario creado correctamente'
+      };
+
+    case 'editarusuariosistema':
+      return {
+        datos: editarUsuarioSistema(contenido.token, contenido.id, contenido.datos),
+        mensaje: 'Usuario actualizado correctamente'
       };
 
     case 'registrarfechaimportante':

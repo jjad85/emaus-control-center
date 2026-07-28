@@ -28,7 +28,8 @@ function obtenerTemas(token, filtros) {
   return {
     items: items,
     servidores: obtenerServidoresVigentesParaTemas_(),
-    dias: obtenerDiasTema_(items)
+    dias: obtenerDiasTema_(items),
+    documentos: obtenerDocumentosTemasRF08_()
   };
 }
 
@@ -111,6 +112,20 @@ function convertirTema(registro) {
     requierePresentacion: normalizarSiNoPendienteTema_(registro.requierePresentacion),
     requiereTestimonio: convertirBooleano(registro.requiereTestimonio),
     requiereMusica: normalizarSiNoPendienteTema_(registro.requiereMusica),
+    tieneCancionEstandar: convertirBooleano(registro.tieneCancionEstandar),
+    cancionDocumentoId: registro.cancionDocumentoId || '',
+    cancionDocumentoNombre: registro.cancionDocumentoNombre || '',
+    usaCancionEstandar: registro.usaCancionEstandar === '' || registro.usaCancionEstandar === undefined ? convertirBooleano(registro.tieneCancionEstandar) : convertirBooleano(registro.usaCancionEstandar),
+    tieneVideoEstandar: convertirBooleano(registro.tieneVideoEstandar),
+    videoDocumentoId: registro.videoDocumentoId || '',
+    videoDocumentoNombre: registro.videoDocumentoNombre || '',
+    usaVideoEstandar: registro.usaVideoEstandar === '' || registro.usaVideoEstandar === undefined ? convertirBooleano(registro.tieneVideoEstandar) : convertirBooleano(registro.usaVideoEstandar),
+    requierePalanca: convertirBooleano(registro.requierePalanca),
+    palancaNombre: registro.palancaNombre || '',
+    palancaInstrucciones: registro.palancaInstrucciones || '',
+    palancaEstado: registro.palancaEstado || (convertirBooleano(registro.requierePalanca) ? 'Pendiente' : ''),
+    palancaAprobadaLogisticaPor: registro.palancaAprobadaLogisticaPor || '',
+    palancaFechaAprobacionLogistica: registro.palancaFechaAprobacionLogistica || '',
     estadoPreparacion: registro.estadoPreparacion || 'Pendiente definir presentación',
     aprobacionConferencista: convertirBooleano(registro.aprobacionConferencista),
     aprobacionAudiovisuales: convertirBooleano(registro.aprobacionAudiovisuales),
@@ -132,6 +147,10 @@ function prepararTema_(datos) {
     return String(item.id) === servidorId;
   });
 
+  const documentos = obtenerDocumentosTemasRF08_();
+  const cancion = documentos.find(function(item) { return String(item.id) === String(entrada.cancionDocumentoId || ''); });
+  const video = documentos.find(function(item) { return String(item.id) === String(entrada.videoDocumentoId || ''); });
+
   return {
     nombre: String(entrada.nombre || '').trim(),
     descripcion: String(entrada.descripcion || '').trim(),
@@ -143,6 +162,18 @@ function prepararTema_(datos) {
     requierePresentacion: normalizarSiNoPendienteTema_(entrada.requierePresentacion),
     requiereTestimonio: convertirBooleano(entrada.requiereTestimonio) ? 'Sí' : 'No',
     requiereMusica: normalizarSiNoPendienteTema_(entrada.requiereMusica),
+    tieneCancionEstandar: convertirBooleano(entrada.tieneCancionEstandar) ? 'Sí' : 'No',
+    cancionDocumentoId: convertirBooleano(entrada.tieneCancionEstandar) ? String(entrada.cancionDocumentoId || '').trim() : '',
+    cancionDocumentoNombre: convertirBooleano(entrada.tieneCancionEstandar) && cancion ? cancion.nombre : '',
+    usaCancionEstandar: convertirBooleano(entrada.tieneCancionEstandar) ? (entrada.usaCancionEstandar === false ? 'No' : 'Sí') : 'No',
+    tieneVideoEstandar: convertirBooleano(entrada.tieneVideoEstandar) ? 'Sí' : 'No',
+    videoDocumentoId: convertirBooleano(entrada.tieneVideoEstandar) ? String(entrada.videoDocumentoId || '').trim() : '',
+    videoDocumentoNombre: convertirBooleano(entrada.tieneVideoEstandar) && video ? video.nombre : '',
+    usaVideoEstandar: convertirBooleano(entrada.tieneVideoEstandar) ? (entrada.usaVideoEstandar === false ? 'No' : 'Sí') : 'No',
+    requierePalanca: convertirBooleano(entrada.requierePalanca) ? 'Sí' : 'No',
+    palancaNombre: convertirBooleano(entrada.requierePalanca) ? String(entrada.palancaNombre || '').trim() : '',
+    palancaInstrucciones: convertirBooleano(entrada.requierePalanca) ? String(entrada.palancaInstrucciones || '').trim() : '',
+    palancaEstado: convertirBooleano(entrada.requierePalanca) ? String(entrada.palancaEstado || 'Pendiente').trim() : '',
     observaciones: String(entrada.observaciones || '').trim()
   };
 }
@@ -152,6 +183,9 @@ function validarTema_(tema) {
   if (tema.duracionMinutos !== '' && (!isFinite(tema.duracionMinutos) || Number(tema.duracionMinutos) <= 0)) {
     throw crearErrorAplicacion('DURACION_TEMA_INVALIDA', 'La duración debe ser un número mayor que cero.');
   }
+  if (tema.tieneCancionEstandar === 'Sí' && !tema.cancionDocumentoId) throw crearErrorAplicacion('CANCION_ESTANDAR_REQUERIDA', 'Seleccione la canción estándar desde Documentos.');
+  if (tema.tieneVideoEstandar === 'Sí' && !tema.videoDocumentoId) throw crearErrorAplicacion('VIDEO_ESTANDAR_REQUERIDO', 'Seleccione el video estándar desde Documentos.');
+  if (tema.requierePalanca === 'Sí' && (!tema.palancaNombre || !tema.palancaInstrucciones)) throw crearErrorAplicacion('PALANCA_DATOS_REQUERIDOS', 'El nombre y las instrucciones de la palanca son obligatorios.');
   if (tema.servidorId && !tema.servidorNombre) {
     throw crearErrorAplicacion('SERVIDOR_TEMA_NO_VIGENTE', 'El servidor seleccionado no existe o no está vigente.');
   }
@@ -312,4 +346,50 @@ function auditarTema_(sesion, accion, id, detalle) {
     idRegistro: id,
     detalle: JSON.stringify(detalle || {})
   });
+}
+
+
+function obtenerDocumentosTemasRF08_() {
+  try {
+    return leerHojaComoObjetos(HOJAS.DOCUMENTOS).filter(function(item) {
+      return convertirBooleano(item.activo);
+    }).map(function(item) {
+      return { id: item.id || '', nombre: item.nombre || '', categoria: item.categoria || '', url: item.archivoDriveUrl || '' };
+    }).filter(function(item) { return item.id && item.nombre; });
+  } catch (error) { return []; }
+}
+
+function actualizarPreferenciasMultimediaTema(token, temaId, datos) {
+  const sesion = obtenerSesion(token);
+  const tema = validarTemaPerteneceASesion_(sesion, temaId);
+  const cambios = {};
+  if (datos && datos.usaCancionEstandar !== undefined) cambios.usaCancionEstandar = convertirBooleano(datos.usaCancionEstandar) ? 'Sí' : 'No';
+  if (datos && datos.usaVideoEstandar !== undefined) cambios.usaVideoEstandar = convertirBooleano(datos.usaVideoEstandar) ? 'Sí' : 'No';
+  actualizarRegistroSheet(HOJAS.TEMAS, tema.id, cambios, opcionesCrudTemas(sesion.usuario));
+  return convertirTema(leerRegistroPorIdSheet(HOJAS.TEMAS, tema.id, opcionesCrudTemas('')));
+}
+
+function cambiarEstadoPalancaTema(token, temaId, estado) {
+  const sesion = obtenerSesion(token);
+  if (!tienePermisoSesion_(sesion, 'TEMAS_GESTIONAR_PALANCAS') && !tienePermisoSesion_(sesion, 'PALANCAS_APROBAR_LOGISTICA')) {
+    throw crearErrorAplicacion('PERMISO_DENEGADO', 'No tiene permisos para gestionar palancas.');
+  }
+  const permitidos = ['Pendiente','Solicitada','Entregada','Empaquetada','Entregada a Logística'];
+  const nuevo = String(estado || '').trim();
+  if (permitidos.indexOf(nuevo) < 0) throw crearErrorAplicacion('ESTADO_PALANCA_INVALIDO', 'El estado de la palanca no es válido.');
+  const tema = leerRegistroPorIdSheet(HOJAS.TEMAS, temaId, opcionesCrudTemas(''));
+  if (!tema || !convertirBooleano(tema.requierePalanca)) throw crearErrorAplicacion('TEMA_SIN_PALANCA', 'El tema no requiere palanca.');
+  return convertirTema(actualizarRegistroSheet(HOJAS.TEMAS, temaId, { palancaEstado: nuevo, palancaAprobadaLogisticaPor: '', palancaFechaAprobacionLogistica: '' }, opcionesCrudTemas(sesion.usuario)));
+}
+
+function aprobarPalancaLogistica(token, temaId) {
+  const sesion = validarPermiso(token, 'PALANCAS_APROBAR_LOGISTICA');
+  const tema = leerRegistroPorIdSheet(HOJAS.TEMAS, temaId, opcionesCrudTemas(''));
+  if (String(tema.palancaEstado || '') !== 'Entregada a Logística') throw crearErrorAplicacion('PALANCA_NO_ENTREGADA_LOGISTICA', 'La palanca aún no está entregada a Logística.');
+  return convertirTema(actualizarRegistroSheet(HOJAS.TEMAS, temaId, { palancaAprobadaLogisticaPor: sesion.nombre || sesion.usuario, palancaFechaAprobacionLogistica: new Date() }, opcionesCrudTemas(sesion.usuario)));
+}
+
+function tienePermisoSesion_(sesion, permiso) {
+  try { validarPermiso(sesion.token || '', permiso); return true; } catch (e) {}
+  try { return (sesion.permisos || []).indexOf(permiso) >= 0; } catch (e2) { return false; }
 }

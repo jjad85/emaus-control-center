@@ -61,7 +61,7 @@ import CaminanteActionDialog from "../components/caminantes/CaminanteActionDialo
 
 const ESTADOS_PAGO = ["Pendiente", "Pago Parcial", "Pago Total"];
 
-const ESTADOS_ENTREGABLES = ["Pendiente", "En Proceso", "Completado"];
+const ESTADOS_ENTREGABLES = ["Pendiente", "Solicitada", "Entregada", "Empaquetada", "Entregada a Logística"];
 
 const CRITERIOS_FILTRO = [
   {
@@ -518,7 +518,11 @@ export default function Caminantes() {
       }
 
       setActionDialog(null);
-      setMensaje("Cambio guardado correctamente.");
+      setMensaje(
+        valor === "Entregada a Logística"
+          ? "Entrega aprobada por Logística correctamente."
+          : "Cambio guardado correctamente.",
+      );
 
       await api.reload();
     } finally {
@@ -1161,6 +1165,24 @@ export default function Caminantes() {
                       label={`Foto: ${detalleCaminante?.entregables?.foto || "Pendiente"}`}
                     />
                   </Stack>
+
+                  {detalleCaminante?.entregables?.aprobacionCartaLogistica?.aprobadoPor && (
+                    <Alert severity="success">
+                      Carta aprobada por Logística por {detalleCaminante.entregables.aprobacionCartaLogistica.aprobadoPor}
+                      {detalleCaminante.entregables.aprobacionCartaLogistica.fecha
+                        ? ` el ${formatearFechaDetalle(detalleCaminante.entregables.aprobacionCartaLogistica.fecha)}`
+                        : ""}.
+                    </Alert>
+                  )}
+
+                  {detalleCaminante?.entregables?.aprobacionFotoLogistica?.aprobadoPor && (
+                    <Alert severity="success">
+                      Fotografía aprobada por Logística por {detalleCaminante.entregables.aprobacionFotoLogistica.aprobadoPor}
+                      {detalleCaminante.entregables.aprobacionFotoLogistica.fecha
+                        ? ` el ${formatearFechaDetalle(detalleCaminante.entregables.aprobacionFotoLogistica.fecha)}`
+                        : ""}.
+                    </Alert>
+                  )}
                 </Stack>
               </CardContent>
             </Card>
@@ -1423,7 +1445,10 @@ export default function Caminantes() {
               ? mesasOpciones
               : actionDialog === "habitacion"
                 ? habitacionesOpciones
-                : ESTADOS_ENTREGABLES
+                : ESTADOS_ENTREGABLES.filter((estado) =>
+                    estado !== "Entregada a Logística" ||
+                    puede("CAMINANTES_APROBAR_ENTREGA_LOGISTICA"),
+                  )
         }
       />
 

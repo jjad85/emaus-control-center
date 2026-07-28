@@ -242,6 +242,9 @@ function contarEstadosCompletados(
       estados.entregada || 0
     ) +
     Number(
+      estados['entregada a logistica'] || 0
+    ) +
+    Number(
       estados.entregado || 0
     ) +
     Number(

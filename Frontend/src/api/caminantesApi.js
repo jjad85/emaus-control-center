@@ -174,3 +174,13 @@ export async function enviarAutorizacionesCaminanteApi(token, id) {
   const response = await postAction('enviarAutorizacionesCaminante', { token, id });
   return response.datos;
 }
+
+export async function obtenerPendientesLogisticaApi(token) {
+  const response = await postAction('obtenerPendientesLogistica', { token });
+  return response.datos;
+}
+
+export async function aprobarEntregableLogisticaApi(token, id, tipo) {
+  const response = await postAction('aprobarEntregableLogistica', { token, id, tipo });
+  return response.datos;
+}

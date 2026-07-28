@@ -12,7 +12,8 @@ function instalarMatrizRolesPermisosDefinitiva() {
     ['SERVIDOR', 'Servidor del retiro.', 'Sí'],
     ['REGISTRO', 'Registro y gestión de aspirantes.', 'Sí'],
     ['TESORERIA', 'Gestión financiera y comprobantes.', 'Sí'],
-    ['CAMPANERO', 'Operación del paso a paso.', 'Sí']
+    ['CAMPANERO', 'Operación del paso a paso.', 'Sí'],
+    ['LOGISTICA', 'Gestión logística, entregables y elementos físicos.', 'Sí']
   ];
 
   const permisos = obtenerCatalogoPermisosDefinitivo_();
@@ -65,6 +66,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
   return [
     ['DASHBOARD_VER','Dashboard','Dashboard','Ver dashboard'],
     ['ASPIRANTES_VER_DETALLE','Personas','Aspirantes','Ver detalle'],
+    ['ASPIRANTES_REGISTRAR','Personas','Aspirantes','Registrar aspirante'],
     ['ALIMENTACION_EXPORTAR','Personas','Aspirantes','Exportar alimentación'],
     ['ASPIRANTES_NOTIFICAR_PREINSCRIPCION','Personas','Aspirantes','Notificar preinscripción'],
     ['ASPIRANTES_CAMBIAR_ESTADO','Personas','Aspirantes','Cambiar estado'],
@@ -74,12 +76,24 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['CAMINANTES_ASIGNAR_HABITACION','Personas','Caminantes','Asignar habitación'],
     ['CAMINANTES_REPORTAR_CARTA','Personas','Caminantes','Reportar estado de carta'],
     ['CAMINANTES_REPORTAR_FOTO','Personas','Caminantes','Reportar estado de foto'],
+    ['CAMINANTES_APROBAR_ENTREGA_LOGISTICA','Personas','Caminantes','Aprobar entrega de cartas y fotografías a Logística'],
     ['CAMINANTES_REGISTRAR','Personas','Caminantes','Registrar caminante'],
     ['CAMINANTES_FILTROS','Personas','Caminantes','Usar filtros'],
     ['SERVIDORES_VER_DETALLE','Personas','Servidores','Ver detalle'],
     ['SERVIDORES_EDITAR','Personas','Servidores','Editar'],
     ['SERVIDORES_ASIGNAR_EQUIPO','Personas','Servidores','Asignar equipo'],
     ['SERVIDORES_ASIGNAR_HABITACION','Personas','Servidores','Asignar habitación'],
+    ['CENTRO_LOGISTICO_VER','Logística','Centro Logístico','Consultar panel y reportes'],
+    ['DOCUMENTOS_CONSULTAR','Logística','Documentos','Consultar'],
+    ['DOCUMENTOS_CREAR','Logística','Documentos','Crear'],
+    ['DOCUMENTOS_EDITAR','Logística','Documentos','Editar'],
+    ['DOCUMENTOS_ELIMINAR','Logística','Documentos','Eliminar'],
+    ['DOCUMENTOS_DESCARGAR','Logística','Documentos','Descargar'],
+    ['TEMAS_CONFIGURAR_MULTIMEDIA','Operación del retiro','Temas','Configurar canción y video estándar'],
+    ['TEMAS_CONFIGURAR_PALANCAS','Operación del retiro','Temas','Configurar palanca'],
+    ['TEMAS_ASIGNAR_MULTIMEDIA','Mi menú','Mis temas','Decidir uso de multimedia estándar'],
+    ['TEMAS_GESTIONAR_PALANCAS','Logística','Palancas','Gestionar flujo logístico'],
+    ['PALANCAS_APROBAR_LOGISTICA','Logística','Palancas','Aprobar entrega a Logística'],
     ['EQUIPOS_VER_DETALLE','Logística','Equipos','Ver detalle'],
     ['EQUIPOS_CREAR','Logística','Equipos','Crear equipo'],
     ['EQUIPOS_ASIGNAR_SERVIDOR','Logística','Equipos','Asignar servidor'],
@@ -111,6 +125,9 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['PASO_A_PASO_INICIAR','Operación del retiro','Paso a paso','Iniciar'],
     ['PASO_A_PASO_EDITAR','Operación del retiro','Paso a paso','Editar'],
     ['SISTEMA_TODO','Sistema','Sistema','Acceso completo'],
+    ['USUARIOS_CONSULTAR','Sistema','Usuarios','Consultar'],
+    ['USUARIOS_CREAR','Sistema','Usuarios','Crear'],
+    ['USUARIOS_EDITAR','Sistema','Usuarios','Editar y activar/inactivar'],
     ['FECHAS_IMPORTANTES_GESTIONAR','Sistema','Fechas importantes','Gestionar'],
     ['MI_CUENTA_VER','Mi menú','Mi cuenta','Ver'],
     ['MI_MENU_REPORTAR_PAGO','Mi menú','Reporte de pago','Ver y reportar'],
@@ -121,7 +138,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
 
 function obtenerMatrizInicialRolesPermisos_() {
   const todos = obtenerCatalogoPermisosDefinitivo_().map(function(x){return x.codigo;});
-  const todosRoles = ['ADMIN','AUDIOVISUAL','LIDER_RETIRO','LIDER_MESA','SERVIDOR','REGISTRO','TESORERIA','CAMPANERO'];
+  const todosRoles = ['ADMIN','AUDIOVISUAL','LIDER_RETIRO','LIDER_MESA','SERVIDOR','REGISTRO','TESORERIA','CAMPANERO','LOGISTICA'];
   const mapa = {};
   todosRoles.forEach(function(r){mapa[r]=[];});
   mapa.ADMIN = todos.slice();
@@ -129,20 +146,29 @@ function obtenerMatrizInicialRolesPermisos_() {
   const todosConsulta = todosRoles;
   dar('DASHBOARD_VER', todosConsulta);
   dar('ASPIRANTES_VER_DETALLE', todosConsulta);
+  dar('ASPIRANTES_REGISTRAR',['LIDER_RETIRO','LIDER_MESA','SERVIDOR','REGISTRO']);
   dar('ASPIRANTES_NOTIFICAR_PREINSCRIPCION',['LIDER_RETIRO','REGISTRO']);
   dar('ASPIRANTES_CAMBIAR_ESTADO',['LIDER_RETIRO','REGISTRO']);
   dar('CAMINANTES_VER_DETALLE',todosConsulta);
   dar('CAMINANTES_EDITAR',['LIDER_RETIRO','REGISTRO']);
   dar('CAMINANTES_ASIGNAR_MESA',['LIDER_RETIRO']);
   dar('CAMINANTES_ASIGNAR_HABITACION',['LIDER_RETIRO']);
-  dar('CAMINANTES_REPORTAR_CARTA',['LIDER_RETIRO','LIDER_MESA']);
-  dar('CAMINANTES_REPORTAR_FOTO',['LIDER_RETIRO','LIDER_MESA']);
+  dar('CAMINANTES_REPORTAR_CARTA',['LIDER_RETIRO','LIDER_MESA','LOGISTICA']);
+  dar('CAMINANTES_REPORTAR_FOTO',['LIDER_RETIRO','LIDER_MESA','LOGISTICA']);
+  dar('CAMINANTES_APROBAR_ENTREGA_LOGISTICA',['LOGISTICA']);
   dar('CAMINANTES_REGISTRAR',['LIDER_RETIRO','REGISTRO']);
   dar('CAMINANTES_FILTROS',todosConsulta);
   dar('SERVIDORES_VER_DETALLE',todosConsulta);
   dar('SERVIDORES_EDITAR',['LIDER_RETIRO']);
   dar('SERVIDORES_ASIGNAR_EQUIPO',['LIDER_RETIRO']);
   dar('SERVIDORES_ASIGNAR_HABITACION',['LIDER_RETIRO']);
+  dar('CENTRO_LOGISTICO_VER',['LIDER_RETIRO','LOGISTICA']);
+  ['DOCUMENTOS_CONSULTAR','DOCUMENTOS_DESCARGAR'].forEach(function(p){dar(p,['LIDER_RETIRO','LOGISTICA']);});
+  ['DOCUMENTOS_CREAR','DOCUMENTOS_EDITAR','DOCUMENTOS_ELIMINAR'].forEach(function(p){dar(p,['LIDER_RETIRO']);});
+  ['TEMAS_CONFIGURAR_MULTIMEDIA','TEMAS_CONFIGURAR_PALANCAS'].forEach(function(p){dar(p,['LIDER_RETIRO']);});
+  dar('TEMAS_ASIGNAR_MULTIMEDIA',['SERVIDOR']);
+  dar('TEMAS_GESTIONAR_PALANCAS',['LIDER_RETIRO','LOGISTICA']);
+  dar('PALANCAS_APROBAR_LOGISTICA',['LOGISTICA']);
   dar('EQUIPOS_VER_DETALLE',todosConsulta);
   dar('EQUIPOS_CREAR',['LIDER_RETIRO']);
   dar('EQUIPOS_ASIGNAR_SERVIDOR',['LIDER_RETIRO']);

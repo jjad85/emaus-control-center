@@ -157,6 +157,12 @@ function routeRequest(parametros) {
         mensaje: 'Biblioteca documental consultada correctamente'
       };
 
+    case 'centrologistico':
+      return {
+        datos: obtenerCentroLogistico(parametros.token),
+        mensaje: 'Centro logístico consultado correctamente'
+      };
+
     case 'dashboard':
       return {
         datos:

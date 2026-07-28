@@ -347,11 +347,21 @@ function convertirCaminante(registro) {
     entregables: {
       carta:
         registro.carta ||
-        'Sin definir',
+        'Pendiente',
 
       foto:
         registro.foto ||
-        'Sin definir'
+        'Pendiente',
+
+      aprobacionCartaLogistica: {
+        aprobadoPor: registro.cartaAprobadaLogisticaPor || '',
+        fecha: registro.cartaFechaAprobacionLogistica || ''
+      },
+
+      aprobacionFotoLogistica: {
+        aprobadoPor: registro.fotoAprobadaLogisticaPor || '',
+        fecha: registro.fotoFechaAprobacionLogistica || ''
+      }
     }
   };
 }

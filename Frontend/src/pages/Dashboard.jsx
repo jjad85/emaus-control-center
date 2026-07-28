@@ -7,7 +7,7 @@ import {
   CalendarMonthRounded, CloseRounded, GroupsRounded, HotelRounded,
   MailRounded, PaymentsRounded, PersonRounded, PhotoRounded,
   ReportProblemRounded, SlideshowRounded, TableRestaurantRounded,
-  TaskAltRounded, WarningAmberRounded, DescriptionRounded, OpenInNewRounded,
+  TaskAltRounded, WarningAmberRounded, DescriptionRounded, OpenInNewRounded, Inventory2Rounded, CheckCircleRounded,
 } from '@mui/icons-material';
 
 import { obtenerDashboard } from '../api/dashboardApi';
@@ -17,6 +17,7 @@ import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../auth/AuthContext';
 import { obtenerDocumentos, obtenerUrlDescargaDocumento } from '../api/documentosApi';
+import { obtenerPendientesLogisticaApi, aprobarEntregableLogisticaApi } from '../api/caminantesApi';
 
 const panelSx = {
   border: '1px solid', borderColor: 'divider', borderRadius: 4,
@@ -83,12 +84,48 @@ function ModalFechas({ open, onClose, fechas = [] }) {
   );
 }
 
+function ModalAprobacionesLogistica({ open, onClose, items, procesando, onAprobar }) {
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ sx: { borderRadius: 5 } }}>
+      <DialogTitle sx={{ pr: 7 }}>
+        <Typography variant="h5" fontWeight={950}>Aprobaciones de Logística</Typography>
+        <Typography variant="body2" color="text.secondary">Cartas y fotografías que ya fueron entregadas físicamente.</Typography>
+        <IconButton onClick={onClose} sx={{ position:'absolute', right:14, top:14 }}><CloseRounded /></IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={1.4}>
+          {items.map(item => (
+            <Paper key={item.id} variant="outlined" sx={{ p: 2, borderRadius: 4 }}>
+              <Stack direction={{ xs:'column', md:'row' }} justifyContent="space-between" gap={2}>
+                <Box>
+                  <Typography fontWeight={950}>{item.nombre}</Typography>
+                  <Typography variant="body2" color="text.secondary">{[item.numeroInscripcion && `Inscripción ${item.numeroInscripcion}`, item.mesa].filter(Boolean).join(' · ')}</Typography>
+                </Box>
+                <Stack direction={{ xs:'column', sm:'row' }} spacing={1}>
+                  {item.cartaPendiente && <Button variant="contained" startIcon={<MailRounded />} disabled={procesando === `${item.id}-carta`} onClick={() => onAprobar(item.id, 'carta')}>Aprobar carta</Button>}
+                  {item.fotoPendiente && <Button variant="contained" startIcon={<PhotoRounded />} disabled={procesando === `${item.id}-foto`} onClick={() => onAprobar(item.id, 'foto')}>Aprobar foto</Button>}
+                </Stack>
+              </Stack>
+            </Paper>
+          ))}
+          {!items.length && <Alert severity="success">No hay entregables pendientes de aprobación.</Alert>}
+        </Stack>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Dashboard() {
   const { token, tienePermiso } = useAuth();
   const [fechasOpen, setFechasOpen] = useState(false);
   const [documentosImportantes, setDocumentosImportantes] = useState([]);
+  const [pendientesLogistica, setPendientesLogistica] = useState([]);
+  const [logisticaOpen, setLogisticaOpen] = useState(false);
+  const [procesandoLogistica, setProcesandoLogistica] = useState('');
   const puedeVerDocumentos = tienePermiso('DOCUMENTOS_CONSULTAR');
   const puedeDescargarDocumentos = tienePermiso('DOCUMENTOS_DESCARGAR');
+  const puedeVerBandejaLogistica = tienePermiso('LOGISTICA_CONSULTAR_BANDEJA');
+  const puedeAprobarLogistica = tienePermiso('CAMINANTES_APROBAR_ENTREGA_LOGISTICA');
   const { data, loading, error, reload } = useApi(() => obtenerDashboard(), []);
 
   useEffect(() => {
@@ -99,6 +136,33 @@ export default function Dashboard() {
       .catch(() => { if (activo) setDocumentosImportantes([]); });
     return () => { activo = false; };
   }, [token, puedeVerDocumentos]);
+
+  const cargarPendientesLogistica = async () => {
+    if (!token || !puedeVerBandejaLogistica) { setPendientesLogistica([]); return; }
+    try {
+      const items = await obtenerPendientesLogisticaApi(token);
+      setPendientesLogistica(items || []);
+    } catch {
+      setPendientesLogistica([]);
+    }
+  };
+
+  useEffect(() => {
+    cargarPendientesLogistica();
+  }, [token, puedeVerBandejaLogistica]);
+
+  const aprobarPendienteLogistica = async (id, tipo) => {
+    if (!puedeAprobarLogistica) return;
+    const clave = `${id}-${tipo}`;
+    setProcesandoLogistica(clave);
+    try {
+      await aprobarEntregableLogisticaApi(token, id, tipo);
+      await cargarPendientesLogistica();
+    } finally {
+      setProcesandoLogistica('');
+    }
+  };
+
   if (loading && !data) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={reload} />;
 
@@ -123,6 +187,7 @@ export default function Dashboard() {
     mesas.fotosPendientes > 0 && `${mesas.fotosPendientes} fotografías pendientes`,
     (presentaciones.totalPresentaciones-presentaciones.entregadas) > 0 && `${presentaciones.totalPresentaciones-presentaciones.entregadas} presentaciones sin entregar`,
     pagosPorValidar > 0 && `${pagosPorValidar} pagos por validar`,
+    puedeVerBandejaLogistica && pendientesLogistica.length > 0 && `${pendientesLogistica.length} caminantes con entregables por aprobar`,
   ].filter(Boolean);
 
   return (
@@ -203,6 +268,21 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
+      {puedeVerBandejaLogistica && (
+        <Paper sx={{ ...panelSx, p: 2.5, borderTop: '4px solid', borderTopColor: pendientesLogistica.length ? 'warning.main' : 'success.main' }}>
+          <Stack direction={{ xs:'column', md:'row' }} justifyContent="space-between" alignItems={{ md:'center' }} gap={2}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Inventory2Rounded color={pendientesLogistica.length ? 'warning' : 'success'} />
+              <Box>
+                <Typography variant="h6" fontWeight={950}>Aprobaciones de Logística</Typography>
+                <Typography variant="body2" color="text.secondary">{pendientesLogistica.length ? `${pendientesLogistica.length} caminantes tienen cartas o fotografías por aprobar.` : 'No hay entregas pendientes de aprobación.'}</Typography>
+              </Box>
+            </Stack>
+            <Button variant={pendientesLogistica.length ? 'contained' : 'outlined'} startIcon={pendientesLogistica.length ? <TaskAltRounded /> : <CheckCircleRounded />} onClick={() => setLogisticaOpen(true)}>Ver bandeja</Button>
+          </Stack>
+        </Paper>
+      )}
+
       <Grid container spacing={2.5}>
         <Grid size={{xs:12,md:6,lg:4}}><TarjetaOperacion titulo="Personas" icono={<GroupsRounded/>}><Grid container spacing={2}><Grid size={{xs:6}}><Dato valor={caminantes.total||0} etiqueta="Caminantes"/></Grid><Grid size={{xs:6}}><Dato valor={servidores.total||0} etiqueta="Servidores"/></Grid></Grid><Box mt={1}><FilaEstado icono={<TableRestaurantRounded fontSize="small"/>} texto="Caminantes sin mesa" valor={caminantes.sinMesa||0} alerta={(caminantes.sinMesa||0)>0}/><FilaEstado icono={<GroupsRounded fontSize="small"/>} texto="Servidores sin equipo" valor={servidores.sinEquipo||0} alerta={(servidores.sinEquipo||0)>0}/><FilaEstado icono={<HotelRounded fontSize="small"/>} texto="Personas sin habitación" valor={(caminantes.sinHabitacion||0)+(servidores.sinHabitacion||0)} alerta={((caminantes.sinHabitacion||0)+(servidores.sinHabitacion||0))>0}/></Box></TarjetaOperacion></Grid>
 
@@ -215,6 +295,7 @@ export default function Dashboard() {
         <Grid size={{xs:12,lg:8}}><TarjetaOperacion titulo="Radar de alertas" icono={<ReportProblemRounded/>} accent="error.main"><Grid container spacing={1.4}>{alertas.slice(0,10).map((a,i)=><Grid key={`${a.modulo}-${i}`} size={{xs:12,md:6}}><Alert severity={a.tipo} sx={{borderRadius:3,height:'100%'}}><Typography variant="caption" fontWeight={900}>{a.modulo}</Typography><Typography variant="body2" fontWeight={650}>{a.mensaje}</Typography></Alert></Grid>)}{!alertas.length&&<Grid size={{xs:12}}><Alert severity="success">No hay alertas activas.</Alert></Grid>}</Grid></TarjetaOperacion></Grid>
       </Grid>
 
+      <ModalAprobacionesLogistica open={logisticaOpen} onClose={()=>setLogisticaOpen(false)} items={pendientesLogistica} procesando={procesandoLogistica} onAprobar={aprobarPendienteLogistica} />
       <ModalFechas open={fechasOpen} onClose={()=>setFechasOpen(false)} fechas={fechas}/>
     </Stack>
   );
