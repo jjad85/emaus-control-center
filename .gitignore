@@ -14,7 +14,8 @@ Frontend/.env.production.local
 # BACKEND
 # ==========================================
 
-Backend/.clasprc.json
+Backend/.clasp.json
+Backend/node_modules/
 
 # Opcional: subir .clasp.json
 # Si eres el único desarrollador, yo SÍ lo subiría.

@@ -1,0 +1,17 @@
+{
+  "name": "emaus-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "status:dev": "clasp --project .clasp.dev.json show-file-status",
+    "push:dev": "clasp --project .clasp.dev.json push",
+    "open:dev": "clasp --project .clasp.dev.json open-script",
+
+    "status:prod": "clasp --project .clasp.prod.json show-file-status",
+    "push:prod": "clasp --project .clasp.prod.json push",
+    "open:prod": "clasp --project .clasp.prod.json open-script"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.0.0"
+  }
+}
