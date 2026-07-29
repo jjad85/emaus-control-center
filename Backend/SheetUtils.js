@@ -6,10 +6,11 @@
  */
 
 /**
- * ID del Google Sheets.
+ * Nombre de la propiedad del script que contiene
+ * el ID del Google Sheets utilizado por el ambiente.
  */
-const SPREADSHEET_ID =
-  '1ovrRzHHL_zcNaOnI9m3j7rQwOmqzVnDaHoQ_KvffDq4';
+const PROPIEDAD_SPREADSHEET_ID =
+  'EMAUS_SPREADSHEET_ID';
 
 
 /**
@@ -37,12 +38,44 @@ const HOJAS = {
 
 
 /**
+ * Obtiene el ID del Google Sheets configurado
+ * en las Propiedades del script.
+ */
+function obtenerSpreadsheetId() {
+
+  const spreadsheetId =
+    PropertiesService
+      .getScriptProperties()
+      .getProperty(
+        PROPIEDAD_SPREADSHEET_ID
+      );
+
+  if(
+    !spreadsheetId ||
+    String(spreadsheetId).trim()==''
+  ){
+
+    throw crearErrorAplicacion(
+      'CONFIGURACION_INVALIDA',
+      'No existe la propiedad "' +
+      PROPIEDAD_SPREADSHEET_ID +
+      '" en las Propiedades del script.'
+    );
+
+  }
+
+  return String(spreadsheetId).trim();
+
+}
+
+
+/**
  * Abre el libro.
  */
 function obtenerLibro() {
 
   return SpreadsheetApp.openById(
-    SPREADSHEET_ID
+    obtenerSpreadsheetId()
   );
 
 }
