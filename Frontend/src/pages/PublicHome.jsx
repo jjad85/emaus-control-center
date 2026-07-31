@@ -148,7 +148,7 @@ export default function PublicHome() {
               <Grid size={{ xs: 12, md: mostrarRetiro ? 7 : 12 }}> 
                 <Box className="public-kicker">
                   <AutoAwesomeRounded fontSize="small" />
-                  EMAÚS · PARROQUIA SANTA TERESITA
+                  EMAÚS · PARROQUIA SANTA TERESITA DEL NIÑO JESÚS
                 </Box>
 
                 <Typography component="p" className="public-hero-eyebrow">

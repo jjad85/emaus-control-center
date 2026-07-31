@@ -50,7 +50,7 @@ export default function PublicNavbar({ onLogin }) {
               <Box className="public-brand-mark">E</Box>
               <Box>
                 <Typography className="public-brand-name">EMAÚS</Typography>
-                <Typography className="public-brand-subtitle">Santa Teresita</Typography>
+                <Typography className="public-brand-subtitle">Santa Teresita del Niño Jesús</Typography>
               </Box>
             </Box>
 

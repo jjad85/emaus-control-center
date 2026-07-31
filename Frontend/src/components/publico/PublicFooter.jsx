@@ -9,7 +9,7 @@ export default function PublicFooter() {
           <Box>
             <Stack direction="row" spacing={1} alignItems="center">
               <AutoAwesomeRounded fontSize="small" />
-              <Typography fontWeight={950} letterSpacing={1.6}>EMAÚS · SANTA TERESITA</Typography>
+              <Typography fontWeight={950} letterSpacing={1.6}>EMAÚS · SANTA TERESITA  DEL NIÑO JESÚS</Typography>
             </Stack>
             <Typography mt={1} className="public-footer-muted">
               Una comunidad que camina, encuentra y sirve.
