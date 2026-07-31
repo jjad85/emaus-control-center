@@ -24,19 +24,20 @@ import {
 } from '@mui/material';
 import UploadFileRounded from '@mui/icons-material/UploadFileRounded';
 import DownloadRounded from '@mui/icons-material/DownloadRounded';
-import MusicNoteRounded from '@mui/icons-material/MusicNoteRounded';
 import CloudUploadRounded from '@mui/icons-material/CloudUploadRounded';
 import { useAuth } from '../auth/AuthContext';
 import PageHeader from '../components/PageHeader';
 import EstadoTemaChip from '../components/temas/EstadoTemaChip';
 import HistorialVersiones from '../components/temas/HistorialVersiones';
 import ComentariosPresentacion from '../components/temas/ComentariosPresentacion';
+import RecursosTemaPanel from '../components/temas/RecursosTemaPanel';
 import { responderRevisionServidor, comentarPresentacion } from '../api/entrega3PresentacionesApi';
 import { actualizarPreferenciasMultimediaTema } from '../api/temasApi';
 import {
   archivoABase64,
   actualizarPreferenciasMiTema,
   obtenerMiTemaAsignado,
+  guardarRecursosMiTema,
   subirMusicaTema,
   subirVersionTema,
 } from '../api/temasPresentacionesApi';
@@ -105,6 +106,22 @@ export default function MisTemas() {
       await cargar();
     } catch (e) {
       setError(e.message);
+    } finally {
+      setSubiendo('');
+    }
+  }
+
+  async function guardarRecurso(tema, tipo, datos) {
+    try {
+      setSubiendo(tema.id + tipo);
+      setError('');
+      setMensaje('');
+      await guardarRecursosMiTema(token, tema.id, { tipo, ...datos });
+      setMensaje('La configuración del recurso fue guardada correctamente.');
+      await cargar();
+    } catch (e) {
+      setError(e.message || 'No fue posible guardar el recurso.');
+      throw e;
     } finally {
       setSubiendo('');
     }
@@ -404,126 +421,13 @@ export default function MisTemas() {
                       md: 5,
                     }}
                   >
-                    <Stack spacing={2}>
-                      <Typography
-                        variant="h6"
-                        fontWeight={900}
-                      >
-                        Definición de recursos
-                      </Typography>
-
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={
-                              tema.requierePresentacion ===
-                              'Sí'
-                            }
-                            disabled={
-                              subiendo !== ''
-                            }
-                            onChange={(_, valor) =>
-                              cambiar(
-                                tema,
-                                'requierePresentacion',
-                                valor
-                              )
-                            }
-                          />
-                        }
-                        label="Utilizaré presentación"
-                      />
-
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={
-                              tema.requiereMusica ===
-                              'Sí'
-                            }
-                            disabled={
-                              subiendo !== ''
-                            }
-                            onChange={(_, valor) =>
-                              cambiar(
-                                tema,
-                                'requiereMusica',
-                                valor
-                              )
-                            }
-                          />
-                        }
-                        label="Utilizaré música"
-                      />
-
-                      {data?.plantillaUrl && (
-                        <Button
-                          component="a"
-                          href={
-                            data.plantillaUrl
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          variant="outlined"
-                          startIcon={
-                            <DownloadRounded />
-                          }
-                        >
-                          Descargar plantilla
-                        </Button>
-                      )}
-
-                      {tema.requiereMusica ===
-                        'Sí' && (
-                        <Button
-                          component="label"
-                          variant="outlined"
-                          startIcon={
-                            <MusicNoteRounded />
-                          }
-                          disabled={
-                            subiendo !== ''
-                          }
-                        >
-                          Subir música
-                          <input
-                            hidden
-                            type="file"
-                            accept="audio/mpeg,audio/wav,audio/mp4"
-                            onChange={(evento) => {
-                              const file =
-                                evento.target
-                                  .files?.[0];
-                              evento.target.value =
-                                '';
-                              cargarMusica(
-                                tema,
-                                file
-                              );
-                            }}
-                          />
-                        </Button>
-                      )}
-
-                      {tema.musica?.map(
-                        (musica) => (
-                          <Button
-                            key={musica.id}
-                            component="a"
-                            href={
-                              musica.archivoDriveUrl
-                            }
-                            target="_blank"
-                            size="small"
-                          >
-                            Abrir:{' '}
-                            {
-                              musica.nombreCancion
-                            }
-                          </Button>
-                        )
-                      )}
-                    </Stack>
+                    <RecursosTemaPanel
+                      tema={tema}
+                      plantillaUrl={data?.plantillaUrl}
+                      disabled={subiendo !== ''}
+                      onCambiarPresentacion={(valor) => cambiar(tema, 'requierePresentacion', valor)}
+                      onGuardar={(tipo, datos) => guardarRecurso(tema, tipo, datos)}
+                    />
                   </Grid>
 
                   <Grid
@@ -747,11 +651,6 @@ export default function MisTemas() {
                     Historial de versiones
                   </Typography>
 
-                  <Stack spacing={1} sx={{ mb: 2 }}>
-                    {tema.tieneCancionEstandar && <FormControlLabel control={<Checkbox checked={Boolean(tema.usaCancionEstandar)} onChange={(e) => cambiar(tema, 'usaCancionEstandar', e.target.checked)} />} label={`Usar canción estándar: ${tema.cancionDocumentoNombre || 'Documento asociado'}`} />}
-                    {tema.tieneVideoEstandar && <FormControlLabel control={<Checkbox checked={Boolean(tema.usaVideoEstandar)} onChange={(e) => cambiar(tema, 'usaVideoEstandar', e.target.checked)} />} label={`Usar video estándar: ${tema.videoDocumentoNombre || 'Documento asociado'}`} />}
-                    {tema.requierePalanca && <Alert severity="info"><strong>Palanca: {tema.palancaNombre}</strong><br />{tema.palancaInstrucciones}<br />Estado: {tema.palancaEstado || 'Pendiente'}</Alert>}
-                  </Stack>
                   <HistorialVersiones
                     versiones={
                       tema.versiones

@@ -68,6 +68,15 @@ export async function subirMusicaTema(
   return response.datos;
 }
 
+export async function guardarRecursosMiTema(token, temaId, datos) {
+  const response = await postAction(
+    'guardarRecursosMiTema',
+    { token, temaId, datos }
+  );
+
+  return response.datos;
+}
+
 export function archivoABase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

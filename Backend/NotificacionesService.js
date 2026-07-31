@@ -57,21 +57,27 @@ function obtenerNotificaciones(token) {
 
   // Entrega 3: notificaciones del flujo colaborativo de presentaciones.
   try {
-    if (estaAlertaHabilitadaParaRol_('PRESENTACIONES_NOVEDADES', sesion.rol)) {
+    // obtenerNotificacionesTemas ya aplica destinatario y parametrización por tipo.
     const notificacionesTemas = obtenerNotificacionesTemas(token).filter(function(n) { return !n.leida; });
     if (notificacionesTemas.length) {
+      const rutaCampana = normalizarTexto(sesion.rol).indexOf('audiovis') >= 0
+        ? '/presentaciones'
+        : '/mis-temas';
       items.push({
         id: 'PRESENTACIONES_PENDIENTES', tipo: 'warning',
-        titulo: notificacionesTemas.length === 1 ? '1 novedad en presentaciones' : notificacionesTemas.length + ' novedades en presentaciones',
-        mensaje: 'Hay comentarios, revisiones o aprobaciones pendientes.',
+        titulo: notificacionesTemas.length === 1 ? '1 novedad en tus temas' : notificacionesTemas.length + ' novedades en tus temas',
+        mensaje: normalizarTexto(sesion.rol).indexOf('audiovis') >= 0
+          ? 'Hay material nuevo o respuestas pendientes de revisión.'
+          : 'Audiovisuales realizó cambios o dejó observaciones en tu material.',
         cantidad: notificacionesTemas.length,
-        ruta: normalizarTexto(sesion.rol).indexOf('audiovis') >= 0 || normalizarTexto(sesion.rol).indexOf('admin') >= 0 ? '/presentaciones' : '/mis-temas',
+        ruta: rutaCampana,
         permiso: ''
       });
       totalPendientes += notificacionesTemas.length;
     }
-    }
-  } catch (ignoradoTemas) {}
+  } catch (ignoradoTemas) {
+    console.error('Error consultando notificaciones de temas: ' + (ignoradoTemas && ignoradoTemas.message ? ignoradoTemas.message : ignoradoTemas));
+  }
 
   // WhatsApp es un tipo específico de notificación y no todos los roles
   // tienen permiso para consultarlo. No debe bloquear la campana general.

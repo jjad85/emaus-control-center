@@ -483,6 +483,12 @@ function routePost(contenido) {
     case 'aprobarpalancalogistica':
       return { datos: aprobarPalancaLogistica(contenido.token, contenido.temaId), mensaje: 'Palanca aprobada correctamente' };
 
+    case 'obtenergestionpalancaslogistica':
+      return { datos: obtenerGestionPalancasLogistica(contenido.token), mensaje: 'Palancas consultadas correctamente' };
+
+    case 'actualizarpalancalogistica':
+      return { datos: actualizarPalancaLogistica(contenido.token, contenido.temaId, contenido.datos), mensaje: 'Palanca actualizada correctamente' };
+
     case 'movertema':
       return {
         datos: moverTema(contenido.token, contenido.id, contenido.direccion),
@@ -511,6 +517,9 @@ function routePost(contenido) {
     case 'actualizarpreferenciasmitema':
       return { datos: actualizarPreferenciasMiTema(contenido.token, contenido.temaId, contenido.datos), mensaje: 'Preferencias del tema actualizadas correctamente' };
 
+    case 'guardarrecursosmitema':
+      return { datos: guardarRecursosMiTema(contenido.token, contenido.temaId, contenido.datos), mensaje: 'Recurso del tema guardado correctamente' };
+
     case 'subirmusicatema':
       return { datos: subirMusicaTema(contenido.token, contenido.temaId, contenido.archivo, contenido.observaciones), mensaje: 'Música cargada correctamente' };
 
@@ -532,11 +541,26 @@ function routePost(contenido) {
     case 'obtenerrevisionpresentaciones':
       return { datos: obtenerRevisionPresentaciones(contenido.token), mensaje: 'Presentaciones consultadas correctamente' };
 
+    case 'obtenergestionrecursosaudiovisuales':
+      return { datos: obtenerGestionRecursosAudiovisuales(contenido.token), mensaje: 'Recursos audiovisuales consultados correctamente' };
+
+    case 'obtenerhistorialrecursotema':
+      return { datos: obtenerHistorialRecursoTema(contenido.token, contenido.temaId, contenido.tipoRecurso), mensaje: 'Historial consultado correctamente' };
+
+    case 'obtenerreporterecursostema':
+      return { datos: obtenerReporteRecursosTema(contenido.token, contenido.filtros), mensaje: 'Reporte consultado correctamente' };
+
+    case 'cambiarestadorecursoaudiovisual':
+      return { datos: cambiarEstadoRecursoAudiovisual(contenido.token, contenido.temaId, contenido.tipo, contenido.estado, contenido.observaciones, contenido.archivoDefinitivo), mensaje: 'Recurso audiovisual actualizado correctamente' };
+
     case 'comentarpresentacion':
       return { datos: comentarPresentacion(contenido.token, contenido.temaId, contenido.versionId, contenido.comentario), mensaje: 'Comentario registrado correctamente' };
 
     case 'revisarpresentacionaudiovisuales':
       return { datos: revisarPresentacionAudiovisuales(contenido.token, contenido.temaId, contenido.versionId, contenido.decision, contenido.comentario), mensaje: 'Revisión registrada correctamente' };
+
+    case 'subirversionajustadaaudiovisuales':
+      return { datos: subirVersionAjustadaAudiovisuales(contenido.token, contenido.temaId, contenido.archivo, contenido.comentario), mensaje: 'Versión ajustada cargada correctamente' };
 
     case 'responderrevisionservidor':
       return { datos: responderRevisionServidor(contenido.token, contenido.temaId, contenido.versionId, contenido.decision, contenido.comentario), mensaje: 'Respuesta registrada correctamente' };

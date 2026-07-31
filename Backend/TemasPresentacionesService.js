@@ -342,3 +342,110 @@ function normalizarFechaTemaRespuesta_(valor) {
 }
 
 function obtenerUrlPlantillaTemas_(){ try{ const c=obtenerConfiguraciones(); return c.urlPlantillaPresentacionTemas||''; }catch(e){return '';} }
+
+/**
+ * Guarda la configuración de canción, video o palanca del tema asignado al servidor.
+ * Entrega 1: registra la solicitud y deja el recurso pendiente para el equipo responsable.
+ */
+function guardarRecursosMiTema(token, temaId, datos) {
+  const sesion = obtenerSesion(token);
+  const tema = validarTemaPerteneceASesion_(sesion, temaId);
+  const entrada = datos || {};
+  const cambios = {};
+
+  if (entrada.tipo === 'CANCION') {
+    const activa = convertirBooleano(entrada.activo);
+    const usaEstandar = activa && convertirBooleano(entrada.usaEstandar) && tema.tieneCancionEstandar;
+    cambios.requiereMusica = activa ? 'Sí' : 'No';
+    cambios.usaCancionEstandar = usaEstandar ? 'Sí' : 'No';
+    cambios.cancionTipo = activa ? (usaEstandar ? 'ESTANDAR' : 'PERSONALIZADA') : '';
+    cambios.cancionNombre = activa && !usaEstandar ? String(entrada.nombre || '').trim() : '';
+    cambios.cancionAutor = activa && !usaEstandar ? String(entrada.autor || '').trim() : '';
+    cambios.cancionEnlace = activa && !usaEstandar ? String(entrada.enlace || '').trim() : '';
+    cambios.cancionObservaciones = activa ? String(entrada.observaciones || '').trim() : '';
+    cambios.cancionEstado = activa ? 'Pendiente de gestión' : '';
+    cambios.cancionObservacionesAudiovisuales = '';
+    cambios.cancionAprobadaPor = '';
+    cambios.cancionFechaAprobacion = '';
+    cambios.cancionArchivoDefinitivoId = '';
+    cambios.cancionArchivoDefinitivoNombre = '';
+    cambios.cancionArchivoDefinitivoUrl = '';
+    if (activa && !usaEstandar) {
+      if (!cambios.cancionNombre || !cambios.cancionAutor || !cambios.cancionEnlace) {
+        throw crearErrorAplicacion('DATOS_CANCION_REQUERIDOS', 'Indique nombre, autor o intérprete y enlace de la canción.');
+      }
+      validarUrlRecursoMiTema_(cambios.cancionEnlace, 'canción');
+    }
+  } else if (entrada.tipo === 'VIDEO') {
+    const activo = convertirBooleano(entrada.activo);
+    const usaEstandar = activo && convertirBooleano(entrada.usaEstandar) && tema.tieneVideoEstandar;
+    cambios.usaVideo = activo ? 'Sí' : 'No';
+    cambios.usaVideoEstandar = usaEstandar ? 'Sí' : 'No';
+    cambios.videoTipo = activo ? (usaEstandar ? 'ESTANDAR' : 'PERSONALIZADO') : '';
+    cambios.videoNombre = activo && !usaEstandar ? String(entrada.nombre || '').trim() : '';
+    cambios.videoAutorFuente = activo && !usaEstandar ? String(entrada.autorFuente || '').trim() : '';
+    cambios.videoEnlace = activo && !usaEstandar ? String(entrada.enlace || '').trim() : '';
+    cambios.videoCompleto = activo ? (entrada.videoCompleto === false ? 'No' : 'Sí') : '';
+    cambios.videoMinutoInicio = activo && entrada.videoCompleto === false ? String(entrada.minutoInicio || '').trim() : '';
+    cambios.videoMinutoFin = activo && entrada.videoCompleto === false ? String(entrada.minutoFin || '').trim() : '';
+    cambios.videoMomentoReproduccion = activo ? String(entrada.momentoReproduccion || '').trim() : '';
+    cambios.videoObservaciones = activo ? String(entrada.observaciones || '').trim() : '';
+    cambios.videoEstado = activo ? 'Pendiente de gestión' : '';
+    cambios.videoObservacionesAudiovisuales = '';
+    cambios.videoAprobadaPor = '';
+    cambios.videoFechaAprobacion = '';
+    cambios.videoArchivoDefinitivoId = '';
+    cambios.videoArchivoDefinitivoNombre = '';
+    cambios.videoArchivoDefinitivoUrl = '';
+    if (activo && !usaEstandar) {
+      if (!cambios.videoNombre || !cambios.videoAutorFuente || !cambios.videoEnlace) {
+        throw crearErrorAplicacion('DATOS_VIDEO_REQUERIDOS', 'Indique nombre, autor o fuente y enlace del video.');
+      }
+      validarUrlRecursoMiTema_(cambios.videoEnlace, 'video');
+    }
+    if (activo && entrada.videoCompleto === false && (!cambios.videoMinutoInicio || !cambios.videoMinutoFin)) {
+      throw crearErrorAplicacion('FRAGMENTO_VIDEO_REQUERIDO', 'Indique el minuto inicial y final del fragmento de video.');
+    }
+  } else if (entrada.tipo === 'PALANCA') {
+    const activa = convertirBooleano(entrada.activo);
+    cambios.requierePalanca = activa ? 'Sí' : 'No';
+    cambios.palancaNombre = activa ? String(entrada.nombre || '').trim() : '';
+    cambios.palancaDescripcion = activa ? String(entrada.descripcion || '').trim() : '';
+    cambios.palancaMomentoEntrega = activa ? String(entrada.momentoEntrega || '').trim() : '';
+    cambios.palancaDetalleMomento = activa ? String(entrada.detalleMomento || '').trim() : '';
+    cambios.palancaFormaEntrega = activa ? String(entrada.formaEntrega || '').trim() : '';
+    cambios.palancaResponsableEntrega = activa ? String(entrada.responsableEntrega || '').trim() : '';
+    cambios.palancaDetalleResponsable = activa ? String(entrada.detalleResponsable || '').trim() : '';
+    cambios.palancaCantidad = activa ? String(entrada.cantidad || '').trim() : '';
+    cambios.palancaDestinatarios = activa ? String(entrada.destinatarios || '').trim() : '';
+    cambios.palancaRequierePreparacion = activa && convertirBooleano(entrada.requierePreparacion) ? 'Sí' : 'No';
+    cambios.palancaInstrucciones = activa ? String(entrada.instrucciones || '').trim() : '';
+    cambios.palancaObservaciones = activa ? String(entrada.observaciones || '').trim() : '';
+    cambios.palancaEstado = activa ? 'Pendiente de información' : '';
+    if (activa && (!cambios.palancaNombre || !cambios.palancaDescripcion || !cambios.palancaMomentoEntrega || !cambios.palancaFormaEntrega || !cambios.palancaResponsableEntrega || !cambios.palancaDestinatarios || !cambios.palancaInstrucciones)) {
+      throw crearErrorAplicacion('DATOS_PALANCA_REQUERIDOS', 'Complete el nombre, descripción, momento, forma, responsable, destinatarios e instrucciones de la palanca.');
+    }
+  } else {
+    throw crearErrorAplicacion('TIPO_RECURSO_INVALIDO', 'El tipo de recurso no es válido.');
+  }
+
+  cambios.fechaActualizacion = new Date();
+  cambios.actualizadoPor = sesion.usuario || '';
+  actualizarRegistroSheet(HOJAS.TEMAS, tema.id, cambios, opcionesCrudTemas(sesion.usuario));
+  if ((entrada.tipo === 'CANCION' && cambios.requiereMusica === 'Sí') || (entrada.tipo === 'VIDEO' && cambios.usaVideo === 'Sí')) {
+    crearNotificacionTemaAudiovisuales_(tema, {
+      tipo: entrada.tipo + '_PENDIENTE_GESTION',
+      titulo: entrada.tipo === 'CANCION' ? 'Canción pendiente de gestión' : 'Video pendiente de gestión',
+      mensaje: 'El tema “' + tema.nombre + '” registró un recurso audiovisual pendiente.',
+      ruta: '/presentaciones', versionId: ''
+    }, sesion.usuario);
+  }
+  auditarTema_(sesion, 'CONFIGURAR_RECURSO_MI_TEMA', tema.id, { tipo: entrada.tipo, cambios: cambios });
+  return obtenerMiTemaAsignado(token);
+}
+
+function validarUrlRecursoMiTema_(valor, recurso) {
+  if (!/^https?:\/\/[^\s]+$/i.test(String(valor || '').trim())) {
+    throw crearErrorAplicacion('URL_RECURSO_INVALIDA', 'El enlace del ' + recurso + ' no es válido. Debe iniciar por http:// o https://.');
+  }
+}
