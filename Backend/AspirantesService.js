@@ -12,45 +12,8 @@ const ESTADOS_ASPIRANTE = [
   'Convertido'
 ];
 
-function obtenerPortalPublico() {
-  const configuracion =
-    obtenerConfiguraciones();
-
-  return {
-    titulo:
-      configuracion.portalTitulo ||
-      'Retiro de Emaús',
-
-    subtitulo:
-      configuracion.portalSubtitulo ||
-      '',
-
-    contenidoHtml:
-      configuracion.portalContenidoHtml ||
-      '',
-
-    registroActivo:
-      convertirBooleano(
-        configuracion.portalRegistroActivo
-      ),
-
-    mensajeRegistroCerrado:
-      configuracion.portalMensajeRegistroCerrado ||
-      '',
-
-    textoBotonRegistro:
-      configuracion.portalTextoBotonRegistro ||
-      'Registrarme al retiro',
-
-    textoBotonLogin:
-      configuracion.portalTextoBotonLogin ||
-      'Ingresar al centro de control',
-
-    mensajeConfirmacion:
-      configuracion.portalMensajeConfirmacion ||
-      ''
-  };
-}
+// La configuración del portal público se obtiene exclusivamente desde PortalPublicoService.js.
+// Se eliminó la implementación duplicada para evitar que sobrescriba la versión parametrizable.
 
 function convertirFechaAspiranteMilisegundos(
   valor
