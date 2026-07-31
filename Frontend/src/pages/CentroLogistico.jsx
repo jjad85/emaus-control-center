@@ -19,6 +19,7 @@ import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { obtenerCentroLogisticoApi } from '../api/centroLogisticoApi';
+import PalancasLogisticaPanel from '../components/logistica/PalancasLogisticaPanel';
 
 const ESTADOS = ['Pendiente', 'Solicitada', 'Entregada', 'Empaquetada', 'Entregada a Logística'];
 
@@ -291,6 +292,8 @@ export default function CentroLogistico() {
           </Box>
         </PanelOperativo>
       </Stack>
+
+      <PalancasLogisticaPanel />
 
       <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
         <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'action.hover' }}>
