@@ -33,6 +33,8 @@ import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import DownloadRounded from '@mui/icons-material/DownloadRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
+import EventRounded from '@mui/icons-material/EventRounded';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 
 import {
   useMemo,
@@ -52,6 +54,7 @@ import { registrarAspiranteServidorApi } from '../api/aspirantesApi';
 import { useAuth } from '../auth/AuthContext';
 
 import { useApi } from '../hooks/useApi';
+import PublicNavbar from '../components/publico/PublicNavbar';
 
 const PASOS = [
   'Información personal',
@@ -282,6 +285,13 @@ export default function RegistroAspirante({ registroInterno = false }) {
 
   const portal =
     portalApi.data || {};
+
+  const contenidoRetiroHtml = useMemo(() =>
+    String(portal.contenidoHtml || '')
+      .replace(/\sstyle="[^"]*"/gi, '')
+      .replace(/\sstyle='[^']*'/gi, ''),
+    [portal.contenidoHtml]
+  );
 
   function campoVacio(
     valor
@@ -728,10 +738,15 @@ export default function RegistroAspirante({ registroInterno = false }) {
 
   if (resultado) {
     return (
-      <Box
-        sx={{
-          minHeight: '100dvh',
-          bgcolor: '#f5efe3',
+      <>
+        {!registroInterno && (
+          <PublicNavbar onLogin={() => navigate('/login')} />
+        )}
+        <Box
+          sx={{
+            minHeight: '100dvh',
+            pt: !registroInterno ? { xs: '86px', md: '98px' } : 0,
+          background: 'radial-gradient(circle at 10% 0%, rgba(210, 235, 223, .75), transparent 32%), linear-gradient(180deg, #f5f3eb 0%, #edf3ef 100%)',
           display: 'grid',
           placeItems: 'center',
           p: 2,
@@ -826,22 +841,25 @@ export default function RegistroAspirante({ registroInterno = false }) {
             </Button>
           </Stack>
         </Paper>
-      </Box>
+        </Box>
+      </>
     );
   }
 
   return (
-    <Box
+    <>
+      {!registroInterno && (
+        <PublicNavbar onLogin={() => navigate('/login')} />
+      )}
+      <Box
       sx={{
         minHeight: '100dvh',
         bgcolor: '#f5efe3',
-        py: {
-          xs: 2,
-          md: 5,
-        },
+        pt: !registroInterno ? { xs: '92px', md: '110px' } : { xs: 2, md: 5 },
+        pb: { xs: 3, md: 6 },
       }}
     >
-      <Container maxWidth="md">
+      <Container maxWidth="xl">
         <Stack spacing={2.5}>
           <Box>
             <Button
@@ -878,145 +896,281 @@ export default function RegistroAspirante({ registroInterno = false }) {
             </Typography>
           </Box>
 
-          {!registroInterno && (
-          <Dialog
-            open={dialogoTipoRegistrante}
-            fullWidth
-            maxWidth="sm"
-            onClose={() => navigate(rutaRegreso)}
-          >
-            <DialogTitle sx={{ position: 'relative', pr: 6 }}>
-              Antes de comenzar
-
-              <IconButton
-                aria-label="Cerrar inscripción"
-                onClick={() => navigate(rutaRegreso)}
+          {!registroInterno && dialogoTipoRegistrante && (
+            <Paper
+              elevation={0}
+              sx={{
+                overflow: 'hidden',
+                borderRadius: 5,
+                border: '1px solid rgba(20,75,62,.14)',
+                boxShadow: '0 28px 80px rgba(17,48,41,.12)',
+                background: 'linear-gradient(135deg, #fffdf8 0%, #f2f8f5 100%)',
+              }}
+            >
+              <Box
                 sx={{
-                  position: 'absolute',
-                  right: 8,
-                  top: 8,
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: '0.78fr 1.22fr' },
                 }}
               >
-                <CloseRounded />
-              </IconButton>
-            </DialogTitle>
-
-            <DialogContent>
-              <Typography
-                color="text.secondary"
-                sx={{ mb: 2 }}
-              >
-                Indícanos quién está diligenciando esta inscripción. Esta selección no hace parte de los pasos del formulario.
-              </Typography>
-
-              <FormControl
-                required
-                error={Boolean(errorTipoRegistrante)}
-                fullWidth
-              >
-                <FormLabel>
-                  ¿Quién está diligenciando la inscripción?
-                </FormLabel>
-
-                <RadioGroup
-                  value={form.tipoRegistrante}
-                  onChange={(event) => {
-                    const valor = event.target.value;
-                    cambiar('tipoRegistrante', valor);
-                    setErrorTipoRegistrante('');
-
-                    if (valor === 'ASPIRANTE') {
-                      cambiar('nombreRegistrante', '');
-                      cambiar('telefonoRegistrante', '');
-                    }
+                <Box
+                  sx={{
+                    p: { xs: 3, md: 4 },
+                    color: '#fff',
+                    background: 'linear-gradient(145deg, #082f28 0%, #145447 72%, #2b806c 100%)',
                   }}
                 >
-                  <FormControlLabel
-                    value="ASPIRANTE"
-                    control={<Radio />}
-                    label="Soy la persona que asistirá al retiro"
-                  />
+                  <Typography
+                    variant="overline"
+                    sx={{ color: '#baf0dc', fontWeight: 950, letterSpacing: '.16em' }}
+                  >
+                    Comencemos
+                  </Typography>
+                  <Typography variant="h4" fontWeight={950} mt={0.5}>
+                    ¿Quién realiza la inscripción?
+                  </Typography>
+                  <Typography sx={{ mt: 1.5, color: 'rgba(255,255,255,.75)', lineHeight: 1.7 }}>
+                    Esta información nos permite acompañar correctamente el registro. No cuenta como uno de los pasos del formulario.
+                  </Typography>
 
-                  <FormControlLabel
-                    value="INVITADOR"
-                    control={<Radio />}
-                    label="Estoy inscribiendo a otra persona"
-                  />
-                </RadioGroup>
+                  <Stack spacing={1.1} mt={3}>
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,.82)' }}>
+                      ✓ El aspirante puede diligenciar sus propios datos.
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,.82)' }}>
+                      ✓ Un familiar o servidor también puede ayudarlo.
+                    </Typography>
+                  </Stack>
+                </Box>
 
-                {errorTipoRegistrante && (
-                  <FormHelperText>
-                    {errorTipoRegistrante}
-                  </FormHelperText>
-                )}
-              </FormControl>
+                <Box sx={{ p: { xs: 2.5, md: 4 } }}>
+                  <Stack spacing={1.5}>
+                    {[
+                      {
+                        value: 'ASPIRANTE',
+                        title: 'Soy la persona que asistirá',
+                        description: 'Voy a diligenciar directamente mi información para el retiro.',
+                      },
+                      {
+                        value: 'INVITADOR',
+                        title: 'Estoy inscribiendo a otra persona',
+                        description: 'Soy familiar, amigo o servidor y ayudaré a completar el registro.',
+                      },
+                    ].map((opcion) => {
+                      const seleccionada = form.tipoRegistrante === opcion.value;
 
-              {form.tipoRegistrante === 'INVITADOR' && (
-                <Stack spacing={2} mt={2}>
-                  <Campo
-                    label="Nombre de quien realiza la inscripción"
-                    value={form.nombreRegistrante}
-                    onChange={(valor) => {
-                      cambiar('nombreRegistrante', valor);
-                      setErrorTipoRegistrante('');
-                    }}
-                    required
-                  />
-
-                  <Campo
-                    label="Celular de quien realiza la inscripción"
-                    value={form.telefonoRegistrante}
-                    onChange={(valor) => {
-                      cambiar(
-                        'telefonoRegistrante',
-                        normalizarCelular(valor).slice(0, 10)
+                      return (
+                        <Paper
+                          key={opcion.value}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            cambiar('tipoRegistrante', opcion.value);
+                            setErrorTipoRegistrante('');
+                            if (opcion.value === 'ASPIRANTE') {
+                              cambiar('nombreRegistrante', '');
+                              cambiar('telefonoRegistrante', '');
+                            }
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              cambiar('tipoRegistrante', opcion.value);
+                              setErrorTipoRegistrante('');
+                            }
+                          }}
+                          variant="outlined"
+                          sx={{
+                            p: 2.25,
+                            cursor: 'pointer',
+                            borderRadius: 3.5,
+                            borderWidth: 2,
+                            borderColor: seleccionada ? '#2f826d' : 'rgba(20,75,62,.14)',
+                            bgcolor: seleccionada ? '#eaf7f1' : '#fff',
+                            transition: 'all .2s ease',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              borderColor: '#2f826d',
+                              boxShadow: '0 14px 30px rgba(17,48,41,.08)',
+                            },
+                          }}
+                        >
+                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                            <Radio checked={seleccionada} value={opcion.value} sx={{ mt: -0.75 }} />
+                            <Box>
+                              <Typography fontWeight={950} color="#123d34">
+                                {opcion.title}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" mt={0.4}>
+                                {opcion.description}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Paper>
                       );
-                      setErrorTipoRegistrante('');
-                    }}
-                    required
-                    error={Boolean(
-                      form.telefonoRegistrante &&
-                      !celularValido(form.telefonoRegistrante)
+                    })}
+
+                    {form.tipoRegistrante === 'INVITADOR' && (
+                      <Grid container spacing={1.5} mt={0.25}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Campo
+                            label="Nombre de quien realiza la inscripción"
+                            value={form.nombreRegistrante}
+                            onChange={(valor) => {
+                              cambiar('nombreRegistrante', valor);
+                              setErrorTipoRegistrante('');
+                            }}
+                            required
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Campo
+                            label="Celular de quien realiza la inscripción"
+                            value={form.telefonoRegistrante}
+                            onChange={(valor) => {
+                              cambiar('telefonoRegistrante', normalizarCelular(valor).slice(0, 10));
+                              setErrorTipoRegistrante('');
+                            }}
+                            required
+                            error={Boolean(
+                              form.telefonoRegistrante &&
+                              !celularValido(form.telefonoRegistrante)
+                            )}
+                            helperText={
+                              form.telefonoRegistrante &&
+                              !celularValido(form.telefonoRegistrante)
+                                ? 'Ingrese 10 dígitos y comience por 3.'
+                                : ''
+                            }
+                          />
+                        </Grid>
+                      </Grid>
                     )}
-                    helperText={
-                      form.telefonoRegistrante &&
-                      !celularValido(form.telefonoRegistrante)
-                        ? 'Ingrese 10 dígitos y comience por 3.'
-                        : ''
-                    }
-                  />
-                </Stack>
-              )}
-            </DialogContent>
 
-            <DialogActions sx={{ px: 3, pb: 3 }}>
-              <Button
-                onClick={() => navigate(rutaRegreso)}
-              >
-                Cancelar
-              </Button>
+                    {errorTipoRegistrante && (
+                      <Alert severity="error">{errorTipoRegistrante}</Alert>
+                    )}
 
-              <Button
-                variant="contained"
-                onClick={confirmarTipoRegistrante}
-                disabled={!form.tipoRegistrante}
-              >
-                Continuar con la inscripción
-              </Button>
-            </DialogActions>
-          </Dialog>
+                    <Stack
+                      direction={{ xs: 'column-reverse', sm: 'row' }}
+                      spacing={1.25}
+                      justifyContent="flex-end"
+                      pt={1}
+                    >
+                      <Button onClick={() => navigate(rutaRegreso)} sx={{ borderRadius: 999 }}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="contained"
+                        onClick={confirmarTipoRegistrante}
+                        disabled={!form.tipoRegistrante}
+                        sx={{ borderRadius: 999, px: 3 }}
+                      >
+                        Continuar con la inscripción
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Box>
+              </Box>
+            </Paper>
           )}
 
 
-          <Paper
+          <Box
             sx={{
-              p: {
-                xs: 2,
-                md: 3,
-              },
-              borderRadius: 4,
+              display: (!registroInterno && dialogoTipoRegistrante) ? 'none' : 'grid',
+              gridTemplateColumns: { xs: '1fr', lg: 'minmax(300px, 0.72fr) minmax(0, 1.28fr)' },
+              gap: { xs: 2, md: 3 },
+              alignItems: 'start',
             }}
           >
+            {!registroInterno && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  position: { lg: 'sticky' },
+                  top: { lg: 24 },
+                  overflow: 'hidden',
+                  borderRadius: 5,
+                  borderColor: 'rgba(20, 75, 62, 0.16)',
+                  boxShadow: '0 22px 60px rgba(17, 48, 41, 0.10)',
+                  bgcolor: '#fffdf8',
+                }}
+              >
+                <Box
+                  sx={{
+                    p: { xs: 2.5, md: 3 },
+                    color: '#f8fbf8',
+                    background: 'linear-gradient(145deg, #092d27 0%, #145447 68%, #267866 100%)',
+                  }}
+                >
+                  <Stack direction="row" spacing={1.25} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 44, height: 44, borderRadius: 2.5, display: 'grid', placeItems: 'center',
+                        bgcolor: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.18)',
+                      }}
+                    >
+                      <EventRounded />
+                    </Box>
+                    <Box>
+                      <Typography variant="overline" sx={{ color: '#baf0dc', fontWeight: 900, letterSpacing: '.14em' }}>
+                        Antes de inscribirte
+                      </Typography>
+                      <Typography variant="h5" fontWeight={950}>Información del retiro</Typography>
+                    </Box>
+                  </Stack>
+                  <Typography sx={{ mt: 1.5, color: 'rgba(255,255,255,.76)', lineHeight: 1.65 }}>
+                    Revisa con calma la ubicación, el valor, el contacto y las condiciones antes de enviar tu inscripción.
+                  </Typography>
+                </Box>
+
+                {portalApi.loading ? (
+                  <Stack alignItems="center" py={6}><CircularProgress size={30} /></Stack>
+                ) : (
+                  <Box
+                    className="registro-retiro-informacion"
+                    sx={{
+                      p: { xs: 2.5, md: 3 },
+                      maxHeight: { lg: 'calc(100dvh - 235px)' },
+                      overflowY: { lg: 'auto' },
+                      '& h1': { display: 'none' },
+                      '& h2': { mt: 2.5, mb: 1, fontSize: '1.05rem', color: '#113f36', fontWeight: 950 },
+                      '& h2:first-of-type': { mt: 0 },
+                      '& p, & li': { color: '#4b625d', lineHeight: 1.68, fontSize: '.94rem' },
+                      '& ul': { pl: 2.4, mt: 1 },
+                      '& li': { mb: .8 },
+                      '& hr': { border: 0, borderTop: '1px solid rgba(20,75,62,.12)', my: 2.4 },
+                      '& blockquote': { m: 0, mt: 2, p: 2, borderRadius: 3, bgcolor: '#edf7f2', borderLeft: '4px solid #2f826d', color: '#264f45' },
+                      '& strong': { color: '#183f36' },
+                      '& > div > div:last-of-type': { borderRadius: '16px !important', borderColor: 'rgba(47,130,109,.22) !important', background: '#edf7f2 !important' },
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: contenidoRetiroHtml || '<h2>Información en actualización</h2><p>El equipo organizador publicará aquí los detalles del retiro.</p>',
+                    }}
+                  />
+                )}
+              </Paper>
+            )}
+
+            <Paper
+              sx={{
+                p: { xs: 2, md: 3.5 },
+                borderRadius: 5,
+                border: '1px solid rgba(20, 75, 62, 0.12)',
+                boxShadow: '0 24px 70px rgba(17, 48, 41, 0.10)',
+              }}
+            >
+              <Stack direction="row" spacing={1.25} alignItems="center" mb={2.5}>
+                <Box sx={{ width: 42, height: 42, borderRadius: 2.5, display: 'grid', placeItems: 'center', bgcolor: '#e7f5ef', color: '#145447' }}>
+                  <InfoOutlined />
+                </Box>
+                <Box>
+                  <Typography variant="overline" color="primary" fontWeight={900}>Formulario seguro</Typography>
+                  <Typography variant="h6" fontWeight={950}>Completa tu inscripción</Typography>
+                </Box>
+              </Stack>
+
             <Stepper
               activeStep={paso}
               alternativeLabel
@@ -2142,7 +2296,8 @@ export default function RegistroAspirante({ registroInterno = false }) {
                 </Button>
               )}
             </Stack>
-          </Paper>
+            </Paper>
+          </Box>
         </Stack>
       </Container>
 
@@ -2280,5 +2435,6 @@ export default function RegistroAspirante({ registroInterno = false }) {
         </DialogActions>
       </Dialog>
     </Box>
+    </>
   );
 }
