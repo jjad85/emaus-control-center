@@ -61,7 +61,7 @@ function comentarPresentacion(token, temaId, versionId, comentario) {
   }, opcionesCrudComentarioTema_(sesion.usuario));
 
   crearNotificacionesTema_(tema, sesion, rolActor, {
-    tipo: 'COMENTARIO_PRESENTACION',
+    tipo: rolActor === 'Servidor' ? 'COMENTARIO_PRESENTACION' : 'COMENTARIO_AUDIOVISUALES_SERVIDOR',
     titulo: 'Nuevo comentario en una presentación',
     mensaje: (sesion.nombre || sesion.usuario || rolActor) + ' comentó la versión ' + version.numeroVersion + ' del tema “' + tema.nombre + '”.',
     ruta: rolActor === 'Servidor' ? '/presentaciones' : '/mis-temas',
@@ -121,6 +121,133 @@ function revisarPresentacionAudiovisuales(token, temaId, versionId, decision, co
   return obtenerRevisionPresentaciones(token);
 }
 
+/**
+ * Permite a Audiovisuales cargar una nueva versión con sus ajustes.
+ * La versión queda aprobada implícitamente por Audiovisuales y pendiente
+ * de aprobación del servidor responsable del tema.
+ */
+function subirVersionAjustadaAudiovisuales(token, temaId, archivo, comentario) {
+  const sesion = obtenerSesion(token);
+  validarRolAudiovisuales_(sesion);
+
+  const texto = String(comentario || '').trim();
+  if (!texto) {
+    throw crearErrorAplicacion(
+      'COMENTARIO_REQUERIDO',
+      'Debe describir los ajustes realizados en la nueva versión.'
+    );
+  }
+
+  const temaInicial = obtenerTemaPorIdColaboracion_(temaId);
+  if (normalizarSiNoPendienteTema_(temaInicial.requierePresentacion) === 'No') {
+    throw crearErrorAplicacion(
+      'TEMA_SIN_PRESENTACION',
+      'Este tema está marcado como que no requiere presentación.'
+    );
+  }
+
+  validarArchivoTema_(archivo, TIPOS_PRESENTACION_TEMA, 'PRESENTACION_INVALIDA');
+  const bytes = decodificarArchivoTema_(archivo);
+  const carpetas = crearCarpetasTemaSiNoExisten_(temaInicial, sesion);
+  const extension = obtenerExtensionArchivoTema_(archivo.nombre, archivo.tipo);
+  const nombreTemporal = limpiarNombreArchivoTema_(
+    temaInicial.id + '_TEMP_AUDIOVISUALES_' + new Date().getTime()
+  ) + '.' + extension;
+
+  const file = carpetas.presentaciones.createFile(
+    Utilities.newBlob(bytes, archivo.tipo, nombreTemporal)
+  );
+
+  let registroConfirmado = false;
+
+  try {
+    const resultado = ejecutarCrudConBloqueo(function() {
+      const tema = obtenerTemaPorIdColaboracion_(temaId);
+      const numero = obtenerSiguienteNumeroVersionTema_(tema.id);
+      const nombreDefinitivo = limpiarNombreArchivoTema_(
+        tema.id + '_V' + numero + '_AUDIOVISUALES_' + tema.nombre
+      ) + '.' + extension;
+
+      desmarcarVersionActualTema_(tema.id, sesion.usuario);
+
+      const creado = crearRegistroSheet(HOJA_TEMA_VERSIONES, {
+        temaId: tema.id,
+        numeroVersion: numero,
+        nombreArchivo: nombreDefinitivo,
+        archivoDriveId: file.getId(),
+        archivoDriveUrl: file.getUrl(),
+        cargadoPorId: sesion.servidorId || '',
+        cargadoPorNombre: sesion.nombre || sesion.usuario || 'Audiovisuales',
+        origenCarga: 'Audiovisuales',
+        comentarioCambio: texto,
+        estadoVersion: 'Pendiente aprobación servidor',
+        aprobadaConferencista: 'No',
+        aprobadaAudiovisuales: 'Sí',
+        esVersionActual: 'Sí',
+        fechaRegistro: new Date(),
+        fechaActualizacion: new Date(),
+        actualizadoPor: sesion.usuario || ''
+      }, opcionesCrudTemaVersion_(sesion.usuario));
+
+      actualizarRegistroSheet(HOJAS.TEMAS, tema.id, {
+        requierePresentacion: 'Sí',
+        estadoPreparacion: 'Pendiente aprobación servidor',
+        aprobacionConferencista: 'No',
+        aprobacionAudiovisuales: 'Sí',
+        versionAprobadaId: '',
+        carpetaDriveId: carpetas.raiz.getId(),
+        carpetaDriveUrl: carpetas.raiz.getUrl(),
+        fechaActualizacion: new Date(),
+        actualizadoPor: sesion.usuario || ''
+      }, opcionesCrudTemas(sesion.usuario));
+
+      registrarComentarioSistemaTema_(
+        sesion,
+        tema,
+        { id: creado.id, numeroVersion: numero },
+        texto,
+        'Versión ajustada por Audiovisuales',
+        'Audiovisuales'
+      );
+
+      return {
+        versionId: creado.id,
+        numeroVersion: numero,
+        nombreDefinitivo: nombreDefinitivo,
+        tema: tema
+      };
+    });
+
+    registroConfirmado = true;
+    try { file.setName(resultado.nombreDefinitivo); } catch (ignoradoNombre) {}
+
+    crearNotificacionTemaServidor_(resultado.tema, {
+      tipo: 'VERSION_AJUSTADA_AUDIOVISUALES',
+      titulo: 'Audiovisuales cargó una versión ajustada',
+      mensaje:
+        'Audiovisuales cargó la versión ' + resultado.numeroVersion +
+        ' del tema “' + resultado.tema.nombre + '”. Revisa los cambios y aprueba o solicita nuevos ajustes.',
+      ruta: '/mis-temas',
+      versionId: resultado.versionId
+    }, sesion.usuario);
+
+    try {
+      auditarTema_(sesion, 'SUBIR_VERSION_AJUSTADA_AUDIOVISUALES', temaId, {
+        versionId: resultado.versionId,
+        numeroVersion: resultado.numeroVersion,
+        comentario: texto
+      });
+    } catch (ignoradoAuditoria) {}
+
+    return obtenerRevisionPresentaciones(token);
+  } catch (error) {
+    if (!registroConfirmado) {
+      try { file.setTrashed(true); } catch (ignorado) {}
+    }
+    throw error;
+  }
+}
+
 function responderRevisionServidor(token, temaId, versionId, decision, comentario) {
   const sesion = obtenerSesion(token);
   const tema = validarTemaPerteneceASesion_(sesion, temaId);
@@ -172,7 +299,7 @@ function responderRevisionServidor(token, temaId, versionId, decision, comentari
 
 function obtenerNotificacionesTemas(token) {
   const sesion = obtenerSesion(token);
-  const rol = normalizarTexto(sesion.rol);
+  const rol = normalizarRolNotificacionTema_(sesion.rol);
   return listarRegistrosSheet(HOJA_TEMA_NOTIFICACIONES, {}, opcionesCrudNotificacionTema_(''))
     .filter(function(n) {
       if (!convertirBooleano(
@@ -186,24 +313,49 @@ function obtenerNotificacionesTemas(token) {
       // 2. Servidor específico.
       // 3. Rol.
       // Una notificación personal nunca debe heredarse por rol.
+      let destinatarioValido = false;
+
       if (String(n.usuarioDestino || '').trim()) {
-        return normalizarTexto(n.usuarioDestino) ===
+        destinatarioValido = normalizarTexto(n.usuarioDestino) ===
           normalizarTexto(sesion.usuario);
-      }
-
-      if (String(n.servidorIdDestino || '').trim()) {
-        return String(n.servidorIdDestino) ===
+      } else if (String(n.servidorIdDestino || '').trim()) {
+        destinatarioValido = String(n.servidorIdDestino) ===
           String(sesion.servidorId || '');
+      } else if (String(n.rolDestino || '').trim()) {
+        destinatarioValido = normalizarRolNotificacionTema_(n.rolDestino) === rol;
       }
 
-      if (String(n.rolDestino || '').trim()) {
-        return normalizarTexto(n.rolDestino) === rol;
-      }
+      if (!destinatarioValido) return false;
 
-      return false;
+      const codigoAlerta = resolverCodigoAlertaNotificacionTema_(n);
+      return estaAlertaHabilitadaParaRol_(codigoAlerta, sesion.rol);
     })
     .map(convertirNotificacionTema_)
     .sort(function(a, b) { return String(b.fechaRegistro).localeCompare(String(a.fechaRegistro)); });
+}
+
+
+/**
+ * Relaciona cada notificación persistida con la alerta parametrizable.
+ * No requiere una columna nueva en TemaNotificaciones: se resuelve por tipo.
+ */
+function resolverCodigoAlertaNotificacionTema_(notificacion) {
+  const tipo = normalizarTexto(notificacion && notificacion.tipo);
+
+  if (tipo.indexOf('cancion_') === 0) return 'CANCION_CAMBIOS_AUDIOVISUALES';
+  if (tipo.indexOf('video_') === 0) return 'VIDEO_CAMBIOS_AUDIOVISUALES';
+
+  const tiposParaServidor = [
+    'aprobada_audiovisuales',
+    'ajustes_solicitados',
+    'version_ajustada_audiovisuales',
+    'comentario_audiovisuales_servidor'
+  ];
+  if (tiposParaServidor.indexOf(tipo) >= 0) {
+    return 'PRESENTACION_CAMBIOS_AUDIOVISUALES';
+  }
+
+  return 'PRESENTACIONES_NOVEDADES';
 }
 
 function marcarNotificacionTemaLeida(token, id) {
@@ -270,8 +422,52 @@ function opcionesCrudComentarioTema_(u){return {campoId:'id',campoFechaRegistro:
 function opcionesCrudNotificacionTema_(u){return {campoId:'id',campoActivo:'activo',campoFechaRegistro:'fechaRegistro',campoFechaActualizacion:'fechaActualizacion',campoActualizadoPor:'actualizadoPor',usuario:u||'',valorActivo:'Sí',valorInactivo:'No'};}
 function convertirNotificacionTema_(n){return {id:n.id,tipo:n.tipo||'INFO',titulo:n.titulo||'',mensaje:n.mensaje||'',ruta:n.ruta||'',temaId:n.temaId||'',versionId:n.versionId||'',leida:convertirBooleano(n.leida),fechaRegistro:normalizarFechaTemaRespuesta_(n.fechaRegistro)};}
 function crearNotificacionTema_(datos,usuario){return crearRegistroSheet(HOJA_TEMA_NOTIFICACIONES,Object.assign({usuarioDestino:'',servidorIdDestino:'',rolDestino:'',leida:'No',fechaLectura:'',activo:'Sí',fechaRegistro:new Date(),fechaActualizacion:new Date(),actualizadoPor:usuario||''},datos),opcionesCrudNotificacionTema_(usuario));}
-function crearNotificacionTemaServidor_(tema,datos,usuario){return crearNotificacionTema_(Object.assign({temaId:tema.id,servidorIdDestino:tema.servidorId||''},datos),usuario);}
-function crearNotificacionTemaAudiovisuales_(tema,datos,usuario){return crearNotificacionTema_(Object.assign({temaId:tema.id,rolDestino:'Audiovisuales'},datos),usuario);}
+/**
+ * Crea una notificación personal para el usuario asociado al servidor
+ * responsable del tema. La campana lo dirige siempre a Mis temas, porque
+ * un servidor no gestiona su material desde la bandeja de Audiovisuales.
+ */
+function crearNotificacionTemaServidor_(tema, datos, usuario) {
+  const usuarioDestino = obtenerUsuarioDestinoTema_(tema);
+  const datosNotificacion = Object.assign({}, datos, {
+    temaId: tema.id,
+    usuarioDestino: usuarioDestino,
+    servidorIdDestino: tema.servidorId || '',
+    rolDestino: '',
+    ruta: '/mis-temas'
+  });
+
+  return crearNotificacionTema_(datosNotificacion, usuario);
+}
+
+/**
+ * Resuelve el login relacionado con Temas.servidorId.
+ * Si todavía no existe asociación en Usuarios, conserva servidorIdDestino
+ * como mecanismo de respaldo para no perder la notificación.
+ */
+function obtenerUsuarioDestinoTema_(tema) {
+  const servidorId = String(tema && tema.servidorId || '').trim();
+  if (!servidorId) return '';
+
+  const usuario = listarRegistrosSheet(
+    HOJAS.USUARIOS,
+    {},
+    { campoId: 'id' }
+  ).find(function(item) {
+    return String(item.servidorId || '').trim() === servidorId &&
+      convertirBooleano(item.activo === undefined || item.activo === '' ? 'Sí' : item.activo);
+  });
+
+  return usuario ? String(usuario.usuario || '').trim() : '';
+}
+function crearNotificacionTemaAudiovisuales_(tema,datos,usuario){return crearNotificacionTema_(Object.assign({temaId:tema.id,rolDestino:'AUDIOVISUAL'},datos),usuario);}
+function normalizarRolNotificacionTema_(rol){
+  const valor = normalizarTexto(rol);
+  if (valor === 'audiovisuales' || valor === 'audiovisual') return 'audiovisual';
+  if (valor === 'administrador' || valor === 'admin') return 'admin';
+  if (valor === 'lider del retiro' || valor === 'lider retiro' || valor === 'lider_retiro') return 'lider_retiro';
+  return valor;
+}
 function crearNotificacionesTema_(tema,sesion,rolActor,datos){ if(rolActor==='Servidor') return crearNotificacionTemaAudiovisuales_(tema,datos,sesion.usuario); return crearNotificacionTemaServidor_(tema,datos,sesion.usuario); }
 function ordenarTemasColaboracion_(items){ const d={viernes:1,sabado:2,domingo:3}; items.sort(function(a,b){const da=d[normalizarTexto(a.diaDelTema)]||9,db=d[normalizarTexto(b.diaDelTema)]||9;if(da!==db)return da-db;return String(a.horaPropuesta||'99:99').localeCompare(String(b.horaPropuesta||'99:99'))||String(a.nombre||'').localeCompare(String(b.nombre||''),'es');}); return items; }
 function calcularIndicadoresRevision_(temas){ const estados=temas.map(function(t){return normalizarTexto(t.estadoPreparacion);}); return {total:temas.length,pendientesRevision:estados.filter(function(e){return e.indexOf('revision')>=0;}).length,requierenAjustes:estados.filter(function(e){return e.indexOf('ajuste')>=0;}).length,pendientesServidor:estados.filter(function(e){return e.indexOf('aprobacion servidor')>=0;}).length,configurados:estados.filter(function(e){return e==='tema configurado'||e==='aprobada final';}).length}; }
