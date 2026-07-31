@@ -9,6 +9,7 @@ Frontend/.env
 Frontend/.env.local
 Frontend/.env.development.local
 Frontend/.env.production.local
+Frontend/wrangler.jsonc
 
 # ==========================================
 # BACKEND
