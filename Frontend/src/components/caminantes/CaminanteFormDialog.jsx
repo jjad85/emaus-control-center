@@ -318,6 +318,9 @@ export default function CaminanteFormDialog({
         parentesco: form.contacto2Parentesco,
         celular: form.contacto2Celular,
       },
+      // Compatibilidad con el contrato anterior mientras otros módulos se actualizan.
+      contacto: form.contacto1Nombre,
+      telefonoContacto: form.contacto1Celular,
       entregables: {
         carta: form.carta,
         foto: form.foto,
