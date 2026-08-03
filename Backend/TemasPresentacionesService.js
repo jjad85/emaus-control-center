@@ -449,3 +449,108 @@ function validarUrlRecursoMiTema_(valor, recurso) {
     throw crearErrorAplicacion('URL_RECURSO_INVALIDA', 'El enlace del ' + recurso + ' no es válido. Debe iniciar por http:// o https://.');
   }
 }
+
+/**
+ * ENTREGA 6.2.4
+ * Actividad consolidada del tema asignado al servidor autenticado.
+ * Incluye versiones y comentarios de presentación, además del historial
+ * de canción, video y palanca registrado por los equipos responsables.
+ */
+function obtenerHistorialGeneralMiTema(token, temaId) {
+  const sesion = obtenerSesion(token);
+  const tema = validarTemaPerteneceASesion_(sesion, temaId);
+  const movimientos = [];
+
+  listarVersionesTemaParaUsuario_(tema.id).forEach(function(version) {
+    movimientos.push({
+      id: 'VERSION_' + String(version.id || Utilities.getUuid()),
+      temaId: tema.id,
+      tipoRecurso: 'PRESENTACION',
+      titulo: 'Versión ' + String(version.numeroVersion || '') + ' cargada',
+      descripcion: String(version.estadoVersion || tema.estadoPreparacion || ''),
+      observaciones: String(version.comentarioCambio || ''),
+      archivoNombre: String(version.nombreArchivo || ''),
+      usuario: String(version.actualizadoPor || version.cargadoPorId || ''),
+      nombreUsuario: String(version.cargadoPorNombre || version.origenCarga || ''),
+      fecha: version.fechaRegistro || version.fechaActualizacion || '',
+      detalle: {
+        versionId: version.id || '',
+        numeroVersion: version.numeroVersion || '',
+        origenCarga: version.origenCarga || '',
+        aprobadaAudiovisuales: version.aprobadaAudiovisuales || false,
+        aprobadaConferencista: version.aprobadaConferencista || false
+      }
+    });
+  });
+
+  listarComentariosTema_(tema.id).forEach(function(comentario) {
+    movimientos.push({
+      id: 'COMENTARIO_' + String(comentario.id || Utilities.getUuid()),
+      temaId: tema.id,
+      tipoRecurso: 'COMENTARIO',
+      titulo: String(comentario.tipoComentario || 'Comentario de presentación'),
+      descripcion: comentario.numeroVersion ? 'Versión ' + comentario.numeroVersion : 'Presentación',
+      observaciones: String(comentario.comentario || ''),
+      archivoNombre: '',
+      usuario: String(comentario.usuarioId || comentario.actualizadoPor || ''),
+      nombreUsuario: String(comentario.usuarioNombre || comentario.rol || ''),
+      fecha: comentario.fechaRegistro || comentario.fechaActualizacion || '',
+      detalle: { versionId: comentario.versionId || '' }
+    });
+  });
+
+  const libro = obtenerLibro();
+  const hojaHistorial = libro.getSheetByName(
+    typeof HOJA_HISTORIAL_RECURSOS_TEMA !== 'undefined'
+      ? HOJA_HISTORIAL_RECURSOS_TEMA
+      : 'HistorialRecursosTema'
+  );
+
+  if (hojaHistorial) {
+    leerHojaComoObjetos(hojaHistorial.getName())
+      .filter(function(item) {
+        return String(item.temaId || '').trim() === String(tema.id || '').trim();
+      })
+      .forEach(function(item) {
+        const tipo = String(item.tipoRecurso || '').toUpperCase();
+        const estadoAnterior = String(item.estadoAnterior || '').trim();
+        const estadoNuevo = String(item.estadoNuevo || '').trim();
+        let detalle = {};
+        try { detalle = item.detalle ? JSON.parse(item.detalle) : {}; } catch (ignorado) {}
+
+        movimientos.push({
+          id: String(item.id || Utilities.getUuid()),
+          temaId: tema.id,
+          tipoRecurso: tipo,
+          titulo: construirTituloMovimientoRecurso_(tipo, estadoAnterior, estadoNuevo),
+          descripcion: estadoAnterior && estadoNuevo
+            ? estadoAnterior + ' → ' + estadoNuevo
+            : (estadoNuevo || estadoAnterior || 'Recurso actualizado'),
+          observaciones: String(item.observaciones || ''),
+          archivoNombre: String(item.archivoNombre || ''),
+          usuario: String(item.usuario || ''),
+          nombreUsuario: String(item.nombreUsuario || ''),
+          fecha: item.fecha || '',
+          detalle: detalle
+        });
+      });
+  }
+
+  return movimientos
+    .filter(function(item) { return item.fecha; })
+    .sort(function(a, b) {
+      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+    });
+}
+
+function construirTituloMovimientoRecurso_(tipo, estadoAnterior, estadoNuevo) {
+  const etiquetas = {
+    CANCION: 'Música actualizada',
+    VIDEO: 'Video actualizado',
+    PALANCA: 'Palanca actualizada',
+    PRESENTACION: 'Presentación actualizada'
+  };
+  if (estadoNuevo) return (etiquetas[tipo] || 'Recurso actualizado') + ': ' + estadoNuevo;
+  if (estadoAnterior) return (etiquetas[tipo] || 'Recurso actualizado') + ': ' + estadoAnterior;
+  return etiquetas[tipo] || 'Recurso actualizado';
+}
