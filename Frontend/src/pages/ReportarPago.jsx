@@ -147,6 +147,7 @@ export default function ReportarPago() {
   const [portal, setPortal] = useState({});
   const [form, setForm] = useState(FORM_INICIAL);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
+  const [resultadoReporte, setResultadoReporte] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -211,7 +212,7 @@ export default function ReportarPago() {
     setValorRetiro(valoresRetiro[tipoPersona] || null);
   }, [tipoPersona, valoresRetiro]);
 
-  const etiquetaPersona = tipoPersona === 'Servidor' ? 'servidor' : 'caminante';
+  const etiquetaPersona = tipoPersona === 'Servidor' ? 'servidor' : 'persona';
   const valorInformativo = useMemo(
     () => persona?.valorRetiro || valorRetiro,
     [persona, valorRetiro]
@@ -321,7 +322,7 @@ export default function ReportarPago() {
         return;
       }
 
-      await reportarPagoPublico({
+      const resultado = await reportarPagoPublico({
         ...form,
         medioPago: 'Transferencia',
         tipoPersona,
@@ -329,6 +330,7 @@ export default function ReportarPago() {
         criterio: criterio || persona.documentoIdentidad || persona.numeroInscripcion || '',
       });
 
+      setResultadoReporte(resultado || null);
       setConfirmacionAbierta(true);
     } catch (e) {
       setError(e.message);
@@ -477,8 +479,8 @@ export default function ReportarPago() {
                     {[
                       {
                         valor: 'Caminante',
-                        titulo: 'Pago de caminante',
-                        descripcion: 'Usa el código de inscripción o el documento del aspirante.',
+                        titulo: 'Pago de participante',
+                        descripcion: 'Busca por número de inscripción o documento. Puede estar como aspirante o caminante.',
                         icono: <BadgeRounded />,
                       },
                       {
@@ -573,7 +575,7 @@ export default function ReportarPago() {
                           label={
                             tipoPersona === 'Servidor'
                               ? 'Documento o número de inscripción del servidor'
-                              : 'Código de inscripción o documento del caminante'
+                              : 'Número de inscripción o documento de la persona'
                           }
                           value={criterio}
                           onChange={(e) => setCriterio(e.target.value)}
@@ -694,7 +696,22 @@ export default function ReportarPago() {
                         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}>
                           <Box>
                             <Typography fontWeight={950} fontSize="1.12rem">{persona.nombre}</Typography>
-                            <Typography color="text.secondary" variant="body2">{tipoPersona} · {persona.estadoPago}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                              <Typography color="text.secondary" variant="body2">
+                                {tipoPersona === 'Servidor' ? 'Servidor' : (persona.estadoRegistro || 'Caminante')} · {persona.estadoPago}
+                              </Typography>
+                              {persona.conversionAutomaticaPendiente && (
+                                <Chip
+                                  size="small"
+                                  label="Se convertirá al enviar el pago"
+                                  sx={{
+                                    bgcolor: '#f4dda0',
+                                    color: '#4b3b0d',
+                                    fontWeight: 900,
+                                  }}
+                                />
+                              )}
+                            </Stack>
                           </Box>
                           <Box textAlign={{ sm: 'right' }}>
                             <Typography variant="caption" color="text.secondary">SALDO PENDIENTE</Typography>
@@ -857,7 +874,9 @@ export default function ReportarPago() {
         <DialogTitle id="confirmacion-pago-titulo">Pago reportado</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Hemos recibido correctamente tu reporte de pago. Tesorería validará la información y actualizará el estado.
+{resultadoReporte?.conversionAutomatica
+              ? 'Hemos recibido tu reporte de pago y el aspirante fue convertido automáticamente en caminante. Tesorería validará el comprobante y actualizará el estado del pago.'
+              : 'Hemos recibido correctamente tu reporte de pago. Tesorería validará la información y actualizará el estado.'}
           </DialogContentText>
         </DialogContent>
         <DialogActions>

@@ -67,17 +67,96 @@ function buscarPersonaPago(tipo, criterio, personaId) {
     return completarResumenPagosPersona_(coincidencias[0], 'Servidor');
   }
 
-  if (!consulta && !id) throw crearErrorAplicacion('CRITERIO_REQUERIDO', 'Ingrese el código de inscripción o el documento del caminante.');
-  const caminantes = obtenerCaminantes({}).filter(function(x){ return convertirBooleano(x.activo); });
+  if (!consulta && !id) {
+    throw crearErrorAplicacion(
+      'CRITERIO_REQUERIDO',
+      'Ingrese el número de inscripción o el documento de la persona.'
+    );
+  }
+
   const aspirantes = leerHojaComoObjetos(HOJAS.ASPIRANTES);
-  const caminante = caminantes.find(function(c) {
-    if (id) return String(c.id) === id;
-    const aspirante = aspirantes.find(function(a){ return String(a.id) === String(c.aspiranteId) || String(a.caminanteId) === String(c.id); }) || {};
-    return [c.numeroInscripcion, c.documentoIdentidad, aspirante.numeroInscripcion, aspirante.documentoIdentidad]
-      .some(function(v){ return normalizarTexto(v) === consulta; });
+  const caminantes = obtenerCaminantes({}).filter(function(x) {
+    return convertirBooleano(x.activo);
   });
-  if (!caminante) throw crearErrorAplicacion('CAMINANTE_NO_ENCONTRADO', 'No encontramos un caminante con ese código o documento.');
-  return completarResumenPagosPersona_(caminante, 'Caminante');
+
+  const caminante = caminantes.find(function(c) {
+    if (id && String(c.id) === id) return true;
+
+    const aspiranteRelacionado = aspirantes.find(function(a) {
+      return (
+        String(a.id) === String(c.aspiranteId) ||
+        String(a.caminanteId) === String(c.id)
+      );
+    }) || {};
+
+    return [
+      c.numeroInscripcion,
+      c.documentoIdentidad,
+      aspiranteRelacionado.numeroInscripcion,
+      aspiranteRelacionado.documentoIdentidad
+    ].some(function(v) {
+      return normalizarTexto(v) === consulta;
+    });
+  });
+
+  if (caminante) {
+    const resumenCaminante = completarResumenPagosPersona_(caminante, 'Caminante');
+    resumenCaminante.estadoRegistro = 'Caminante';
+    resumenCaminante.aspiranteId = caminante.aspiranteId || '';
+    resumenCaminante.conversionAutomaticaPendiente = false;
+    return resumenCaminante;
+  }
+
+  const aspirante = aspirantes.find(function(a) {
+    const convertido = Boolean(String(a.caminanteId || '').trim()) ||
+      normalizarTexto(a.estadoSolicitud) === 'convertido';
+
+    if (convertido) return false;
+    if (normalizarTexto(a.estadoSolicitud) === 'rechazado') return false;
+
+    if (id && String(a.id) === id) return true;
+
+    return [
+      a.numeroInscripcion,
+      a.documentoIdentidad
+    ].some(function(v) {
+      return normalizarTexto(v) === consulta;
+    });
+  });
+
+  if (!aspirante) {
+    throw crearErrorAplicacion(
+      'PERSONA_PAGO_NO_ENCONTRADA',
+      'No encontramos un aspirante o caminante con ese número de inscripción o documento.'
+    );
+  }
+
+  return completarResumenPagoAspirante_(aspirante);
+}
+
+function completarResumenPagoAspirante_(aspirante) {
+  const valorRetiro = obtenerValorRetiroPorTipo_('Caminante');
+
+  return {
+    id: aspirante.id,
+    aspiranteId: aspirante.id,
+    tipoPersona: 'Caminante',
+    estadoRegistro: 'Aspirante',
+    estadoSolicitud: aspirante.estadoSolicitud || 'Pendiente',
+    conversionAutomaticaPendiente: true,
+    nombre: aspirante.nombreCompleto || aspirante.nombre || '',
+    numeroInscripcion: aspirante.numeroInscripcion || '',
+    documentoIdentidad: aspirante.documentoIdentidad || '',
+    correo: aspirante.correo || '',
+    celular: aspirante.celular || aspirante.telefono || '',
+    exentoPago: false,
+    estadoPago: 'Pendiente',
+    valorRetiro: valorRetiro,
+    totalAprobado: 0,
+    saldoPendiente: valorRetiro,
+    excedente: 0,
+    pagos: []
+  };
 }
 
 function obtenerMiServidorPago(token) {
@@ -188,29 +267,162 @@ function guardarComprobantePago(archivo, persona) {
 
 function reportarPagoPublico(datos) {
   const entrada = datos || {};
-  if (!entrada.archivo || !entrada.archivo.base64) throw crearErrorAplicacion('COMPROBANTE_REQUERIDO', 'Debe adjuntar el comprobante del pago.');
-  const tipoPersona = normalizarTipoPersonaPago_(entrada.tipoPersona);
-  const resumen = buscarPersonaPago(tipoPersona, entrada.criterio, entrada.personaId);
-  if (tipoPersona === 'Servidor' && resumen.exentoPago) {
-    throw crearErrorAplicacion('SERVIDOR_EXENTO_PAGO', 'Este servidor está marcado como exento de pago y no tiene saldo pendiente.');
+
+  if (!entrada.archivo || !entrada.archivo.base64) {
+    throw crearErrorAplicacion(
+      'COMPROBANTE_REQUERIDO',
+      'Debe adjuntar el comprobante del pago.'
+    );
   }
+
+  const tipoPersona = normalizarTipoPersonaPago_(entrada.tipoPersona);
+  let resumen = buscarPersonaPago(
+    tipoPersona,
+    entrada.criterio,
+    entrada.personaId
+  );
+
+  if (tipoPersona === 'Servidor' && resumen.exentoPago) {
+    throw crearErrorAplicacion(
+      'SERVIDOR_EXENTO_PAGO',
+      'Este servidor está marcado como exento de pago y no tiene saldo pendiente.'
+    );
+  }
+
   const valor = Number(entrada.valorReportado);
-  if (!valor || valor <= 0) throw crearErrorAplicacion('VALOR_PAGO_INVALIDO', 'Ingrese un valor de pago mayor a cero.');
+
+  if (!valor || valor <= 0) {
+    throw crearErrorAplicacion(
+      'VALOR_PAGO_INVALIDO',
+      'Ingrese un valor de pago mayor a cero.'
+    );
+  }
+
   resumen.valorReportado = valor;
   const comprobante = guardarComprobantePago(entrada.archivo, resumen);
-  const registro = {
-    tipoPersona: tipoPersona,
-    caminanteId: tipoPersona === 'Caminante' ? resumen.id : '',
-    servidorId: tipoPersona === 'Servidor' ? resumen.id : '',
-    retiroId:'RETIRO_ACTUAL', valorReportado:valor, valorAprobado:'', fechaPago:String(entrada.fechaPago||''),
-    medioPago:String(entrada.medioPago||''), entidadPago:String(entrada.entidadPago||''), referenciaPago:String(entrada.referenciaPago||''),
-    nombrePagador:String(entrada.nombrePagador||''), telefonoPagador:validarCelularColombia(entrada.telefonoPagador,{etiqueta:'El teléfono del pagador'}),
-    comprobanteUrl:comprobante.url, comprobanteId:comprobante.id, comprobanteNombre:comprobante.nombre, comprobanteTipo:comprobante.tipo, comprobanteTamano:comprobante.tamano,
-    estadoPagoReportado:'Pendiente', observacionesReportante:String(entrada.observaciones||''), observacionesTesoreria:'', validadoPor:'', fechaValidacion:'',
-    motivoModificacionValor:'', superaSaldo: valor > resumen.saldoPendiente ? 'Sí':'No', excedente:Math.max(valor-resumen.saldoPendiente,0), activo:'Sí', fechaRegistro:new Date(), fechaActualizacion:new Date(), actualizadoPor:'PORTAL_PAGOS'
-  };
-  const creado = crearRegistroSheet(HOJAS.PAGOS, registro, { usuario:'PORTAL_PAGOS' });
-  return { id:creado.id, estado:'Pendiente', tipoPersona:tipoPersona, superaSaldo:registro.superaSaldo, excedente:registro.excedente };
+
+  return ejecutarCrudConBloqueo(function() {
+    let conversionAutomatica = false;
+    let aspiranteId = '';
+    let caminanteId = tipoPersona === 'Caminante' ? resumen.id : '';
+
+    /*
+     * Para participantes, el portal acepta tanto aspirantes como caminantes.
+     * Si la persona todavía es aspirante, se convierte automáticamente antes
+     * de crear el pago. La conversión manual existente se conserva intacta.
+     */
+    if (
+      tipoPersona === 'Caminante' &&
+      resumen.estadoRegistro === 'Aspirante'
+    ) {
+      aspiranteId = String(resumen.aspiranteId || resumen.id || '').trim();
+      const aspiranteActual = obtenerAspirantePorId(aspiranteId);
+
+      if (String(aspiranteActual.caminanteId || '').trim()) {
+        caminanteId = String(aspiranteActual.caminanteId).trim();
+      } else {
+        const sesionSistema = {
+          usuario: 'PORTAL_PAGOS',
+          nombre: 'Portal público de pagos'
+        };
+
+        const conversion = convertirAspiranteEnCaminanteInterno(
+          sesionSistema,
+          aspiranteId,
+          'Conversión automática por recepción de reporte de pago.'
+        );
+
+        caminanteId = String(conversion.caminante.id || '').trim();
+        conversionAutomatica = true;
+      }
+
+      const caminanteConvertido = leerRegistroPorIdSheet(
+        HOJAS.CAMINANTES,
+        caminanteId,
+        { usuario: 'PORTAL_PAGOS' }
+      );
+
+      resumen = completarResumenPagosPersona_(
+        caminanteConvertido,
+        'Caminante'
+      );
+      resumen.valorReportado = valor;
+    }
+
+    const registro = {
+      tipoPersona: tipoPersona,
+      caminanteId: tipoPersona === 'Caminante' ? caminanteId : '',
+      servidorId: tipoPersona === 'Servidor' ? resumen.id : '',
+      retiroId: 'RETIRO_ACTUAL',
+      valorReportado: valor,
+      valorAprobado: '',
+      fechaPago: String(entrada.fechaPago || ''),
+      medioPago: String(entrada.medioPago || ''),
+      entidadPago: String(entrada.entidadPago || ''),
+      referenciaPago: String(entrada.referenciaPago || ''),
+      nombrePagador: String(entrada.nombrePagador || ''),
+      telefonoPagador: validarCelularColombia(
+        entrada.telefonoPagador,
+        { etiqueta: 'El teléfono del pagador' }
+      ),
+      comprobanteUrl: comprobante.url,
+      comprobanteId: comprobante.id,
+      comprobanteNombre: comprobante.nombre,
+      comprobanteTipo: comprobante.tipo,
+      comprobanteTamano: comprobante.tamano,
+      estadoPagoReportado: 'Pendiente',
+      observacionesReportante: String(entrada.observaciones || ''),
+      observacionesTesoreria: '',
+      validadoPor: '',
+      fechaValidacion: '',
+      motivoModificacionValor: '',
+      superaSaldo: valor > resumen.saldoPendiente ? 'Sí' : 'No',
+      excedente: Math.max(valor - resumen.saldoPendiente, 0),
+      activo: 'Sí',
+      fechaRegistro: new Date(),
+      fechaActualizacion: new Date(),
+      actualizadoPor: 'PORTAL_PAGOS'
+    };
+
+    const creado = crearRegistroSheet(
+      HOJAS.PAGOS,
+      registro,
+      { usuario: 'PORTAL_PAGOS' }
+    );
+
+    if (tipoPersona === 'Caminante') {
+      recalcularEstadoPagoCaminante(caminanteId, 'PORTAL_PAGOS');
+    }
+
+    registrarAuditoria({
+      usuario: 'PORTAL_PAGOS',
+      nombre: resumen.nombre || '',
+      accion: conversionAutomatica
+        ? 'REPORTAR_PAGO_Y_CONVERTIR_ASPIRANTE'
+        : 'REPORTAR_PAGO_PUBLICO',
+      entidad: 'Pagos',
+      idRegistro: creado.id,
+      detalle: JSON.stringify({
+        tipoPersona: tipoPersona,
+        aspiranteId: aspiranteId,
+        caminanteId: caminanteId,
+        valorReportado: valor,
+        estadoPago: 'Pendiente',
+        conversionAutomatica: conversionAutomatica
+      })
+    });
+
+    return {
+      id: creado.id,
+      estado: 'Pendiente',
+      tipoPersona: tipoPersona,
+      aspiranteId: aspiranteId,
+      caminanteId: caminanteId,
+      conversionAutomatica: conversionAutomatica,
+      superaSaldo: registro.superaSaldo,
+      excedente: registro.excedente
+    };
+  });
 }
 
 function obtenerPagos(token, filtros) {

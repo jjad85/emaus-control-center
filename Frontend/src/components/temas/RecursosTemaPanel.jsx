@@ -36,6 +36,12 @@ const MOMENTOS = [
   'Otro',
 ];
 
+
+function esActivo(valor) {
+  if (typeof valor === 'boolean') return valor;
+  return ['sí', 'si', 'true', '1', 'activo'].includes(String(valor ?? '').trim().toLowerCase());
+}
+
 const RESPONSABLES = [
   'Líder de mesa',
   'Responsable del tema',
@@ -70,13 +76,13 @@ function RecursoCard({ icono, titulo, activo, estado, detalle, onGestionar, disa
   );
 }
 
-export default function RecursosTemaPanel({ tema, plantillaUrl, disabled, onCambiarPresentacion, onGuardar }) {
+export default function RecursosTemaPanel({ tema, plantillaUrl, disabled, onCambiarPresentacion, onGuardar, soloTipo = '' }) {
   const [dialogo, setDialogo] = useState('');
   const [form, setForm] = useState({});
 
   const cancionActiva = tema.requiereMusica === 'Sí';
-  const videoActivo = Boolean(tema.usaVideo);
-  const palancaActiva = Boolean(tema.requierePalanca);
+  const videoActivo = esActivo(tema.usaVideo);
+  const palancaActiva = esActivo(tema.requierePalanca);
 
   const datosIniciales = useMemo(() => ({
     CANCION: {
@@ -110,7 +116,7 @@ export default function RecursosTemaPanel({ tema, plantillaUrl, disabled, onCamb
       detalleResponsable: tema.palancaDetalleResponsable || '',
       cantidad: tema.palancaCantidad || '',
       destinatarios: tema.palancaDestinatarios || '',
-      requierePreparacion: Boolean(tema.palancaRequierePreparacion),
+      requierePreparacion: esActivo(tema.palancaRequierePreparacion),
       instrucciones: tema.palancaInstrucciones || '',
       observaciones: tema.palancaObservaciones || '',
     },
@@ -131,53 +137,62 @@ export default function RecursosTemaPanel({ tema, plantillaUrl, disabled, onCamb
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h6" fontWeight={900}>Recursos del tema</Typography>
+      {!soloTipo && <Typography variant="h6" fontWeight={900}>Recursos del tema</Typography>}
 
-      <RecursoCard
-        icono={<SlideshowRounded color="primary" />}
-        titulo="Presentación"
-        activo={tema.requierePresentacion === 'Sí'}
-        estado={tema.estadoPreparacion}
-        detalle="Plantilla, versiones, revisión y aprobación"
-        disabled={disabled}
-        onGestionar={() => onCambiarPresentacion(tema.requierePresentacion !== 'Sí')}
-      />
-
-      {tema.requierePresentacion === 'Sí' && plantillaUrl && (
-        <Button component="a" href={plantillaUrl} target="_blank" rel="noreferrer" variant="outlined" startIcon={<DownloadRounded />}>
-          Descargar plantilla
-        </Button>
+      {(!soloTipo || soloTipo === 'PRESENTACION') && (
+        <>
+          <RecursoCard
+            icono={<SlideshowRounded color="primary" />}
+            titulo="Presentación"
+            activo={tema.requierePresentacion === 'Sí'}
+            estado={tema.estadoPreparacion}
+            detalle="Plantilla, versiones, revisión y aprobación"
+            disabled={disabled}
+            onGestionar={() => onCambiarPresentacion(tema.requierePresentacion !== 'Sí')}
+          />
+          {tema.requierePresentacion === 'Sí' && plantillaUrl && (
+            <Button component="a" href={plantillaUrl} target="_blank" rel="noreferrer" variant="outlined" startIcon={<DownloadRounded />}>
+              Descargar plantilla
+            </Button>
+          )}
+        </>
       )}
 
-      <RecursoCard
-        icono={<MusicNoteRounded color="primary" />}
-        titulo="Canción"
-        activo={cancionActiva}
-        estado={tema.cancionEstado}
-        detalle={cancionActiva ? (tema.usaCancionEstandar ? `Estándar: ${tema.cancionDocumentoNombre || 'Documento asociado'}` : tema.cancionNombre || 'Canción personalizada') : ''}
-        disabled={disabled}
-        onGestionar={() => setDialogo('CANCION')}
-      />
+      {(!soloTipo || soloTipo === 'CANCION') && (
+        <RecursoCard
+          icono={<MusicNoteRounded color="primary" />}
+          titulo="Canción"
+          activo={cancionActiva}
+          estado={tema.cancionEstado}
+          detalle={cancionActiva ? (tema.usaCancionEstandar ? `Estándar: ${tema.cancionDocumentoNombre || 'Documento asociado'}` : tema.cancionNombre || 'Canción personalizada') : ''}
+          disabled={disabled}
+          onGestionar={() => setDialogo('CANCION')}
+        />
+      )}
 
-      <RecursoCard
-        icono={<OndemandVideoRounded color="primary" />}
-        titulo="Video"
-        activo={videoActivo}
-        estado={tema.videoEstado}
-        detalle={videoActivo ? (tema.usaVideoEstandar ? `Estándar: ${tema.videoDocumentoNombre || 'Documento asociado'}` : tema.videoNombre || 'Video personalizado') : ''}
-        disabled={disabled}
-        onGestionar={() => setDialogo('VIDEO')}
-      />
+      {(!soloTipo || soloTipo === 'VIDEO') && (
+        <RecursoCard
+          icono={<OndemandVideoRounded color="primary" />}
+          titulo="Video"
+          activo={videoActivo}
+          estado={tema.videoEstado}
+          detalle={videoActivo ? (tema.usaVideoEstandar ? `Estándar: ${tema.videoDocumentoNombre || 'Documento asociado'}` : tema.videoNombre || 'Video personalizado') : ''}
+          disabled={disabled}
+          onGestionar={() => setDialogo('VIDEO')}
+        />
+      )}
 
-      <RecursoCard
-        icono={<CardGiftcardRounded color="primary" />}
-        titulo="Palanca"
-        activo={palancaActiva}
-        estado={tema.palancaEstado}
-        detalle={palancaActiva ? tema.palancaNombre : ''}
-        disabled={disabled}
-        onGestionar={() => setDialogo('PALANCA')}
-      />
+      {(!soloTipo || soloTipo === 'PALANCA') && (
+        <RecursoCard
+          icono={<CardGiftcardRounded color="primary" />}
+          titulo="Palanca"
+          activo={palancaActiva}
+          estado={tema.palancaEstado}
+          detalle={palancaActiva ? tema.palancaNombre : ''}
+          disabled={disabled}
+          onGestionar={() => setDialogo('PALANCA')}
+        />
+      )}
 
       <Dialog open={Boolean(dialogo)} onClose={() => setDialogo('')} fullWidth maxWidth="sm">
         <DialogTitle>

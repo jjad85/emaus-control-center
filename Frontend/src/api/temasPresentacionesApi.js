@@ -11,6 +11,16 @@ export async function obtenerMiTemaAsignado(token) {
   return response.datos;
 }
 
+
+export async function obtenerHistorialGeneralMiTema(token, temaId) {
+  const response = await postAction(
+    'obtenerHistorialGeneralMiTema',
+    { token, temaId }
+  );
+
+  return response.datos;
+}
+
 export async function subirVersionTema(
   token,
   temaId,

@@ -511,6 +511,10 @@ function routePost(contenido) {
     case 'obtenermitemaasignado':
       return { datos: obtenerMiTemaAsignado(contenido.token), mensaje: 'Temas asignados consultados correctamente' };
 
+
+    case 'obtenerhistorialgeneralmitema':
+      return { datos: obtenerHistorialGeneralMiTema(contenido.token, contenido.temaId), mensaje: 'Actividad del tema consultada correctamente' };
+
     case 'subirversiontema':
       return { datos: subirVersionTema(contenido.token, contenido.temaId, contenido.archivo, contenido.comentario), mensaje: 'Presentación cargada correctamente' };
 

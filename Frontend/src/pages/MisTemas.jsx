@@ -8,13 +8,9 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   CircularProgress,
   Dialog,
   DialogContent,
-  Divider,
-  FormControlLabel,
-  Grid,
   LinearProgress,
   Stack,
   TextField,
@@ -22,15 +18,21 @@ import {
   DialogActions,
   DialogTitle,
 } from '@mui/material';
-import UploadFileRounded from '@mui/icons-material/UploadFileRounded';
-import DownloadRounded from '@mui/icons-material/DownloadRounded';
 import CloudUploadRounded from '@mui/icons-material/CloudUploadRounded';
+import AssignmentRounded from '@mui/icons-material/AssignmentRounded';
+import TaskAltRounded from '@mui/icons-material/TaskAltRounded';
+import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded';
+import HeadsetMicRounded from '@mui/icons-material/HeadsetMicRounded';
+import LocalShippingRounded from '@mui/icons-material/LocalShippingRounded';
 import { useAuth } from '../auth/AuthContext';
 import PageHeader from '../components/PageHeader';
 import EstadoTemaChip from '../components/temas/EstadoTemaChip';
-import HistorialVersiones from '../components/temas/HistorialVersiones';
-import ComentariosPresentacion from '../components/temas/ComentariosPresentacion';
-import RecursosTemaPanel from '../components/temas/RecursosTemaPanel';
+import DetalleRecursosTema from '../components/temas/DetalleRecursosTema';
+import ResumenRecursosTema, { obtenerResumenRecursos } from '../components/temas/ResumenRecursosTema';
+import HistorialGeneralTema from '../components/temas/HistorialGeneralTema';
+import AccionesPendientesTema from '../components/temas/AccionesPendientesTema';
+import ProgresoPreparacionTema from '../components/temas/ProgresoPreparacionTema';
+import FiltrosMisTemas from '../components/temas/FiltrosMisTemas';
 import { responderRevisionServidor, comentarPresentacion } from '../api/entrega3PresentacionesApi';
 import { actualizarPreferenciasMultimediaTema } from '../api/temasApi';
 import {
@@ -62,6 +64,11 @@ export default function MisTemas() {
   const [cargaArchivo, setCargaArchivo] = useState(null);
   const [dialogoRevision, setDialogoRevision] = useState(null);
   const [textoRevision, setTextoRevision] = useState('');
+  const [recursoDestacado, setRecursoDestacado] = useState({});
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('TODOS');
+  const [filtroRecurso, setFiltroRecurso] = useState('TODOS');
+  const [orden, setOrden] = useState('AGENDA');
 
   async function cargar() {
     setLoading(true);
@@ -297,6 +304,91 @@ export default function MisTemas() {
   const temas =
     data?.items || [];
 
+  const indicadores = temas.reduce(
+    (acumulado, tema) => {
+      const resumen = obtenerResumenRecursos(tema);
+      acumulado.total += 1;
+      if (resumen.completo) acumulado.completos += 1;
+      if (resumen.requiereAtencion) acumulado.requierenAtencion += 1;
+      if (resumen.pendienteAudiovisuales) acumulado.pendientesAudiovisuales += 1;
+      if (resumen.pendienteLogistica) acumulado.pendientesLogistica += 1;
+      return acumulado;
+    },
+    {
+      total: 0,
+      completos: 0,
+      requierenAtencion: 0,
+      pendientesAudiovisuales: 0,
+      pendientesLogistica: 0,
+    }
+  );
+
+  const temasFiltrados = (() => {
+    const termino = busqueda.trim().toLocaleLowerCase('es');
+
+    const recursoCoincide = (tema, tipo) => {
+      if (tipo === 'TODOS') return true;
+      const resumen = obtenerResumenRecursos(tema);
+      const recurso = resumen.recursos?.find((item) => item.tipo === tipo);
+      return Boolean(recurso && recurso.requerido);
+    };
+
+    const filtrados = temas
+      .map((tema, indiceOriginal) => ({
+        tema,
+        indiceOriginal,
+        resumen: obtenerResumenRecursos(tema),
+      }))
+      .filter(({ tema, resumen }) => {
+        const texto = [
+          tema.nombre,
+          tema.descripcion,
+          tema.diaDelTema,
+          tema.horaPropuesta,
+          tema.estadoPreparacion,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLocaleLowerCase('es');
+
+        if (termino && !texto.includes(termino)) return false;
+        if (!recursoCoincide(tema, filtroRecurso)) return false;
+
+        if (filtroEstado === 'ATENCION' && !resumen.requiereAtencion) return false;
+        if (filtroEstado === 'COMPLETOS' && !resumen.completo) return false;
+        if (filtroEstado === 'AUDIOVISUALES' && !resumen.pendienteAudiovisuales) return false;
+        if (filtroEstado === 'LOGISTICA' && !resumen.pendienteLogistica) return false;
+
+        return true;
+      });
+
+    const progreso = (resumen) => Number(resumen.porcentaje || 0);
+
+    filtrados.sort((a, b) => {
+      if (orden === 'NOMBRE') {
+        return String(a.tema.nombre || '').localeCompare(String(b.tema.nombre || ''), 'es');
+      }
+      if (orden === 'PROGRESO_ASC') return progreso(a.resumen) - progreso(b.resumen);
+      if (orden === 'PROGRESO_DESC') return progreso(b.resumen) - progreso(a.resumen);
+      if (orden === 'ATENCION') {
+        const prioridadA = a.resumen.requiereAtencion ? 0 : a.resumen.completo ? 2 : 1;
+        const prioridadB = b.resumen.requiereAtencion ? 0 : b.resumen.completo ? 2 : 1;
+        return prioridadA - prioridadB || a.indiceOriginal - b.indiceOriginal;
+      }
+      return a.indiceOriginal - b.indiceOriginal;
+    });
+
+    return filtrados.map((item) => item.tema);
+  })();
+
+  const tarjetasIndicadores = [
+    { titulo: 'Temas asignados', valor: indicadores.total, icono: <AssignmentRounded /> },
+    { titulo: 'Completos', valor: indicadores.completos, icono: <TaskAltRounded /> },
+    { titulo: 'Requieren atención', valor: indicadores.requierenAtencion, icono: <WarningAmberRounded /> },
+    { titulo: 'Pendientes Audiovisuales', valor: indicadores.pendientesAudiovisuales, icono: <HeadsetMicRounded /> },
+    { titulo: 'Pendientes Logística', valor: indicadores.pendientesLogistica, icono: <LocalShippingRounded /> },
+  ];
+
   return (
     <>
       <PageHeader
@@ -308,6 +400,76 @@ export default function MisTemas() {
       />
 
       <Stack spacing={2.5}>
+        {temas.length > 0 && (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: 'repeat(2, minmax(0, 1fr))',
+                md: 'repeat(5, minmax(0, 1fr))',
+              },
+              gap: 1.5,
+            }}
+          >
+            {tarjetasIndicadores.map((item) => (
+              <Card
+                key={item.titulo}
+                variant="outlined"
+                sx={{
+                  borderRadius: 3.5,
+                  borderColor: 'rgba(20, 75, 62, 0.13)',
+                  minWidth: 0,
+                }}
+              >
+                <CardContent sx={{ p: '18px !important' }}>
+                  <Stack spacing={1.25}>
+                    <Box
+                      sx={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 2.25,
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: 'primary.main',
+                        bgcolor: 'rgba(20, 75, 62, 0.08)',
+                      }}
+                    >
+                      {item.icono}
+                    </Box>
+                    <Typography variant="h4" fontWeight={950} lineHeight={1}>
+                      {item.valor}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" fontWeight={800}>
+                      {item.titulo}
+                    </Typography>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        )}
+
+        {temas.length > 0 && (
+          <FiltrosMisTemas
+            busqueda={busqueda}
+            onBusqueda={setBusqueda}
+            estado={filtroEstado}
+            onEstado={setFiltroEstado}
+            recurso={filtroRecurso}
+            onRecurso={setFiltroRecurso}
+            orden={orden}
+            onOrden={setOrden}
+            resultados={temasFiltrados.length}
+            total={temas.length}
+            onLimpiar={() => {
+              setBusqueda('');
+              setFiltroEstado('TODOS');
+              setFiltroRecurso('TODOS');
+              setOrden('AGENDA');
+            }}
+          />
+        )}
+
         {error && (
           <Alert
             severity="error"
@@ -340,7 +502,13 @@ export default function MisTemas() {
           </Alert>
         )}
 
-        {temas.map((tema) => (
+        {temas.length > 0 && temasFiltrados.length === 0 && (
+          <Alert severity="info">
+            No hay temas que coincidan con los filtros seleccionados.
+          </Alert>
+        )}
+
+        {temasFiltrados.map((tema) => (
           <Card
             key={tema.id}
             sx={{ borderRadius: 4 }}
@@ -409,254 +577,41 @@ export default function MisTemas() {
                   </Alert>
                 )}
 
-                <Divider />
+                <ResumenRecursosTema tema={tema} />
 
-                <Grid
-                  container
-                  spacing={3}
-                >
-                  <Grid
-                    size={{
-                      xs: 12,
-                      md: 5,
-                    }}
-                  >
-                    <RecursosTemaPanel
-                      tema={tema}
-                      plantillaUrl={data?.plantillaUrl}
-                      disabled={subiendo !== ''}
-                      onCambiarPresentacion={(valor) => cambiar(tema, 'requierePresentacion', valor)}
-                      onGuardar={(tipo, datos) => guardarRecurso(tema, tipo, datos)}
-                    />
-                  </Grid>
+                <ProgresoPreparacionTema tema={tema} />
 
-                  <Grid
-                    size={{
-                      xs: 12,
-                      md: 7,
-                    }}
-                  >
-                    <Stack spacing={2}>
-                      <Typography
-                        variant="h6"
-                        fontWeight={900}
-                      >
-                        Presentación
-                      </Typography>
+                <AccionesPendientesTema
+                  tema={tema}
+                  onIrARecurso={(tipo) => {
+                    setRecursoDestacado((actual) => ({ ...actual, [tema.id]: tipo }));
+                    window.setTimeout(() => {
+                      document.getElementById(`recursos-${tema.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 50);
+                  }}
+                />
 
-                      {tema.requierePresentacion ===
-                      'Sí' ? (
-                        <>
-                          <TextField
-                            label="Comentario de esta versión"
-                            multiline
-                            minRows={2}
-                            value={
-                              comentario[
-                                tema.id
-                              ] || ''
-                            }
-                            onChange={(
-                              evento
-                            ) =>
-                              setComentario(
-                                (actual) => ({
-                                  ...actual,
-                                  [tema.id]:
-                                    evento.target
-                                      .value,
-                                })
-                              )
-                            }
-                          />
-
-                          <Button
-                            component="label"
-                            variant="contained"
-                            startIcon={
-                              subiendo ===
-                              tema.id + 'ppt' ? (
-                                <CircularProgress
-                                  size={18}
-                                  color="inherit"
-                                />
-                              ) : (
-                                <UploadFileRounded />
-                              )
-                            }
-                            disabled={
-                              subiendo !== ''
-                            }
-                          >
-                            {subiendo ===
-                            tema.id + 'ppt'
-                              ? 'Cargando presentación...'
-                              : 'Subir nueva versión'}
-
-                            <input
-                              hidden
-                              type="file"
-                              accept=".ppt,.pptx,.pdf"
-                              onChange={(evento) => {
-                                const file =
-                                  evento.target
-                                    .files?.[0];
-                                evento.target.value =
-                                  '';
-                                cargarPpt(
-                                  tema,
-                                  file
-                                );
-                              }}
-                            />
-                          </Button>
-
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                          >
-                            Formatos permitidos:
-                            PPT, PPTX y PDF.
-                            Tamaño máximo: 15 MB.
-                          </Typography>
-                        </>
-                      ) : (
-                        <Alert severity="info">
-                          Marca “Utilizaré
-                          presentación” para
-                          habilitar la carga.
-                        </Alert>
-                      )}
-                    </Stack>
-                  </Grid>
-                </Grid>
-
-                <Divider />
-
-                <Box>
-                  <Typography
-                    variant="h6"
-                    fontWeight={900}
-                    mb={1.5}
-                  >
-                    Comentarios y observaciones
-                  </Typography>
-
-                  <ComentariosPresentacion
-                    comentarios={tema.comentarios || []}
-                  />
+                <Box id={`recursos-${tema.id}`} sx={{ scrollMarginTop: 96 }}>
+                <DetalleRecursosTema
+                  tema={tema}
+                  plantillaUrl={data?.plantillaUrl}
+                  disabled={subiendo !== ''}
+                  comentario={comentario}
+                  setComentario={setComentario}
+                  cargarPpt={cargarPpt}
+                  cargarMusica={cargarMusica}
+                  cambiar={cambiar}
+                  guardarRecurso={guardarRecurso}
+                  setTextoRevision={setTextoRevision}
+                  setDialogoRevision={setDialogoRevision}
+                  tipoInicial={recursoDestacado[tema.id]}
+                />
                 </Box>
 
-                {tema.versionActual && (
-                  <Box>
-                    <Typography
-                      variant="h6"
-                      fontWeight={900}
-                      mb={1.5}
-                    >
-                      Acciones del servidor
-                    </Typography>
-
-                    <Stack
-                      direction={{ xs: 'column', sm: 'row' }}
-                      spacing={1.5}
-                      alignItems={{ xs: 'stretch', sm: 'center' }}
-                      flexWrap="wrap"
-                    >
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          setTextoRevision('');
-                          setDialogoRevision({
-                            tipo: 'comentar',
-                            tema,
-                            version: tema.versionActual,
-                          });
-                        }}
-                        disabled={subiendo !== ''}
-                      >
-                        Agregar comentario
-                      </Button>
-
-                      {!tema.versionActual.aprobadaConferencista && (
-                        <>
-                          <Button
-                            variant="outlined"
-                            onClick={() => {
-                              setTextoRevision('');
-                              setDialogoRevision({
-                                tipo: 'solicitar ajustes',
-                                tema,
-                                version: tema.versionActual,
-                              });
-                            }}
-                            disabled={
-                              subiendo !== '' ||
-                              !tema.versionActual.aprobadaAudiovisuales
-                            }
-                          >
-                            Solicitar ajustes a Audiovisuales
-                          </Button>
-
-                          <Button
-                            variant="contained"
-                            onClick={() => {
-                              setTextoRevision('');
-                              setDialogoRevision({
-                                tipo: 'aprobar',
-                                tema,
-                                version: tema.versionActual,
-                              });
-                            }}
-                            disabled={
-                              subiendo !== '' ||
-                              !tema.versionActual.aprobadaAudiovisuales
-                            }
-                          >
-                            Aprobar como servidor
-                          </Button>
-                        </>
-                      )}
-                    </Stack>
-
-                    {!tema.versionActual.aprobadaAudiovisuales &&
-                      !tema.versionActual.aprobadaConferencista && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          display="block"
-                          sx={{ mt: 1 }}
-                        >
-                          La aprobación del servidor se habilitará cuando
-                          Audiovisuales apruebe la versión vigente.
-                        </Typography>
-                      )}
-
-                    {tema.versionActual.aprobadaConferencista && (
-                      <Alert severity="success" sx={{ mt: 1.5 }}>
-                        Esta versión ya fue aprobada por el servidor.
-                      </Alert>
-                    )}
-                  </Box>
-                )}
-
-                <Divider />
-
-                <Box>
-                  <Typography
-                    variant="h6"
-                    fontWeight={900}
-                    mb={1.5}
-                  >
-                    Historial de versiones
-                  </Typography>
-
-                  <HistorialVersiones
-                    versiones={
-                      tema.versiones
-                    }
-                  />
-                </Box>
+                <HistorialGeneralTema
+                  temaId={tema.id}
+                  temaNombre={tema.nombre}
+                />
               </Stack>
             </CardContent>
           </Card>
