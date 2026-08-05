@@ -32,7 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { obtenerNotificaciones } from '../api/notificacionesApi';
 
-const INTERVALO_ACTUALIZACION = 60000;
+const INTERVALO_ACTUALIZACION = 3 * 60 * 1000;
 
 export default function NotificationBell({ modo = 'desktop' }) {
   const navigate = useNavigate();

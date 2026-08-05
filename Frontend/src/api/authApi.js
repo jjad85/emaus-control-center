@@ -22,6 +22,9 @@ export async function consultarSesionApi(
     'consultarSesion',
     {
       token,
+    },
+    {
+      mostrarCarga: false,
     }
   );
 
@@ -35,6 +38,9 @@ export async function cerrarSesionApi(
     'cerrarSesion',
     {
       token,
+    },
+    {
+      mostrarCarga: false,
     }
   );
 

@@ -303,11 +303,6 @@ export default function CaminanteFormDialog({
       nombre: form.nombreCompleto,
       telefono: form.celular,
       tallaCamiseta: form.tallaCamisa,
-      contacto: {
-        nombre: form.contacto1Nombre,
-        parentesco: form.contacto1Parentesco,
-        telefono: form.contacto1Celular,
-      },
       contacto1: {
         nombre: form.contacto1Nombre,
         parentesco: form.contacto1Parentesco,

@@ -1,25 +1,39 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useApi(loader, dependencies = []) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+  const requestRef = useRef(0);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    const requestId = ++requestRef.current;
+    if (mountedRef.current) {
+      setLoading(true);
+      setError('');
+    }
     try {
-      setData(await loader());
+      const resultado = await loader();
+      if (mountedRef.current && requestId === requestRef.current) setData(resultado);
+      return resultado;
     } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : 'Error inesperado');
+      if (mountedRef.current && requestId === requestRef.current) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : 'Error inesperado');
+      }
+      throw err;
     } finally {
-      setLoading(false);
+      if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
   }, dependencies);
 
   useEffect(() => {
-    load();
+    load().catch(() => {});
   }, [load]);
 
   return { data, loading, error, reload: load };

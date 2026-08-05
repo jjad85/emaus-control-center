@@ -31,6 +31,9 @@ const AuthContext =
 const AVISO_ANTES_EXPIRAR_MS =
   5 * 60 * 1000;
 
+const INTERVALO_HEARTBEAT_MS =
+  5 * 60 * 1000;
+
 function normalizarPermiso(valor) {
   return String(valor || '')
     .trim()
@@ -50,6 +53,25 @@ function obtenerMilisegundosRestantes(
       fechaExpiracion
     ).getTime() -
       Date.now()
+  );
+}
+
+
+const CODIGOS_SESION_INVALIDA = new Set([
+  'SESION_EXPIRADA',
+  'SESION_REQUERIDA',
+  'SESION_INVALIDA',
+  'SESION_REVOCADA',
+  'TOKEN_EXPIRADO',
+  'TOKEN_INVALIDO',
+]);
+
+function esErrorSesionInvalida(error) {
+  return (
+    Number(error?.estadoHttp || 0) === 401 ||
+    CODIGOS_SESION_INVALIDA.has(
+      String(error?.codigo || '')
+    )
   );
 }
 
@@ -226,17 +248,56 @@ export function AuthProvider({
       setAvisoSesion('');
 
       const ahora = Date.now();
-      if (ahora - ultimoHeartbeatRef.current < 30000) return;
+      if (
+        ahora - ultimoHeartbeatRef.current <
+        INTERVALO_HEARTBEAT_MS
+      ) {
+        return;
+      }
       ultimoHeartbeatRef.current = ahora;
 
       try {
         const datos = await consultarSesionApi(sesion.token);
         if (cancelado) return;
-        const actualizada = { ...sesion, ...datos, token: sesion.token };
+        const actualizada = {
+          ...sesion,
+          ...datos,
+          token: sesion.token,
+        };
+
         guardarSesionLocal(actualizada);
-        setSesion(actualizada);
-      } catch {
-        if (!cancelado) expirarSesion('Tu sesión expiró. Inicia sesión nuevamente.');
+
+        setSesion((actual) => {
+          if (!actual) {
+            return actualizada;
+          }
+
+          const cambioRelevante =
+            actual.fechaExpiracion !==
+              actualizada.fechaExpiracion ||
+            actual.duracionSesionSegundos !==
+              actualizada.duracionSesionSegundos ||
+            actual.rol !== actualizada.rol ||
+            actual.debeCambiarPassword !==
+              actualizada.debeCambiarPassword ||
+            JSON.stringify(actual.permisos || []) !==
+              JSON.stringify(
+                actualizada.permisos || []
+              );
+
+          return cambioRelevante
+            ? actualizada
+            : actual;
+        });
+      } catch (error) {
+        if (
+          !cancelado &&
+          esErrorSesionInvalida(error)
+        ) {
+          expirarSesion(
+            'Tu sesión expiró. Inicia sesión nuevamente.'
+          );
+        }
       }
     };
 
@@ -300,8 +361,11 @@ export function AuthProvider({
         programarInactividad(
           sesionActualizada.duracionSesionSegundos
         );
-      } catch {
-        if (activo) {
+      } catch (error) {
+        if (
+          activo &&
+          esErrorSesionInvalida(error)
+        ) {
           cerrarSesionLocal();
         }
       } finally {

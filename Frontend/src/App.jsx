@@ -9,6 +9,7 @@ import {
 } from './auth/AuthContext';
 
 import SessionAlert from './auth/SessionAlert';
+import GlobalLoading from './components/GlobalLoading';
 import PrivateRoute from './auth/PrivateRoute';
 
 import MainLayout from './layouts/MainLayout';
@@ -50,6 +51,7 @@ export default function App() {
   return (
     <AuthProvider>
       <SessionAlert />
+      <GlobalLoading />
 
       <Routes>
         <Route

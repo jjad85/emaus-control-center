@@ -229,7 +229,7 @@ export default function ReportarPago() {
     mensaje:
       portal.portalPagoMensajeReporte ||
       portal.pagoMensajeReporte ||
-      'Esta página es únicamente para reportar un pago ya realizado. El pago debe efectuarse mediante transferencia bancaria.',
+      'Esta página es únicamente para reportar un pago ya realizado. Puedes registrar una transferencia o un pago en efectivo recibido por una persona autorizada.',
   };
 
   function cambiarTipo(_, nuevoTipo) {
@@ -324,7 +324,7 @@ export default function ReportarPago() {
 
       const resultado = await reportarPagoPublico({
         ...form,
-        medioPago: 'Transferencia',
+        medioPago: form.medioPago,
         tipoPersona,
         personaId: persona.id,
         criterio: criterio || persona.documentoIdentidad || persona.numeroInscripcion || '',
@@ -420,7 +420,7 @@ export default function ReportarPago() {
                   '& .MuiAlert-icon': { color: '#8a6800' },
                 }}
               >
-                Aquí no se realiza el pago. Primero haz la transferencia y luego adjunta el comprobante.
+                Aquí no se realiza el pago. Esta pantalla sirve para reportar una transferencia ya realizada o un pago en efectivo recibido por una persona autorizada.
               </Alert>
 
               <Typography variant="overline" sx={{ display: 'block', mt: 3, mb: 1.25, color: '#bfe9d5', fontWeight: 900 }}>
@@ -455,7 +455,7 @@ export default function ReportarPago() {
                   ¿A quién corresponde el pago?
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: .7 }}>
-                  Busca el registro y luego completa los datos de la transferencia.
+                  Busca el registro y luego selecciona si el pago fue por transferencia o en efectivo.
                 </Typography>
               </Box>
 
@@ -670,7 +670,7 @@ export default function ReportarPago() {
                     </Stack>
 
                     <Typography variant="caption" sx={{ display: 'block', mt: .75, color: 'rgba(255,255,255,.72)' }}>
-                      Puedes reportar el pago completo o un abono; Tesorería validará el comprobante.
+                      Puedes reportar el pago completo o un abono. Tesorería validará la información y el comprobante cuando sea transferencia.
                     </Typography>
                   </Paper>
 
@@ -773,24 +773,61 @@ export default function ReportarPago() {
                           value={form.fechaPago}
                           onChange={(e) => setForm({ ...form, fechaPago: e.target.value })}
                         />
-                        <TextField label="Medio de pago" value="Transferencia" disabled />
                         <TextField
-                          label="Banco desde el que transferiste"
-                          value={form.entidadPago}
-                          onChange={(e) => setForm({ ...form, entidadPago: e.target.value })}
-                        />
+                          select
+                          label="Método de pago"
+                          value={form.medioPago}
+                          onChange={(e) => {
+                            const medioPago = e.target.value;
+                            setForm((actual) => ({
+                              ...actual,
+                              medioPago,
+                              entidadPago: medioPago === 'Transferencia'
+                                ? (actual.entidadPago || cuenta.banco)
+                                : '',
+                              referenciaPago: medioPago === 'Transferencia'
+                                ? actual.referenciaPago
+                                : '',
+                              archivo: medioPago === 'Transferencia'
+                                ? actual.archivo
+                                : null,
+                            }));
+                          }}
+                        >
+                          <MenuItem value="Transferencia">Transferencia</MenuItem>
+                          <MenuItem value="Efectivo">Efectivo</MenuItem>
+                        </TextField>
+
+                        {form.medioPago === 'Transferencia' && (
+                          <>
+                            <TextField
+                              label="Banco desde el que transferiste"
+                              value={form.entidadPago}
+                              onChange={(e) => setForm({ ...form, entidadPago: e.target.value })}
+                            />
+                            <TextField
+                              label="Referencia o número de comprobante"
+                              value={form.referenciaPago}
+                              onChange={(e) => setForm({ ...form, referenciaPago: e.target.value })}
+                            />
+                          </>
+                        )}
+
                         <TextField
-                          label="Referencia o número de comprobante"
-                          value={form.referenciaPago}
-                          onChange={(e) => setForm({ ...form, referenciaPago: e.target.value })}
-                        />
-                        <TextField
-                          label="Nombre de quien pagó"
+                          label={
+                            form.medioPago === 'Efectivo'
+                              ? 'Nombre de quien recibió el dinero'
+                              : 'Nombre de quien pagó'
+                          }
                           value={form.nombrePagador}
                           onChange={(e) => setForm({ ...form, nombrePagador: e.target.value })}
                         />
                         <TextField
-                          label="Teléfono de quien pagó"
+                          label={
+                            form.medioPago === 'Efectivo'
+                              ? 'Teléfono de la persona que tiene el dinero'
+                              : 'Teléfono de quien pagó'
+                          }
                           value={form.telefonoPagador}
                           onChange={(e) =>
                             setForm({
@@ -802,30 +839,36 @@ export default function ReportarPago() {
                         />
                       </Box>
 
-                      <Paper
-                        component="label"
-                        variant="outlined"
-                        sx={{
-                          p: 2.5,
-                          borderRadius: 4,
-                          borderStyle: 'dashed',
-                          borderWidth: 2,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          bgcolor: form.archivo ? '#eef8f3' : '#fbfcfb',
-                          transition: '.2s ease',
-                          '&:hover': { borderColor: '#176b59', bgcolor: '#f1f8f4' },
-                        }}
-                      >
-                        <UploadFileRounded sx={{ fontSize: 40, color: '#176b59' }} />
-                        <Typography fontWeight={950} mt={.5}>
-                          {form.archivo ? form.archivo.nombre : 'Adjuntar comprobante'}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          PDF, JPG o PNG · máximo 5 MB
-                        </Typography>
-                        <input hidden type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={seleccionarArchivo} />
-                      </Paper>
+                      {form.medioPago === 'Transferencia' ? (
+                        <Paper
+                          component="label"
+                          variant="outlined"
+                          sx={{
+                            p: 2.5,
+                            borderRadius: 4,
+                            borderStyle: 'dashed',
+                            borderWidth: 2,
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            bgcolor: form.archivo ? '#eef8f3' : '#fbfcfb',
+                            transition: '.2s ease',
+                            '&:hover': { borderColor: '#176b59', bgcolor: '#f1f8f4' },
+                          }}
+                        >
+                          <UploadFileRounded sx={{ fontSize: 40, color: '#176b59' }} />
+                          <Typography fontWeight={950} mt={.5}>
+                            {form.archivo ? form.archivo.nombre : 'Adjuntar comprobante de transferencia'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Obligatorio para transferencias · PDF, JPG o PNG · máximo 5 MB
+                          </Typography>
+                          <input hidden type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={seleccionarArchivo} />
+                        </Paper>
+                      ) : (
+                        <Alert severity="info" sx={{ borderRadius: 3 }}>
+                          Para pagos en efectivo no se solicita comprobante. Registra claramente quién recibió el dinero y su teléfono.
+                        </Alert>
+                      )}
 
                       <TextField
                         label="Observaciones"
@@ -845,7 +888,7 @@ export default function ReportarPago() {
                           !form.valorReportado ||
                           Number(form.valorReportado) <= 0 ||
                           !form.fechaPago ||
-                          !form.archivo ||
+                          (form.medioPago === 'Transferencia' && !form.archivo) ||
                           !form.nombrePagador.trim() ||
                           !/^3\d{9}$/.test(form.telefonoPagador)
                         }

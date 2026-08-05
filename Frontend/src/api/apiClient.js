@@ -1,139 +1,131 @@
-import axios from 'axios';
-import {
-  emitirSesionExpirada,
-} from '../auth/sessionEvents';
+import { emitirSesionExpirada } from '../auth/sessionEvents';
+import { administrarGet, invalidarCacheApi } from './requestManager';
 
-const baseURL =
-  import.meta.env.VITE_APPS_SCRIPT_URL;
+const baseURL = import.meta.env.VITE_APPS_SCRIPT_URL;
+if (!baseURL) console.warn('Falta configurar VITE_APPS_SCRIPT_URL');
 
-if (!baseURL) {
-  console.warn(
-    'Falta configurar VITE_APPS_SCRIPT_URL'
-  );
+const EVENTO_CARGA_INICIO = 'emaus:api-loading-start';
+const EVENTO_CARGA_FIN = 'emaus:api-loading-end';
+const CODIGOS_SESION_INVALIDA = new Set([
+  'SESION_EXPIRADA', 'SESION_REQUERIDA', 'SESION_INVALIDA',
+  'SESION_REVOCADA', 'TOKEN_EXPIRADO', 'TOKEN_INVALIDO',
+]);
+
+function emitirCarga(nombreEvento) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(nombreEvento));
 }
 
-const apiClient = axios.create({
-  baseURL,
-  timeout: 30000,
-  headers: {
-    Accept: 'application/json',
-  },
-});
-
-function obtenerErrorApi(
-  payload
-) {
-  const errorApi =
-    payload?.errores?.[0];
-
+function obtenerErrorApi(payload) {
+  const errorApi = payload?.errores?.[0];
   return {
-    codigo:
-      errorApi?.codigo || '',
-
-    detalle:
-      errorApi?.detalle ||
-      payload?.mensaje ||
-      'Error de API',
+    codigo: errorApi?.codigo || '',
+    detalle: errorApi?.detalle || payload?.mensaje || 'Error de API',
   };
 }
 
-function procesarRespuesta(
-  payload
-) {
+function procesarRespuesta(payload) {
   if (!payload?.ok) {
-    const errorApi =
-      obtenerErrorApi(
-        payload
-      );
-
-    if (
-      errorApi.codigo ===
-        'SESION_EXPIRADA' ||
-      errorApi.codigo ===
-        'SESION_REQUERIDA' ||
-      errorApi.codigo ===
-        'SESION_INVALIDA' ||
-      errorApi.codigo ===
-        'SESION_REVOCADA'
-    ) {
-      emitirSesionExpirada(
-        errorApi.detalle
-      );
+    const errorApi = obtenerErrorApi(payload);
+    if (CODIGOS_SESION_INVALIDA.has(errorApi.codigo)) {
+      emitirSesionExpirada(errorApi.detalle);
     }
-
-    const error =
-      new Error(
-        errorApi.detalle
-      );
-
-    error.codigo =
-      errorApi.codigo;
-
+    const error = new Error(errorApi.detalle);
+    error.codigo = errorApi.codigo;
     throw error;
   }
-
   return payload;
 }
 
-function procesarError(error) {
-  if (error?.codigo) {
+async function leerRespuesta(response) {
+  const texto = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(texto);
+  } catch {
+    const error = new Error(
+      response.ok
+        ? 'Google Apps Script devolvió una respuesta no válida.'
+        : `Google Apps Script respondió temporalmente con estado ${response.status}. Conservamos tu sesión; vuelve a intentar.`
+    );
+    error.estadoHttp = response.status;
     throw error;
   }
-
-  const payload =
-    error?.response?.data;
-
-  if (payload) {
-    return procesarRespuesta(
-      payload
-    );
+  if (!response.ok) {
+    const error = new Error(payload?.mensaje || `Error HTTP ${response.status}`);
+    error.estadoHttp = response.status;
+    throw error;
   }
+  return procesarRespuesta(payload);
+}
 
-  if (
-    error?.code === 'ECONNABORTED' ||
-    String(error?.message || '')
-      .toLowerCase()
-      .includes('timeout')
-  ) {
-    throw new Error(
-      'La operación tardó más de lo esperado. Verifica si el archivo quedó registrado antes de volver a cargarlo.'
-    );
+async function fetchConTimeout(url, options = {}, timeout = 30000) {
+  const controlador = new AbortController();
+  const temporizador = window.setTimeout(() => controlador.abort(), timeout);
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controlador.signal,
+      redirect: 'follow',
+      cache: 'no-store',
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error('La operación tardó más de lo esperado. Vuelve a intentarlo.');
+      timeoutError.codigo = 'TIMEOUT';
+      throw timeoutError;
+    }
+    throw new Error('No fue posible completar la comunicación con Google Apps Script. Vuelve a intentarlo.');
+  } finally {
+    window.clearTimeout(temporizador);
   }
+}
 
-  const mensaje = String(error?.message || '');
-  if (mensaje.toLowerCase().includes('network error')) {
-    throw new Error(
-      'No fue posible completar la comunicación con Google Apps Script. Verifica que la implementación esté actualizada y vuelve a intentar.'
-    );
-  }
-
-  throw new Error(
-    mensaje ||
-      'No fue posible conectar con la API'
-  );
+function construirUrl(recurso, params = {}) {
+  const url = new URL(baseURL);
+  url.searchParams.set('recurso', recurso);
+  Object.entries(params).forEach(([clave, valor]) => {
+    if (valor !== undefined && valor !== null && valor !== '') {
+      url.searchParams.set(clave, String(valor));
+    }
+  });
+  return url.toString();
 }
 
 export async function getResource(
   recurso,
-  params = {}
+  params = {},
+  options = {}
 ) {
-  try {
-    const response =
-      await apiClient.get('', {
-        params: {
-          recurso,
-          ...params,
-          t: Date.now(),
-        },
-      });
+  const mostrarCarga =
+    options.mostrarCarga === true;
 
-    return procesarRespuesta(
-      response.data
-    );
-  } catch (error) {
-    return procesarError(
-      error
-    );
+  if (mostrarCarga) {
+    emitirCarga(EVENTO_CARGA_INICIO);
+  }
+
+  try {
+    return await administrarGet({
+      recurso,
+      params,
+      ejecutar: async () => {
+        const response = await fetchConTimeout(
+          construirUrl(recurso, params),
+          {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+            },
+          },
+          options.timeout ?? 30000
+        );
+
+        return leerRespuesta(response);
+      },
+    });
+  } finally {
+    if (mostrarCarga) {
+      emitirCarga(EVENTO_CARGA_FIN);
+    }
   }
 }
 
@@ -142,46 +134,30 @@ export async function postAction(
   payload = {},
   options = {}
 ) {
+  const mostrarCarga =
+    options.mostrarCarga !== false;
+
+  if (mostrarCarga) {
+    emitirCarga(EVENTO_CARGA_INICIO);
+  }
+
   try {
-    const body =
-      JSON.stringify({
-        accion,
-        ...payload,
-      });
-
-    const response =
-      await axios.post(
-        baseURL,
-        body,
-        {
-          timeout:
-            options.timeout ??
-            30000,
-
-          // No se registra onUploadProgress. En llamadas directas a Google
-          // Apps Script, agregar un listener de progreso al XMLHttpRequest
-          // obliga al navegador a enviar una petición OPTIONS (preflight).
-          // Apps Script no responde ese preflight con CORS y termina en
-          // "Network Error", aunque el archivo pueda haberse guardado.
-
-          headers: {
-            Accept:
-              'application/json',
-
-            'Content-Type':
-              'text/plain;charset=UTF-8',
-          },
-        }
-      );
-
-    return procesarRespuesta(
-      response.data
-    );
-  } catch (error) {
-    return procesarError(
-      error
-    );
+    const response = await fetchConTimeout(baseURL, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'text/plain;charset=UTF-8',
+      },
+      body: JSON.stringify({ accion, ...payload }),
+    }, options.timeout ?? 30000);
+    const resultado = await leerRespuesta(response);
+    invalidarCacheApi();
+    return resultado;
+  } finally {
+    if (mostrarCarga) {
+      emitirCarga(EVENTO_CARGA_FIN);
+    }
   }
 }
 
-export default apiClient;
+export default { get: getResource, post: postAction };

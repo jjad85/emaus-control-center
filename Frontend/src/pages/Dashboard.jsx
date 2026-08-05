@@ -254,6 +254,82 @@ export default function Dashboard() {
     <Stack spacing={2.25}>
       <PageHeader eyebrow="Centro de operaciones" title={['EMAÚS', data.configuracion?.tipoRetiro && `Retiro ${data.configuracion.tipoRetiro}`, data.configuracion?.anioRetiro].filter(Boolean).join(' - ')} subtitle="Estado operativo del retiro en tiempo real" onRefresh={reload} loading={loading} />
 
+      {documentosImportantes.length > 0 && (
+        <Paper
+          sx={{
+            ...panelSx,
+            p: { xs: 1.5, md: 2 },
+            borderLeft: '5px solid',
+            borderLeftColor: 'warning.main',
+            background: 'linear-gradient(135deg, rgba(255,248,225,.96), rgba(255,255,255,.98))',
+          }}
+        >
+          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={1.5} mb={1.5}>
+            <Stack direction="row" spacing={1.25} alignItems="center">
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 2.5,
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: 'warning.light',
+                  color: 'warning.dark',
+                }}
+              >
+                <DescriptionRounded />
+              </Box>
+              <Box>
+                <Typography fontWeight={950}>Documentos importantes para todos</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Accesos rápidos a manuales, formatos y material clave del retiro.
+                </Typography>
+              </Box>
+            </Stack>
+            <Button variant="outlined" size="small" onClick={() => window.location.assign('/documentos')}>
+              Ver biblioteca completa
+            </Button>
+          </Stack>
+
+          <Grid container spacing={1}>
+            {documentosImportantes.slice(0, 6).map((documento) => (
+              <Grid key={documento.id} size={{ xs: 12, sm: 6, lg: 4 }}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 1.25,
+                    borderRadius: 2.5,
+                    height: '100%',
+                    bgcolor: 'rgba(255,255,255,.8)',
+                  }}
+                >
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
+                    <Box minWidth={0}>
+                      <Typography variant="body2" fontWeight={900} noWrap>{documento.nombre}</Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {documento.temaNombre ? `Tema: ${documento.temaNombre}` : documento.categoria}
+                      </Typography>
+                    </Box>
+                    {puedeDescargarDocumentos && (
+                      <IconButton
+                        size="small"
+                        aria-label={`Abrir ${documento.nombre}`}
+                        onClick={async () => {
+                          const datosDocumento = await obtenerUrlDescargaDocumento(token, documento.id);
+                          window.open(datosDocumento.url, '_blank', 'noopener,noreferrer');
+                        }}
+                      >
+                        <OpenInNewRounded fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Paper>
+      )}
+
       <Paper sx={{ ...panelSx, overflow: 'hidden' }}>
         <Grid container>
           <Grid size={{ xs: 12, md: 7.5 }}>
@@ -357,19 +433,11 @@ export default function Dashboard() {
       </Grid>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: documentosImportantes.length > 0 ? 7 : 12 }}>
+        <Grid size={{ xs: 12 }}>
           <TarjetaOperacion titulo="Radar de alertas" icono={<ReportProblemRounded fontSize="small" />} accent="error.main">
             <Grid container spacing={1}>{alertas.slice(0, 8).map((a, i) => <Grid key={`${a.modulo}-${i}`} size={{ xs: 12, md: 6 }}><Alert severity={a.tipo} variant="outlined" sx={{ borderRadius: 1.5, py: .25, height: '100%' }}><Typography variant="caption" fontWeight={900}>{a.modulo}</Typography><Typography variant="body2">{a.mensaje}</Typography></Alert></Grid>)}{!alertas.length && <Grid size={{ xs: 12 }}><Alert severity="success">No hay alertas activas.</Alert></Grid>}</Grid>
           </TarjetaOperacion>
         </Grid>
-
-        {documentosImportantes.length > 0 && (
-          <Grid size={{ xs: 12, lg: 5 }}>
-            <TarjetaOperacion titulo="Documentos importantes" icono={<DescriptionRounded fontSize="small" />} accent="warning.main">
-              <Stack spacing={0}>{documentosImportantes.slice(0, 5).map(documento => <Stack key={documento.id} direction="row" justifyContent="space-between" alignItems="center" gap={1.5} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}><Box minWidth={0}><Typography variant="body2" fontWeight={800} noWrap>{documento.nombre}</Typography><Typography variant="caption" color="text.secondary" noWrap>{documento.temaNombre ? `Tema: ${documento.temaNombre}` : documento.categoria}</Typography></Box>{puedeDescargarDocumentos && <IconButton size="small" onClick={async () => { const datosDocumento = await obtenerUrlDescargaDocumento(token, documento.id); window.open(datosDocumento.url, '_blank', 'noopener,noreferrer'); }}><OpenInNewRounded fontSize="small" /></IconButton>}</Stack>)}</Stack>
-            </TarjetaOperacion>
-          </Grid>
-        )}
       </Grid>
 
       <ModalAprobacionesLogistica open={logisticaOpen} onClose={()=>setLogisticaOpen(false)} items={pendientesLogistica} procesando={procesandoLogistica} onAprobar={aprobarPendienteLogistica} />
