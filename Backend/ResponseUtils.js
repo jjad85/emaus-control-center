@@ -14,6 +14,10 @@ function crearRespuestaExitosa(
     metadatos.totalRegistros = totalRegistros;
   }
 
+  if (typeof obtenerDiagnosticoSolicitud_ === 'function') {
+    metadatos.diagnostico = obtenerDiagnosticoSolicitud_();
+  }
+
   return {
     ok: true,
     mensaje:
@@ -42,7 +46,11 @@ function crearRespuestaError(error) {
     ],
     datos: null,
     metadatos: {
-      fechaConsulta: new Date().toISOString()
+      fechaConsulta: new Date().toISOString(),
+      diagnostico:
+        typeof obtenerDiagnosticoSolicitud_ === 'function'
+          ? obtenerDiagnosticoSolicitud_()
+          : undefined
     }
   };
 }

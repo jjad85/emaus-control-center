@@ -343,11 +343,66 @@ function convertirAspiranteEnCaminanteInterno(
     habitacion:
       '',
 
+    contacto1Nombre:
+      String(
+        aspirante.contacto1Nombre ||
+        aspirante.contacto ||
+        ''
+      ).trim(),
+
+    contacto1Parentesco:
+      String(
+        aspirante.contacto1Parentesco ||
+        aspirante.parentescoContacto ||
+        ''
+      ).trim(),
+
+    contacto1Celular:
+      String(
+        aspirante.contacto1Celular ||
+        aspirante.telefonoContacto ||
+        ''
+      ).trim(),
+
+    contacto2Nombre:
+      String(
+        aspirante.contacto2Nombre ||
+        aspirante.contactoAlternoNombre ||
+        aspirante.nombreContacto2 ||
+        ''
+      ).trim(),
+
+    contacto2Parentesco:
+      String(
+        aspirante.contacto2Parentesco ||
+        aspirante.contactoAlternoParentesco ||
+        aspirante.parentescoContacto2 ||
+        ''
+      ).trim(),
+
+    contacto2Celular:
+      String(
+        aspirante.contacto2Celular ||
+        aspirante.contactoAlternoCelular ||
+        aspirante.telefonoContacto2 ||
+        aspirante.celularContacto2 ||
+        ''
+      ).trim(),
+
+    // Compatibilidad con módulos y columnas históricas.
     contacto:
-      aspirante.contacto1Nombre,
+      String(
+        aspirante.contacto1Nombre ||
+        aspirante.contacto ||
+        ''
+      ).trim(),
 
     telefonoContacto:
-      aspirante.contacto1Celular,
+      String(
+        aspirante.contacto1Celular ||
+        aspirante.telefonoContacto ||
+        ''
+      ).trim(),
 
     carta:
       'Pendiente',
@@ -370,6 +425,28 @@ function convertirAspiranteEnCaminanteInterno(
     dietaEspecial:
       aspirante.dietaEspecial || ''
   };
+
+  const camposContactoFaltantes = [
+    ['contacto1Nombre', 'nombre del contacto de emergencia 1'],
+    ['contacto1Parentesco', 'parentesco del contacto de emergencia 1'],
+    ['contacto1Celular', 'celular del contacto de emergencia 1'],
+    ['contacto2Nombre', 'nombre del contacto de emergencia 2'],
+    ['contacto2Parentesco', 'parentesco del contacto de emergencia 2'],
+    ['contacto2Celular', 'celular del contacto de emergencia 2']
+  ].filter(function(item) {
+    return !String(datosCaminante[item[0]] || '').trim();
+  });
+
+  if (camposContactoFaltantes.length) {
+    throw crearErrorAplicacion(
+      'CONTACTOS_ASPIRANTE_INCOMPLETOS',
+      'No fue posible convertir automáticamente al aspirante porque faltan estos datos en su registro: ' +
+        camposContactoFaltantes.map(function(item) {
+          return item[1];
+        }).join(', ') +
+        '. Edite el aspirante y complete la información antes de volver a reportar el pago.'
+    );
+  }
 
   /*
    * La creación se hace con la sesión ya validada.

@@ -150,6 +150,7 @@ function crearRegistroSheet(
   hoja.appendRow(
     fila
   );
+  invalidarCacheHojaSolicitud_(nombreHoja);
 
   return leerRegistroPorIdSheet(
     nombreHoja,
@@ -212,58 +213,39 @@ function listarRegistrosSheet(
   filtros,
   opciones
 ) {
-  const configuracion =
-    normalizarOpcionesCrud(
-      opciones
-    );
+  const configuracion = normalizarOpcionesCrud(opciones);
+  const claveCache = 'CRUD:' + nombreHoja;
+  let registros = obtenerCacheSolicitud_(claveCache);
 
-  const hoja =
-    obtenerHoja(
-      nombreHoja
-    );
+  if (registros === undefined) {
+    const hoja = obtenerHoja(nombreHoja);
+    const encabezados = obtenerEncabezadosCrud(hoja);
+    const ultimaFila = hoja.getLastRow();
 
-  const encabezados =
-    obtenerEncabezadosCrud(
-      hoja
-    );
+    if (ultimaFila < 2) {
+      registros = [];
+    } else {
+      const valores = hoja
+        .getRange(2, 1, ultimaFila - 1, encabezados.length)
+        .getDisplayValues();
+      registrarLecturaFisicaSolicitud_(nombreHoja);
 
-  const ultimaFila =
-    hoja.getLastRow();
+      registros = valores
+        .filter(function(fila) {
+          return fila.some(function(valor) {
+            return String(valor || '').trim() !== '';
+          });
+        })
+        .map(function(fila) {
+          return construirObjetoCrud(encabezados, fila);
+        });
+    }
 
-  if (ultimaFila < 2) {
-    return [];
+    guardarCacheSolicitud_(claveCache, registros);
   }
 
-  const valores =
-    hoja
-      .getRange(
-        2,
-        1,
-        ultimaFila - 1,
-        encabezados.length
-      )
-      .getDisplayValues();
-
-  const registros =
-    valores
-      .filter(function(fila) {
-        return fila.some(
-          function(valor) {
-            return String(
-              valor || ''
-            ).trim() !== '';
-          }
-        );
-      })
-      .map(function(fila) {
-        return construirObjetoCrud(
-          encabezados,
-          fila
-        );
-      });
-
   return aplicarFiltrosCrud(
-    registros,
+    copiarRegistrosSolicitud_(registros),
     filtros || {},
     configuracion
   );
@@ -378,6 +360,8 @@ function actualizarRegistroSheet(
         );
     }
   );
+
+  invalidarCacheHojaSolicitud_(nombreHoja);
 
   return leerRegistroPorIdSheet(
     nombreHoja,
@@ -603,6 +587,13 @@ function convertirEncabezadoCrud(
     'telefono del contacto':
       'telefonoContacto',
 
+    'contacto 1 nombre': 'contacto1Nombre',
+    'contacto 1 parentesco': 'contacto1Parentesco',
+    'contacto 1 celular': 'contacto1Celular',
+    'contacto 2 nombre': 'contacto2Nombre',
+    'contacto 2 parentesco': 'contacto2Parentesco',
+    'contacto 2 celular': 'contacto2Celular',
+
     'carta': 'carta',
 
     'foto': 'foto',
@@ -687,8 +678,15 @@ function convertirEncabezadoCrud(
 function obtenerEncabezadosCrud(
   hoja
 ) {
-  const ultimaColumna =
-    hoja.getLastColumn();
+  const nombreHoja = hoja.getName();
+  const contexto = obtenerContextoSolicitud_();
+  if (contexto.encabezadosCrud[nombreHoja]) {
+    return contexto.encabezadosCrud[nombreHoja].map(function(item) {
+      return Object.assign({}, item);
+    });
+  }
+
+  const ultimaColumna = hoja.getLastColumn();
 
   if (ultimaColumna < 1) {
     throw crearErrorAplicacion(
@@ -709,7 +707,7 @@ function obtenerEncabezadosCrud(
       )
       .getDisplayValues()[0];
 
-  return encabezadosOriginales.map(
+  const encabezados = encabezadosOriginales.map(
     function(encabezado) {
       return {
         original:
@@ -722,6 +720,11 @@ function obtenerEncabezadosCrud(
       };
     }
   );
+
+  contexto.encabezadosCrud[nombreHoja] = encabezados;
+  return encabezados.map(function(item) {
+    return Object.assign({}, item);
+  });
 }
 
 /**
