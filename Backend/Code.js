@@ -2,6 +2,7 @@
  * Punto de entrada de la aplicación web.
  */
 function doGet(e) {
+  iniciarContextoSolicitud_();
   try {
     const parametros =
       e && e.parameter
@@ -30,6 +31,7 @@ function doGet(e) {
  * Punto de entrada para operaciones POST.
  */
 function doPost(e) {
+  iniciarContextoSolicitud_();
   try {
     const contenido =
       e &&

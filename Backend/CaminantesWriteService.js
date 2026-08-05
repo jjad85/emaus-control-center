@@ -658,18 +658,84 @@ function prepararDatosCaminante(
         datos.habitacion
       ),
 
-    contacto:
+    contacto1Nombre:
       String(
-        datos.contacto || ''
+        datos.contacto1Nombre ||
+        (datos.contacto1 && datos.contacto1.nombre) ||
+        (datos.contacto && datos.contacto.nombre) ||
+        datos.contacto ||
+        ''
       ).trim(),
 
-    telefonoContacto:
+    contacto1Parentesco:
+      String(
+        datos.contacto1Parentesco ||
+        (datos.contacto1 && datos.contacto1.parentesco) ||
+        (datos.contacto && datos.contacto.parentesco) ||
+        ''
+      ).trim(),
+
+    contacto1Celular:
       validarCelularColombia(
+        datos.contacto1Celular ||
+        (datos.contacto1 && (datos.contacto1.celular || datos.contacto1.telefono)) ||
+        (datos.contacto && (datos.contacto.celular || datos.contacto.telefono)) ||
         datos.telefonoContacto,
         {
           requerido: true,
           etiqueta:
-            'El celular del contacto'
+            'El celular del contacto de emergencia 1'
+        }
+      ),
+
+    contacto2Nombre:
+      String(
+        datos.contacto2Nombre ||
+        (datos.contacto2 && datos.contacto2.nombre) ||
+        (datos.contactoAlterno && datos.contactoAlterno.nombre) ||
+        ''
+      ).trim(),
+
+    contacto2Parentesco:
+      String(
+        datos.contacto2Parentesco ||
+        (datos.contacto2 && datos.contacto2.parentesco) ||
+        (datos.contactoAlterno && datos.contactoAlterno.parentesco) ||
+        ''
+      ).trim(),
+
+    contacto2Celular:
+      validarCelularColombia(
+        datos.contacto2Celular ||
+        (datos.contacto2 && (datos.contacto2.celular || datos.contacto2.telefono)) ||
+        (datos.contactoAlterno && (datos.contactoAlterno.celular || datos.contactoAlterno.telefono)),
+        {
+          requerido: true,
+          etiqueta:
+            'El celular del contacto de emergencia 2'
+        }
+      ),
+
+    // Compatibilidad temporal con módulos que todavía consumen el modelo anterior.
+    contacto:
+      String(
+        datos.contacto1Nombre ||
+        (datos.contacto1 && datos.contacto1.nombre) ||
+        (datos.contacto && datos.contacto.nombre) ||
+        datos.contacto ||
+        ''
+      ).trim(),
+
+    telefonoContacto:
+      validarCelularColombia(
+        datos.contacto1Celular ||
+        (datos.contacto1 && (datos.contacto1.celular || datos.contacto1.telefono)) ||
+        (datos.contacto && (datos.contacto.celular || datos.contacto.telefono)) ||
+        datos.telefonoContacto,
+        {
+          requerido: true,
+          etiqueta:
+            'El celular del contacto de emergencia 1'
         }
       ),
 
@@ -724,19 +790,45 @@ function validarDatosCaminante(
     );
   }
 
-  if (!datos.contacto) {
+  if (!datos.contacto1Nombre) {
     throw crearErrorAplicacion(
-      'CONTACTO_REQUERIDO',
-      'Debe ingresar el contacto.'
+      'CONTACTO_1_REQUERIDO',
+      'Debe ingresar el nombre del contacto de emergencia 1.'
     );
   }
 
-  if (
-    !datos.telefonoContacto
-  ) {
+  if (!datos.contacto1Parentesco) {
     throw crearErrorAplicacion(
-      'TELEFONO_CONTACTO_REQUERIDO',
-      'Debe ingresar el teléfono del contacto.'
+      'PARENTESCO_CONTACTO_1_REQUERIDO',
+      'Debe ingresar el parentesco del contacto de emergencia 1.'
+    );
+  }
+
+  if (!datos.contacto1Celular) {
+    throw crearErrorAplicacion(
+      'TELEFONO_CONTACTO_1_REQUERIDO',
+      'Debe ingresar el celular del contacto de emergencia 1.'
+    );
+  }
+
+  if (!datos.contacto2Nombre) {
+    throw crearErrorAplicacion(
+      'CONTACTO_2_REQUERIDO',
+      'Debe ingresar el nombre del contacto de emergencia 2.'
+    );
+  }
+
+  if (!datos.contacto2Parentesco) {
+    throw crearErrorAplicacion(
+      'PARENTESCO_CONTACTO_2_REQUERIDO',
+      'Debe ingresar el parentesco del contacto de emergencia 2.'
+    );
+  }
+
+  if (!datos.contacto2Celular) {
+    throw crearErrorAplicacion(
+      'TELEFONO_CONTACTO_2_REQUERIDO',
+      'Debe ingresar el celular del contacto de emergencia 2.'
     );
   }
 
@@ -1120,13 +1212,37 @@ function convertirRegistroCaminanteRespuesta(
     habitacion:
       registro.habitacion || '',
 
+    contacto1Nombre:
+      registro.contacto1Nombre || registro.contacto || '',
+
+    contacto1Parentesco:
+      registro.contacto1Parentesco || '',
+
+    contacto1Celular:
+      registro.contacto1Celular || registro.telefonoContacto || '',
+
+    contacto2Nombre:
+      registro.contacto2Nombre || '',
+
+    contacto2Parentesco:
+      registro.contacto2Parentesco || '',
+
+    contacto2Celular:
+      registro.contacto2Celular || '',
+
     contacto: {
       nombre:
-        registro.contacto || '',
-
+        registro.contacto1Nombre || registro.contacto || '',
+      parentesco:
+        registro.contacto1Parentesco || '',
       telefono:
-        registro.telefonoContacto ||
-        ''
+        registro.contacto1Celular || registro.telefonoContacto || ''
+    },
+
+    contactoAlterno: {
+      nombre: registro.contacto2Nombre || '',
+      parentesco: registro.contacto2Parentesco || '',
+      telefono: registro.contacto2Celular || ''
     },
 
     entregables: {

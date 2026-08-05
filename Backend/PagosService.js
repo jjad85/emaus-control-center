@@ -268,10 +268,22 @@ function guardarComprobantePago(archivo, persona) {
 function reportarPagoPublico(datos) {
   const entrada = datos || {};
 
-  if (!entrada.archivo || !entrada.archivo.base64) {
+  const medioPago = String(entrada.medioPago || 'Transferencia').trim();
+
+  if (!['Transferencia', 'Efectivo'].includes(medioPago)) {
+    throw crearErrorAplicacion(
+      'MEDIO_PAGO_INVALIDO',
+      'El método de pago debe ser Transferencia o Efectivo.'
+    );
+  }
+
+  if (
+    medioPago === 'Transferencia' &&
+    (!entrada.archivo || !entrada.archivo.base64)
+  ) {
     throw crearErrorAplicacion(
       'COMPROBANTE_REQUERIDO',
-      'Debe adjuntar el comprobante del pago.'
+      'Debe adjuntar el comprobante cuando el método de pago sea transferencia.'
     );
   }
 
@@ -299,7 +311,9 @@ function reportarPagoPublico(datos) {
   }
 
   resumen.valorReportado = valor;
-  const comprobante = guardarComprobantePago(entrada.archivo, resumen);
+  const comprobante = medioPago === 'Transferencia'
+    ? guardarComprobantePago(entrada.archivo, resumen)
+    : { id:'', url:'', nombre:'', tipo:'', tamano:0 };
 
   return ejecutarCrudConBloqueo(function() {
     let conversionAutomatica = false;
@@ -357,13 +371,13 @@ function reportarPagoPublico(datos) {
       valorReportado: valor,
       valorAprobado: '',
       fechaPago: String(entrada.fechaPago || ''),
-      medioPago: String(entrada.medioPago || ''),
+      medioPago: medioPago,
       entidadPago: String(entrada.entidadPago || ''),
       referenciaPago: String(entrada.referenciaPago || ''),
       nombrePagador: String(entrada.nombrePagador || ''),
       telefonoPagador: validarCelularColombia(
         entrada.telefonoPagador,
-        { etiqueta: 'El teléfono del pagador' }
+        { etiqueta: medioPago === 'Efectivo' ? 'El teléfono de la persona que tiene el dinero' : 'El teléfono del pagador' }
       ),
       comprobanteUrl: comprobante.url,
       comprobanteId: comprobante.id,

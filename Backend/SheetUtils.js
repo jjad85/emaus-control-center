@@ -12,6 +12,88 @@
 const PROPIEDAD_SPREADSHEET_ID =
   'EMAUS_SPREADSHEET_ID';
 
+/**
+ * Contexto efímero de acceso a Sheets.
+ * Se reinicia al comienzo de cada doGet/doPost y evita abrir o leer
+ * repetidamente el mismo libro/hoja dentro de una sola solicitud.
+ */
+var CONTEXTO_SHEETS_SOLICITUD_ = null;
+
+function iniciarContextoSolicitud_() {
+  CONTEXTO_SHEETS_SOLICITUD_ = {
+    inicioMs: Date.now(),
+    libro: null,
+    hojas: {},
+    datos: {},
+    encabezadosCrud: {},
+    hojasLeidas: {},
+    lecturasFisicas: 0
+  };
+  return CONTEXTO_SHEETS_SOLICITUD_;
+}
+
+function obtenerContextoSolicitud_() {
+  if (!CONTEXTO_SHEETS_SOLICITUD_) {
+    return iniciarContextoSolicitud_();
+  }
+  return CONTEXTO_SHEETS_SOLICITUD_;
+}
+
+function obtenerCacheSolicitud_(clave) {
+  var contexto = obtenerContextoSolicitud_();
+  return Object.prototype.hasOwnProperty.call(contexto.datos, clave)
+    ? contexto.datos[clave]
+    : undefined;
+}
+
+function guardarCacheSolicitud_(clave, valor) {
+  obtenerContextoSolicitud_().datos[clave] = valor;
+  return valor;
+}
+
+function copiarRegistrosSolicitud_(registros) {
+  return (registros || []).map(function(registro) {
+    return Object.assign({}, registro);
+  });
+}
+
+function registrarLecturaFisicaSolicitud_(nombreHoja) {
+  var contexto = obtenerContextoSolicitud_();
+  contexto.lecturasFisicas += 1;
+  contexto.hojasLeidas[nombreHoja] =
+    (contexto.hojasLeidas[nombreHoja] || 0) + 1;
+}
+
+function invalidarCacheHojaSolicitud_(nombreHoja) {
+  var contexto = obtenerContextoSolicitud_();
+  Object.keys(contexto.datos).forEach(function(clave) {
+    if (
+      clave === 'HOJA:' + nombreHoja ||
+      clave === 'CRUD:' + nombreHoja ||
+      clave.indexOf('HOJA:' + nombreHoja + ':') === 0 ||
+      clave.indexOf('CRUD:' + nombreHoja + ':') === 0
+    ) {
+      delete contexto.datos[clave];
+    }
+  });
+  delete contexto.encabezadosCrud[nombreHoja];
+}
+
+function obtenerDiagnosticoSolicitud_() {
+  var contexto = obtenerContextoSolicitud_();
+  return {
+    duracionMs: Math.max(0, Date.now() - contexto.inicioMs),
+    lecturasFisicas: contexto.lecturasFisicas,
+    hojasLeidas: Object.keys(contexto.hojasLeidas).map(function(nombre) {
+      return {
+        hoja: nombre,
+        lecturas: contexto.hojasLeidas[nombre]
+      };
+    })
+  };
+}
+
+
 
 /**
  * Nombre de las hojas.
@@ -73,11 +155,13 @@ function obtenerSpreadsheetId() {
  * Abre el libro.
  */
 function obtenerLibro() {
-
-  return SpreadsheetApp.openById(
-    obtenerSpreadsheetId()
-  );
-
+  const contexto = obtenerContextoSolicitud_();
+  if (!contexto.libro) {
+    contexto.libro = SpreadsheetApp.openById(
+      obtenerSpreadsheetId()
+    );
+  }
+  return contexto.libro;
 }
 
 
@@ -85,24 +169,21 @@ function obtenerLibro() {
  * Obtiene una hoja.
  */
 function obtenerHoja(nombreHoja){
-
-  const hoja =
-    obtenerLibro()
-      .getSheetByName(nombreHoja);
-
-  if(!hoja){
-
-    throw crearErrorAplicacion(
-      'HOJA_NO_EXISTE',
-      'No existe la hoja "' +
-      nombreHoja +
-      '".'
-    );
-
+  const contexto = obtenerContextoSolicitud_();
+  if (contexto.hojas[nombreHoja]) {
+    return contexto.hojas[nombreHoja];
   }
 
-  return hoja;
+  const hoja = obtenerLibro().getSheetByName(nombreHoja);
+  if(!hoja){
+    throw crearErrorAplicacion(
+      'HOJA_NO_EXISTE',
+      'No existe la hoja "' + nombreHoja + '".'
+    );
+  }
 
+  contexto.hojas[nombreHoja] = hoja;
+  return hoja;
 }
 
 
@@ -111,50 +192,39 @@ function obtenerHoja(nombreHoja){
  * un arreglo de objetos.
  */
 function leerHojaComoObjetos(nombreHoja){
-
-  const hoja =
-    obtenerHoja(nombreHoja);
-
-  const datos =
-    hoja.getDataRange()
-        .getDisplayValues();
-
-  if(datos.length<=1){
-
-    return [];
-
+  const claveCache = 'HOJA:' + nombreHoja;
+  const almacenados = obtenerCacheSolicitud_(claveCache);
+  if (almacenados !== undefined) {
+    return copiarRegistrosSolicitud_(almacenados);
   }
 
-  const encabezados =
-    datos[0]
-      .map(convertirEncabezado);
+  const hoja = obtenerHoja(nombreHoja);
+  const datos = hoja.getDataRange().getDisplayValues();
+  registrarLecturaFisicaSolicitud_(nombreHoja);
 
-  return datos
+  if(datos.length<=1){
+    guardarCacheSolicitud_(claveCache, []);
+    return [];
+  }
+
+  const encabezados = datos[0].map(convertirEncabezado);
+  const registros = datos
     .slice(1)
     .filter(function(fila){
-
       return fila.some(function(valor){
-
         return String(valor).trim()!='';
-
       });
-
     })
     .map(function(fila){
-
       const objeto={};
-
       encabezados.forEach(function(campo,i){
-
-        objeto[campo]=
-          fila[i] || '';
-
+        objeto[campo]=fila[i] || '';
       });
-
       return objeto;
-
     });
 
+  guardarCacheSolicitud_(claveCache, registros);
+  return copiarRegistrosSolicitud_(registros);
 }
 
 
@@ -297,6 +367,12 @@ function convertirEncabezado(texto){
     'habitacion':'habitacion',
     'contacto':'contacto',
     'telefono contacto':'telefonoContacto',
+    'contacto 1 nombre':'contacto1Nombre',
+    'contacto 1 parentesco':'contacto1Parentesco',
+    'contacto 1 celular':'contacto1Celular',
+    'contacto 2 nombre':'contacto2Nombre',
+    'contacto 2 parentesco':'contacto2Parentesco',
+    'contacto 2 celular':'contacto2Celular',
     'carta':'carta',
     'foto':'foto',
     'carta aprobada logistica por':'cartaAprobadaLogisticaPor',

@@ -333,12 +333,37 @@ function convertirCaminante(registro) {
     habitacion:
       registro.habitacion || '',
 
+    contacto1Nombre:
+      registro.contacto1Nombre || registro.contacto || '',
+
+    contacto1Parentesco:
+      registro.contacto1Parentesco || '',
+
+    contacto1Celular:
+      registro.contacto1Celular || registro.telefonoContacto || '',
+
+    contacto2Nombre:
+      registro.contacto2Nombre || '',
+
+    contacto2Parentesco:
+      registro.contacto2Parentesco || '',
+
+    contacto2Celular:
+      registro.contacto2Celular || '',
+
     contacto: {
       nombre:
-        registro.contacto || '',
-
+        registro.contacto1Nombre || registro.contacto || '',
+      parentesco:
+        registro.contacto1Parentesco || '',
       telefono:
-        registro.telefonoContacto || ''
+        registro.contacto1Celular || registro.telefonoContacto || ''
+    },
+
+    contactoAlterno: {
+      nombre: registro.contacto2Nombre || '',
+      parentesco: registro.contacto2Parentesco || '',
+      telefono: registro.contacto2Celular || ''
     },
 
     activo:
