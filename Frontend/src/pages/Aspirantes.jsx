@@ -1,7 +1,4 @@
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -25,7 +22,8 @@ import ContactEmergencyRounded from '@mui/icons-material/ContactEmergencyRounded
 import FavoriteRounded from '@mui/icons-material/FavoriteRounded';
 import HomeRounded from '@mui/icons-material/HomeRounded';
 import InfoRounded from '@mui/icons-material/InfoRounded';
-import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded';
+import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
 import SearchRounded from '@mui/icons-material/SearchRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import PhoneRounded from '@mui/icons-material/PhoneRounded';
@@ -767,88 +765,460 @@ function TarjetaAspirante({
   );
 }
 
-function GrupoAspirantes({
+function PanelEstadoAspirantes({
   id,
   titulo,
-  cantidad,
+  subtitulo,
   items,
-  expandido,
-  onCambiar,
   color,
+  colorSuave,
   mensajeVacio,
   onVerDetalle,
   token,
   puedeNotificar,
   onNotificacionCompletada,
 }) {
+  const [orden, setOrden] =
+    useState('antiguos');
+
+  const itemsOrdenados =
+    useMemo(
+      () => {
+        const ordenados =
+          ordenarAspirantesAntiguosPrimero(
+            items
+          );
+
+        return orden === 'nuevos'
+          ? [...ordenados].reverse()
+          : ordenados;
+      },
+      [items, orden]
+    );
+
   return (
-    <Accordion
-      expanded={expandido}
-      onChange={() => onCambiar(id)}
-      disableGutters
+    <Paper
+      variant="outlined"
       sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: '16px !important',
+        borderRadius: 5,
         overflow: 'hidden',
-        boxShadow: 'none',
-        '&:before': { display: 'none' },
+        borderColor:
+          'rgba(20,75,62,.12)',
+        bgcolor: '#fff',
+        boxShadow:
+          '0 20px 55px rgba(17,48,41,.08)',
       }}
     >
-      <AccordionSummary
-        expandIcon={<ExpandMoreRounded />}
+      <Box
         sx={{
-          px: { xs: 2, md: 2.5 },
-          py: 0.5,
-          bgcolor: 'background.paper',
-          borderLeft: 6,
-          borderLeftColor: color,
-          '& .MuiAccordionSummary-content': {
-            alignItems: 'center',
-            gap: 1.25,
+          position: 'relative',
+          px: {
+            xs: 2,
+            md: 3,
+          },
+          py: {
+            xs: 2,
+            md: 2.5,
+          },
+          overflow: 'hidden',
+          borderBottom: 1,
+          borderColor: 'divider',
+          background:
+            `linear-gradient(135deg, ${colorSuave} 0%, #ffffff 66%)`,
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            width: 180,
+            height: 180,
+            borderRadius: '50%',
+            right: -60,
+            top: -90,
+            bgcolor: color,
+            opacity: 0.055,
+            pointerEvents: 'none',
           },
         }}
       >
-        <Typography fontWeight={950} sx={{ flex: 1 }}>
-          {titulo}
-        </Typography>
+        <Stack
+          direction={{
+            xs: 'column',
+            md: 'row',
+          }}
+          alignItems={{
+            xs: 'stretch',
+            md: 'center',
+          }}
+          justifyContent="space-between"
+          gap={2}
+          position="relative"
+          zIndex={1}
+        >
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+          >
+            <Box
+              sx={{
+                width: 52,
+                height: 52,
+                borderRadius: 3,
+                display: 'grid',
+                placeItems: 'center',
+                color,
+                bgcolor: '#fff',
+                border: 1,
+                borderColor:
+                  'rgba(20,75,62,.10)',
+                boxShadow:
+                  '0 8px 22px rgba(17,48,41,.08)',
+              }}
+            >
+              {id === 'pendientes' && (
+                <PersonRounded />
+              )}
 
-        <Chip
-          size="small"
-          label={cantidad}
-          sx={{ fontWeight: 900 }}
-        />
-      </AccordionSummary>
+              {id === 'aprobados' && (
+                <CheckRounded />
+              )}
 
-      <AccordionDetails
+              {id === 'rechazados' && (
+                <CloseRounded />
+              )}
+            </Box>
+
+            <Box>
+              <Typography
+                variant="overline"
+                sx={{
+                  color,
+                  fontWeight: 950,
+                  letterSpacing: '.13em',
+                  lineHeight: 1.2,
+                }}
+              >
+                Vista activa
+              </Typography>
+
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                flexWrap="wrap"
+              >
+                <Typography
+                  variant="h5"
+                  fontWeight={950}
+                >
+                  {titulo}
+                </Typography>
+
+                <Chip
+                  label={items.length}
+                  size="small"
+                  sx={{
+                    fontWeight: 950,
+                    bgcolor: colorSuave,
+                    color,
+                  }}
+                />
+              </Stack>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  mt: 0.35,
+                  maxWidth: 650,
+                }}
+              >
+                {subtitulo}
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Box
+            sx={{
+              p: 0.5,
+              display: 'grid',
+              gridTemplateColumns:
+                'repeat(2, minmax(0, 1fr))',
+              borderRadius: 999,
+              bgcolor:
+                'rgba(17,48,41,.055)',
+              border: 1,
+              borderColor:
+                'rgba(17,48,41,.08)',
+              minWidth: {
+                xs: '100%',
+                md: 330,
+              },
+            }}
+          >
+            <Button
+              size="small"
+              startIcon={
+                <ArrowUpwardRounded />
+              }
+              onClick={() =>
+                setOrden('antiguos')
+              }
+              sx={{
+                borderRadius: 999,
+                py: 0.9,
+                px: 1.5,
+                fontWeight: 900,
+                color:
+                  orden === 'antiguos'
+                    ? '#fff'
+                    : 'text.secondary',
+                bgcolor:
+                  orden === 'antiguos'
+                    ? '#174b40'
+                    : 'transparent',
+                boxShadow:
+                  orden === 'antiguos'
+                    ? '0 7px 18px rgba(23,75,64,.18)'
+                    : 'none',
+                '&:hover': {
+                  bgcolor:
+                    orden === 'antiguos'
+                      ? '#123f35'
+                      : 'rgba(23,75,64,.06)',
+                },
+              }}
+            >
+              Antiguas primero
+            </Button>
+
+            <Button
+              size="small"
+              startIcon={
+                <ArrowDownwardRounded />
+              }
+              onClick={() =>
+                setOrden('nuevos')
+              }
+              sx={{
+                borderRadius: 999,
+                py: 0.9,
+                px: 1.5,
+                fontWeight: 900,
+                color:
+                  orden === 'nuevos'
+                    ? '#fff'
+                    : 'text.secondary',
+                bgcolor:
+                  orden === 'nuevos'
+                    ? '#174b40'
+                    : 'transparent',
+                boxShadow:
+                  orden === 'nuevos'
+                    ? '0 7px 18px rgba(23,75,64,.18)'
+                    : 'none',
+                '&:hover': {
+                  bgcolor:
+                    orden === 'nuevos'
+                      ? '#123f35'
+                      : 'rgba(23,75,64,.06)',
+                },
+              }}
+            >
+              Recientes primero
+            </Button>
+          </Box>
+        </Stack>
+      </Box>
+
+      <Box
         sx={{
-          p: { xs: 1.5, md: 2 },
-          bgcolor: 'action.hover',
+          p: {
+            xs: 1.5,
+            md: 2.25,
+          },
+          bgcolor:
+            'rgba(17,48,41,.018)',
         }}
       >
-        <Stack spacing={1.5}>
-          {items.map((item) => (
-            <TarjetaAspirante
-              key={item.id}
-              item={item}
-              onVerDetalle={onVerDetalle}
-              colorBorde={color}
-              token={token}
-              puedeNotificar={puedeNotificar}
-              onNotificacionCompletada={
-                onNotificacionCompletada
-              }
-            />
-          ))}
+        {itemsOrdenados.length > 0 ? (
+          <Stack spacing={1.35}>
+            {itemsOrdenados.map(
+              (item, indice) => (
+                <Box
+                  key={item.id}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      md: '54px minmax(0, 1fr)',
+                    },
+                    alignItems: 'stretch',
+                    gap: {
+                      xs: 0,
+                      md: 1.25,
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: {
+                        xs: 'none',
+                        md: 'flex',
+                      },
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      pt: 1.6,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: '50%',
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor:
+                          indice === 0
+                            ? color
+                            : '#fff',
+                        color:
+                          indice === 0
+                            ? '#fff'
+                            : 'text.secondary',
+                        border: 1,
+                        borderColor:
+                          indice === 0
+                            ? color
+                            : 'divider',
+                        boxShadow:
+                          '0 6px 16px rgba(17,48,41,.08)',
+                        zIndex: 1,
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        fontWeight={950}
+                      >
+                        {String(
+                          indice + 1
+                        ).padStart(2, '0')}
+                      </Typography>
+                    </Box>
 
-          {items.length === 0 && (
-            <Alert severity={id === 'pendientes' ? 'success' : 'info'}>
+                    {indice <
+                      itemsOrdenados.length -
+                        1 && (
+                      <Box
+                        sx={{
+                          width: 1,
+                          flex: 1,
+                          minHeight: 26,
+                          mt: 0.7,
+                          bgcolor:
+                            'rgba(23,75,64,.11)',
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      '& > .MuiPaper-root': {
+                        border:
+                          '1px solid rgba(20,75,62,.10)',
+                        borderLeftWidth: 1,
+                        bgcolor: '#fff',
+                        boxShadow:
+                          '0 7px 22px rgba(17,48,41,.045)',
+                        transition:
+                          'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
+                        '&:hover': {
+                          transform:
+                            'translateY(-2px)',
+                          borderColor:
+                            'rgba(23,107,88,.28)',
+                          boxShadow:
+                            '0 16px 34px rgba(17,48,41,.09)',
+                        },
+                        '&::before': {
+                          content: '""',
+                          position:
+                            'absolute',
+                          left: 0,
+                          top: 20,
+                          bottom: 20,
+                          width: 4,
+                          borderRadius:
+                            '0 8px 8px 0',
+                          bgcolor: color,
+                          opacity: 0.82,
+                        },
+                      },
+                    }}
+                  >
+                    <TarjetaAspirante
+                      item={item}
+                      onVerDetalle={
+                        onVerDetalle
+                      }
+                      colorBorde="transparent"
+                      token={token}
+                      puedeNotificar={
+                        puedeNotificar
+                      }
+                      onNotificacionCompletada={
+                        onNotificacionCompletada
+                      }
+                    />
+                  </Box>
+                </Box>
+              )
+            )}
+          </Stack>
+        ) : (
+          <Box
+            sx={{
+              py: 5,
+              px: 2,
+              textAlign: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                width: 58,
+                height: 58,
+                mx: 'auto',
+                mb: 1.5,
+                borderRadius: '50%',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: colorSuave,
+                color,
+              }}
+            >
+              {id === 'pendientes'
+                ? <CheckRounded />
+                : <InfoRounded />}
+            </Box>
+
+            <Typography
+              variant="h6"
+              fontWeight={900}
+            >
+              Sin registros en esta vista
+            </Typography>
+
+            <Typography
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
               {mensajeVacio}
-            </Alert>
-          )}
-        </Stack>
-      </AccordionDetails>
-    </Accordion>
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    </Paper>
   );
 }
 
@@ -972,9 +1342,6 @@ export default function Aspirantes() {
     };
   }, [items, busqueda]);
 
-  function cambiarGrupo(id) {
-    setGrupoAbierto((actual) => actual === id ? '' : id);
-  }
 
   function puede(permiso) {
     return !authLoading && autenticado && tienePermiso(permiso);
@@ -1077,7 +1444,134 @@ export default function Aspirantes() {
         loading={api.loading}
       />
 
-      <Stack spacing={2}>
+      <Stack spacing={2.5}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2.25, md: 3 },
+            borderRadius: 4,
+            overflow: 'hidden',
+            position: 'relative',
+            color: '#fff',
+            background: 'linear-gradient(135deg, #0b3d34 0%, #176b58 62%, #2c8a72 100%)',
+            boxShadow: '0 18px 45px rgba(15,72,60,.16)',
+          }}
+        >
+          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2.5}>
+            <Box>
+              <Typography variant="overline" sx={{ color: '#c8f1e5', fontWeight: 950, letterSpacing: '.14em' }}>
+                Gestión de admisiones
+              </Typography>
+              <Typography variant="h4" fontWeight={950} sx={{ mt: .25 }}>
+                Acompaña cada inscripción hasta su decisión
+              </Typography>
+              <Typography sx={{ mt: 1, maxWidth: 700, color: 'rgba(255,255,255,.76)', lineHeight: 1.65 }}>
+                Revisa primero los pendientes, consulta la información del aspirante y gestiona su avance desde un solo lugar.
+              </Typography>
+            </Box>
+
+            {puede('ASPIRANTES_REGISTRAR') && (
+              <Button
+                variant="contained"
+                startIcon={<PersonAddRounded />}
+                onClick={() => navigate('/aspirantes/nuevo')}
+                sx={{
+                  alignSelf: { xs: 'stretch', md: 'center' },
+                  bgcolor: '#fff',
+                  color: '#124b40',
+                  fontWeight: 950,
+                  px: 2.5,
+                  '&:hover': { bgcolor: '#f3fbf8' },
+                }}
+              >
+                Registrar aspirante
+              </Button>
+            )}
+          </Stack>
+        </Paper>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+            gap: 1.5,
+          }}
+        >
+          {[
+            { id: 'pendientes', titulo: 'Por gestionar', valor: grupos.pendientes.length, icono: <PersonRounded />, fondo: '#fff8e8', borde: '#e8b84a', texto: '#74530c' },
+            { id: 'aprobados', titulo: 'Aprobados', valor: grupos.aprobados.length, icono: <CheckRounded />, fondo: '#edf8f3', borde: '#42a77c', texto: '#175b43' },
+            { id: 'rechazados', titulo: 'Rechazados', valor: grupos.rechazados.length, icono: <CloseRounded />, fondo: '#fff1f1', borde: '#d96b6b', texto: '#7b2929' },
+          ].map((resumen) => (
+            <Paper
+              key={resumen.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setGrupoAbierto(resumen.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') setGrupoAbierto(resumen.id);
+              }}
+              variant="outlined"
+              sx={{
+                p: 2,
+                borderRadius: 3.5,
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                borderColor:
+                  grupoAbierto === resumen.id
+                    ? resumen.borde
+                    : 'divider',
+                borderWidth:
+                  grupoAbierto === resumen.id
+                    ? 2
+                    : 1,
+                bgcolor:
+                  grupoAbierto === resumen.id
+                    ? resumen.fondo
+                    : '#fff',
+                boxShadow:
+                  grupoAbierto === resumen.id
+                    ? `0 15px 34px ${resumen.borde}28`
+                    : '0 6px 20px rgba(17,48,41,.035)',
+                transition:
+                  'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  right: -26,
+                  top: -34,
+                  width: 100,
+                  height: 100,
+                  borderRadius: '50%',
+                  bgcolor: resumen.borde,
+                  opacity:
+                    grupoAbierto === resumen.id
+                      ? 0.10
+                      : 0,
+                  transition: 'opacity .18s ease',
+                },
+                '&:hover': {
+                  transform: 'translateY(-3px)',
+                  boxShadow:
+                    `0 16px 34px ${resumen.borde}22`,
+                  borderColor: resumen.borde,
+                },
+              }}
+            >
+              <Stack direction="row" alignItems="center" spacing={1.5}>
+                <Box sx={{ width: 44, height: 44, borderRadius: 2.5, display: 'grid', placeItems: 'center', bgcolor: resumen.fondo, color: resumen.texto }}>
+                  {resumen.icono}
+                </Box>
+                <Box>
+                  <Typography variant="h5" fontWeight={950} color={resumen.texto}>{resumen.valor}</Typography>
+                  <Typography variant="body2" color="text.secondary" fontWeight={750}>{resumen.titulo}</Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          ))}
+        </Box>
+
+        <Paper variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, borderRadius: 3.5, bgcolor: '#fff' }}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           justifyContent="space-between"
@@ -1118,71 +1612,61 @@ export default function Aspirantes() {
               </Button>
             )}
 
-            {puede('ASPIRANTES_REGISTRAR') && (
-              <Button
-                variant="contained"
-                startIcon={<PersonAddRounded />}
-                onClick={() => navigate('/aspirantes/nuevo')}
-              >
-                Registrar aspirante
-              </Button>
-            )}
           </Stack>
         </Stack>
+        </Paper>
 
-        <GrupoAspirantes
-          id="pendientes"
-          titulo="Pendientes"
-          cantidad={grupos.pendientes.length}
-          items={grupos.pendientes}
-          expandido={grupoAbierto === 'pendientes'}
-          onCambiar={cambiarGrupo}
-          color="warning.main"
-          mensajeVacio="No hay aspirantes pendientes por gestionar."
+        <PanelEstadoAspirantes
+          id={grupoAbierto}
+          titulo={
+            grupoAbierto === 'pendientes'
+              ? 'Por gestionar'
+              : grupoAbierto === 'aprobados'
+                ? 'Aprobados'
+                : 'Rechazados'
+          }
+          subtitulo={
+            grupoAbierto === 'pendientes'
+              ? 'Inscripciones que requieren revisión o una decisión del equipo.'
+              : grupoAbierto === 'aprobados'
+                ? 'Personas aprobadas o ya convertidas en caminantes.'
+                : 'Solicitudes rechazadas que permanecen disponibles para consulta.'
+          }
+          items={
+            grupos[grupoAbierto] || []
+          }
+          color={
+            grupoAbierto === 'pendientes'
+              ? '#b98316'
+              : grupoAbierto === 'aprobados'
+                ? '#21865f'
+                : '#b54747'
+          }
+          colorSuave={
+            grupoAbierto === 'pendientes'
+              ? '#fff8e8'
+              : grupoAbierto === 'aprobados'
+                ? '#edf8f3'
+                : '#fff1f1'
+          }
+          mensajeVacio={
+            grupoAbierto === 'pendientes'
+              ? 'No hay aspirantes pendientes por gestionar.'
+              : grupoAbierto === 'aprobados'
+                ? 'Todavía no hay aspirantes aprobados.'
+                : 'No hay aspirantes rechazados.'
+          }
           onVerDetalle={setSeleccionado}
           token={token}
           puedeNotificar={
             puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
             puede('ASPIRANTES_CAMBIAR_ESTADO')
           }
-          onNotificacionCompletada={api.reload}
+          onNotificacionCompletada={
+            api.reload
+          }
         />
 
-        <GrupoAspirantes
-          id="aprobados"
-          titulo="Aprobados"
-          cantidad={grupos.aprobados.length}
-          items={grupos.aprobados}
-          expandido={grupoAbierto === 'aprobados'}
-          onCambiar={cambiarGrupo}
-          color="success.main"
-          mensajeVacio="Todavía no hay aspirantes aprobados."
-          onVerDetalle={setSeleccionado}
-          token={token}
-          puedeNotificar={
-            puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
-            puede('ASPIRANTES_CAMBIAR_ESTADO')
-          }
-          onNotificacionCompletada={api.reload}
-        />
-
-        <GrupoAspirantes
-          id="rechazados"
-          titulo="Rechazados"
-          cantidad={grupos.rechazados.length}
-          items={grupos.rechazados}
-          expandido={grupoAbierto === 'rechazados'}
-          onCambiar={cambiarGrupo}
-          color="error.main"
-          mensajeVacio="No hay aspirantes rechazados."
-          onVerDetalle={setSeleccionado}
-          token={token}
-          puedeNotificar={
-            puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
-            puede('ASPIRANTES_CAMBIAR_ESTADO')
-          }
-          onNotificacionCompletada={api.reload}
-        />
       </Stack>
       <Dialog
         open={Boolean(seleccionado)}

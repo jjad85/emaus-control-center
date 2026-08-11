@@ -891,7 +891,7 @@ export default function RegistroAspirante({ registroInterno = false }) {
               color="text.secondary"
             >
               {registroInterno
-                ? `Estás registrando un caminante como ${servidorSesion.nombre || sesion?.nombre || 'servidor autenticado'}.`
+                ? `Estás registrando un aspirante como ${servidorSesion.nombre || sesion?.nombre || 'servidor autenticado'}.`
                 : 'Diligencia la información con calma y verifica los datos antes de enviar.'}
             </Typography>
           </Box>
@@ -1079,7 +1079,9 @@ export default function RegistroAspirante({ registroInterno = false }) {
           <Box
             sx={{
               display: (!registroInterno && dialogoTipoRegistrante) ? 'none' : 'grid',
-              gridTemplateColumns: { xs: '1fr', lg: 'minmax(300px, 0.72fr) minmax(0, 1.28fr)' },
+              gridTemplateColumns: registroInterno
+                ? 'minmax(0, 1fr)'
+                : { xs: '1fr', lg: 'minmax(300px, 0.72fr) minmax(0, 1.28fr)' },
               gap: { xs: 2, md: 3 },
               alignItems: 'start',
             }}
@@ -1156,6 +1158,9 @@ export default function RegistroAspirante({ registroInterno = false }) {
             <Paper
               sx={{
                 p: { xs: 2, md: 3.5 },
+                width: '100%',
+                maxWidth: registroInterno ? 1180 : 'none',
+                mx: registroInterno ? 'auto' : 0,
                 borderRadius: 5,
                 border: '1px solid rgba(20, 75, 62, 0.12)',
                 boxShadow: '0 24px 70px rgba(17, 48, 41, 0.10)',

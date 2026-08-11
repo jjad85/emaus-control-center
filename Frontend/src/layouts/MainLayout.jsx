@@ -26,7 +26,6 @@ import DashboardRounded from '@mui/icons-material/DashboardRounded';
 import AssignmentIndRounded from '@mui/icons-material/AssignmentIndRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
-import PersonAddRounded from '@mui/icons-material/PersonAddRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
 import SlideshowRounded from '@mui/icons-material/SlideshowRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
@@ -96,12 +95,6 @@ const menuGroups = [
         path: '/aspirantes',
         icon: <AssignmentIndRounded />,
         permiso: 'ASPIRANTES_VER_DETALLE',
-      },
-      {
-        label: 'Registrar aspirante',
-        path: '/aspirantes/nuevo',
-        icon: <PersonAddRounded />,
-        permiso: 'ASPIRANTES_REGISTRAR',
       },
       {
         label: 'Caminantes',
