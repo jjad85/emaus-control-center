@@ -1,28 +1,39 @@
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
   CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  LinearProgress,
+  MenuItem,
+  Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography
 } from '@mui/material';
 import { useMemo, useState } from 'react';
+import AccountBalanceWalletRounded from '@mui/icons-material/AccountBalanceWalletRounded';
+import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
+import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded';
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
+import CloseRounded from '@mui/icons-material/CloseRounded';
+import DownloadRounded from '@mui/icons-material/DownloadRounded';
+import GroupsRounded from '@mui/icons-material/GroupsRounded';
+import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
+import PersonRounded from '@mui/icons-material/PersonRounded';
+import ReceiptLongRounded from '@mui/icons-material/ReceiptLongRounded';
+import RefreshRounded from '@mui/icons-material/RefreshRounded';
+import SearchRounded from '@mui/icons-material/SearchRounded';
+import ScheduleRounded from '@mui/icons-material/ScheduleRounded';
+import StorefrontRounded from '@mui/icons-material/StorefrontRounded';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -267,81 +278,193 @@ function descargarComprobantesTesoreriaExcel(pagos) {
   URL.revokeObjectURL(url);
 }
 
+
 export default function Pagos() {
   const { token } = useAuth();
+
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
-  const [filtrosAplicados, setFiltrosAplicados] = useState({ fechaDesde: '', fechaHasta: '' });
-  const api = useApi(
-    async () => {
-      const [pagos, reporte] = await Promise.all([
-        obtenerPagos(token, filtrosAplicados),
-        obtenerReportePagos(token, filtrosAplicados)
-      ]);
-      return { pagos, reporte };
-    },
-    [token, filtrosAplicados.fechaDesde, filtrosAplicados.fechaHasta]
-  );
+  const [filtrosAplicados, setFiltrosAplicados] = useState({
+    fechaDesde: '',
+    fechaHasta: ''
+  });
+
+  const [vistaActiva, setVistaActiva] = useState('pendientes');
+  const [ordenPendientes, setOrdenPendientes] = useState('antiguos');
+  const [metodoFiltro, setMetodoFiltro] = useState('Todos');
+  const [busquedaEstado, setBusquedaEstado] = useState('');
+  const [condicionEstado, setCondicionEstado] = useState('Todos');
+
   const [selected, setSelected] = useState(null);
   const [valor, setValor] = useState('');
   const [obs, setObs] = useState('');
   const [motivo, setMotivo] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [errorAccion, setErrorAccion] = useState('');
-  const [acordeonArrastrado, setAcordeonArrastrado] = useState(null);
-  const [ordenAcordeones, setOrdenAcordeones] = useState(() => {
-    const ordenInicial = [
-      'resumen-Caminante',
-      'resumen-Servidor',
-      'comprobantes-Caminante',
-      'comprobantes-Servidor'
-    ];
 
-    try {
-      const guardado = JSON.parse(localStorage.getItem('ordenAcordeonesPagos'));
-      return Array.isArray(guardado) && ordenInicial.every(id => guardado.includes(id))
-        ? guardado
-        : ordenInicial;
-    } catch {
-      return ordenInicial;
-    }
-  });
+  const api = useApi(
+    async () => {
+      const [pagos, reporte] = await Promise.all([
+        obtenerPagos(token, filtrosAplicados),
+        obtenerReportePagos(token, filtrosAplicados)
+      ]);
 
-  const pagosPorGrupo = useMemo(() => {
-    const pagos = api.data?.pagos || [];
-    return {
-      Caminante: pagos.filter(p => p.tipoPersona === 'Caminante'),
-      Servidor: pagos.filter(p => p.tipoPersona === 'Servidor')
-    };
-  }, [api.data]);
+      return { pagos, reporte };
+    },
+    [token, filtrosAplicados.fechaDesde, filtrosAplicados.fechaHasta]
+  );
+
+  const pagos = api.data?.pagos || [];
+  const reporte = api.data?.reporte;
+
+  const pagosPendientes = useMemo(
+    () => pagos.filter(p => p.estado === 'Pendiente'),
+    [pagos]
+  );
+
+  const pagosAprobados = useMemo(
+    () => pagos.filter(p => p.estado === 'Aprobado'),
+    [pagos]
+  );
+
+  const pagosRechazados = useMemo(
+    () => pagos.filter(p => p.estado === 'Rechazado'),
+    [pagos]
+  );
+
+  const valorPendienteValidacion = useMemo(
+    () =>
+      pagosPendientes.reduce(
+        (total, pago) =>
+          total + Number(pago.valorReportado || 0),
+        0
+      ),
+    [pagosPendientes]
+  );
 
   const comprobantesTodos = useMemo(
-    () => Array.from(
-      new Map(
-        (api.data?.pagos || [])
-          .map(pago => [pago.comprobanteId || pago.comprobanteUrl || pago.id, pago])
-      ).values()
-    ),
-    [api.data]
+    () =>
+      Array.from(
+        new Map(
+          pagos.map(pago => [
+            pago.comprobanteId ||
+              pago.comprobanteUrl ||
+              pago.id,
+            pago
+          ])
+        ).values()
+      ),
+    [pagos]
   );
+
+  const pendientesVisibles = useMemo(() => {
+    const normalizarFecha = pago => {
+      const valorFecha =
+        pago.fechaRegistro ||
+        pago.fechaPago ||
+        pago.fechaCreacion ||
+        '';
+
+      const tiempo = new Date(valorFecha).getTime();
+      return Number.isFinite(tiempo) ? tiempo : 0;
+    };
+
+    const filtrados = pagosPendientes.filter(pago => {
+      if (metodoFiltro === 'Todos') return true;
+      return String(pago.medioPago || '').toLowerCase() ===
+        metodoFiltro.toLowerCase();
+    });
+
+    return [...filtrados].sort((a, b) => {
+      const diferencia = normalizarFecha(a) - normalizarFecha(b);
+      return ordenPendientes === 'antiguos'
+        ? diferencia
+        : -diferencia;
+    });
+  }, [pagosPendientes, metodoFiltro, ordenPendientes]);
+
+  const grupoActivo = useMemo(() => {
+    const tipo =
+      vistaActiva === 'servidores'
+        ? 'Servidor'
+        : 'Caminante';
+
+    return reporte?.grupos?.find(
+      item => item.tipoPersona === tipo
+    );
+  }, [reporte, vistaActiva]);
+
+  const personasEstado = useMemo(() => {
+    const detalle = grupoActivo?.detalle || [];
+    const termino = busquedaEstado
+      .trim()
+      .toLowerCase();
+
+    return detalle.filter(persona => {
+      const coincideBusqueda =
+        !termino ||
+        [
+          persona.nombre,
+          persona.numeroInscripcion,
+          persona.documentoIdentidad,
+          persona.id
+        ]
+          .filter(Boolean)
+          .some(valorPersona =>
+            String(valorPersona)
+              .toLowerCase()
+              .includes(termino)
+          );
+
+      if (!coincideBusqueda) return false;
+
+      if (condicionEstado === 'Todos') return true;
+      if (condicionEstado === 'Al día') {
+        return (
+          Number(persona.valorPendiente || 0) <= 0 &&
+          !persona.exentoPago
+        );
+      }
+      if (condicionEstado === 'Con saldo') {
+        return Number(persona.valorPendiente || 0) > 0;
+      }
+      if (condicionEstado === 'Exentos') {
+        return Boolean(persona.exentoPago);
+      }
+
+      return true;
+    });
+  }, [grupoActivo, busquedaEstado, condicionEstado]);
 
   if (api.loading) return <LoadingState />;
 
   function aplicarFiltros() {
-    setFiltrosAplicados({ fechaDesde, fechaHasta });
+    setFiltrosAplicados({
+      fechaDesde,
+      fechaHasta
+    });
   }
 
   function limpiarFiltros() {
     setFechaDesde('');
     setFechaHasta('');
-    setFiltrosAplicados({ fechaDesde: '', fechaHasta: '' });
+    setFiltrosAplicados({
+      fechaDesde: '',
+      fechaHasta: ''
+    });
   }
 
   function abrirDetalle(pago) {
     setSelected(pago);
-    setValor(String(pago.valorReportado || ''));
-    setObs(pago.observacionesTesoreria || '');
-    setMotivo(pago.motivoModificacionValor || '');
+    setValor(
+      String(pago.valorReportado || '')
+    );
+    setObs(
+      pago.observacionesTesoreria || ''
+    );
+    setMotivo(
+      pago.motivoModificacionValor || ''
+    );
     setErrorAccion('');
   }
 
@@ -355,349 +478,1919 @@ export default function Pagos() {
     try {
       setGuardando(true);
       setErrorAccion('');
-      await validarPago(token, selected.id, {
-        estado,
-        valorAprobado: valor,
-        observacionesTesoreria: obs,
-        motivoModificacionValor: motivo
-      });
+
+      await validarPago(
+        token,
+        selected.id,
+        {
+          estado,
+          valorAprobado: valor,
+          observacionesTesoreria: obs,
+          motivoModificacionValor: motivo
+        }
+      );
+
       setSelected(null);
       api.reload();
     } catch (error) {
-      setErrorAccion(error?.message || 'No fue posible validar el pago.');
+      setErrorAccion(
+        error?.message ||
+          'No fue posible validar el pago.'
+      );
     } finally {
       setGuardando(false);
     }
   }
 
-  const reporte = api.data?.reporte;
+  const vistas = [
+    {
+      id: 'pendientes',
+      titulo: 'Pagos por validar',
+      valor: pagosPendientes.length,
+      detalle:
+        pagosPendientes.length > 0
+          ? 'Requieren atención de Tesorería'
+          : 'Tesorería está al día',
+      icono: <ScheduleRounded />,
+      color: '#b98316',
+      fondo: '#fff8e8'
+    },
+    {
+      id: 'caminantes',
+      titulo: 'Estados de caminantes',
+      valor:
+        reporte?.grupos?.find(
+          grupo =>
+            grupo.tipoPersona === 'Caminante'
+        )?.cantidadPersonas || 0,
+      detalle: 'Consulta saldos y recaudo',
+      icono: <GroupsRounded />,
+      color: '#176b58',
+      fondo: '#edf8f3'
+    },
+    {
+      id: 'servidores',
+      titulo: 'Estados de servidores',
+      valor:
+        reporte?.grupos?.find(
+          grupo =>
+            grupo.tipoPersona === 'Servidor'
+        )?.cantidadPersonas || 0,
+      detalle: 'Consulta saldos y recaudo',
+      icono: <PersonRounded />,
+      color: '#315f78',
+      fondo: '#eef6fa'
+    }
+  ];
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2.5}>
       <PageHeader
-        title="Pagos"
-        subtitle="Control financiero de caminantes y servidores"
+        title="Estados de cuenta"
+        subtitle="Tesorería · prioriza los pagos por validar y consulta el estado financiero del retiro"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<RefreshRounded />}
+            onClick={api.reload}
+            sx={{
+              borderRadius: 999,
+              minWidth: 145
+            }}
+          >
+            Actualizar
+          </Button>
+        }
       />
 
-      {api.error && <Alert severity="error">{api.error.message}</Alert>}
+      {api.error && (
+        <Alert severity="error">
+          {api.error.message}
+        </Alert>
+      )}
 
-      <Card variant="outlined">
+      <Paper
+        sx={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 5,
+          px: {
+            xs: 2.5,
+            md: 3.5
+          },
+          py: {
+            xs: 2.75,
+            md: 3.25
+          },
+          color: '#fff',
+          background:
+            'linear-gradient(125deg, #113f35 0%, #176b58 52%, #2b8b72 100%)',
+          boxShadow:
+            '0 22px 55px rgba(17,63,53,.18)',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            width: 300,
+            height: 300,
+            borderRadius: '50%',
+            right: -90,
+            top: -160,
+            bgcolor: 'rgba(255,255,255,.08)'
+          }
+        }}
+      >
+        <Stack
+          direction={{
+            xs: 'column',
+            md: 'row'
+          }}
+          justifyContent="space-between"
+          alignItems={{
+            xs: 'stretch',
+            md: 'center'
+          }}
+          spacing={2.5}
+          position="relative"
+          zIndex={1}
+        >
+          <Box>
+            <Typography
+              variant="overline"
+              sx={{
+                fontWeight: 950,
+                letterSpacing: '.14em',
+                color: '#bdebdc'
+              }}
+            >
+              CONTROL FINANCIERO
+            </Typography>
+
+            <Typography
+              variant="h4"
+              fontWeight={950}
+              sx={{
+                mt: 0.25,
+                maxWidth: 760
+              }}
+            >
+              Mantén al día los pagos del retiro
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 1,
+                maxWidth: 760,
+                color: 'rgba(255,255,255,.78)',
+                lineHeight: 1.65
+              }}
+            >
+              Valida primero los movimientos recibidos,
+              identifica inconsistencias y luego consulta
+              el saldo de caminantes y servidores.
+            </Typography>
+          </Box>
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row'
+            }}
+            spacing={1}
+          >
+            <Button
+              variant="contained"
+              startIcon={<DownloadRounded />}
+              onClick={() =>
+                descargarReporteCsv(reporte)
+              }
+              disabled={!reporte}
+              sx={{
+                bgcolor: '#fff',
+                color: '#123f35',
+                borderRadius: 999,
+                '&:hover': {
+                  bgcolor: '#f1faf6'
+                }
+              }}
+            >
+              Exportar estados
+            </Button>
+
+            <Button
+              variant="outlined"
+              startIcon={<ReceiptLongRounded />}
+              onClick={() =>
+                descargarComprobantesTesoreriaExcel(
+                  pagos
+                )
+              }
+              disabled={!comprobantesTodos.length}
+              sx={{
+                color: '#fff',
+                borderColor:
+                  'rgba(255,255,255,.42)',
+                borderRadius: 999,
+                '&:hover': {
+                  borderColor: '#fff',
+                  bgcolor:
+                    'rgba(255,255,255,.08)'
+                }
+              }}
+            >
+              Exportar comprobantes
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Box
+        display="grid"
+        gridTemplateColumns={{
+          xs: '1fr',
+          sm: 'repeat(2, 1fr)',
+          lg: 'repeat(4, 1fr)'
+        }}
+        gap={1.5}
+      >
+        <KpiTesoreria
+          icono={<ScheduleRounded />}
+          titulo="Por validar"
+          valor={pagosPendientes.length}
+          detalle={formatearMoneda(
+            valorPendienteValidacion
+          )}
+          color="#b98316"
+          fondo="#fff8e8"
+        />
+
+        <KpiTesoreria
+          icono={<PaymentsRounded />}
+          titulo="Valor pendiente"
+          valor={formatearMoneda(
+            reporte?.total?.valorPendiente || 0
+          )}
+          detalle="Saldo general del retiro"
+          color="#176b58"
+          fondo="#edf8f3"
+        />
+
+        <KpiTesoreria
+          icono={<CheckCircleRounded />}
+          titulo="Aprobados"
+          valor={pagosAprobados.length}
+          detalle="Movimientos validados"
+          color="#21865f"
+          fondo="#edf8f3"
+        />
+
+        <KpiTesoreria
+          icono={<CloseRounded />}
+          titulo="Rechazados"
+          valor={pagosRechazados.length}
+          detalle="Movimientos rechazados"
+          color="#b54747"
+          fondo="#fff1f1"
+        />
+      </Box>
+
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1,
+          borderRadius: 4,
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            lg: 'repeat(3, 1fr)'
+          },
+          gap: 1,
+          bgcolor: '#fff'
+        }}
+      >
+        {vistas.map(vista => {
+          const activa =
+            vistaActiva === vista.id;
+
+          return (
+            <Box
+              key={vista.id}
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                setVistaActiva(vista.id)
+              }
+              onKeyDown={event => {
+                if (
+                  event.key === 'Enter' ||
+                  event.key === ' '
+                ) {
+                  setVistaActiva(vista.id);
+                }
+              }}
+              sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                p: 2,
+                borderRadius: 3.5,
+                cursor: 'pointer',
+                border: '1px solid',
+                borderColor: activa
+                  ? vista.color
+                  : 'transparent',
+                bgcolor: activa
+                  ? vista.fondo
+                  : 'transparent',
+                boxShadow: activa
+                  ? `0 12px 28px ${vista.color}20`
+                  : 'none',
+                transition:
+                  'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
+                '&:hover': {
+                  transform:
+                    'translateY(-2px)',
+                  bgcolor: vista.fondo
+                },
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  width: 90,
+                  height: 90,
+                  right: -30,
+                  top: -38,
+                  borderRadius: '50%',
+                  bgcolor: vista.color,
+                  opacity: activa ? 0.1 : 0
+                }
+              }}
+            >
+              <Stack
+                direction="row"
+                spacing={1.35}
+                alignItems="center"
+              >
+                <Avatar
+                  sx={{
+                    bgcolor: activa
+                      ? vista.color
+                      : vista.fondo,
+                    color: activa
+                      ? '#fff'
+                      : vista.color
+                  }}
+                >
+                  {vista.icono}
+                </Avatar>
+
+                <Box flex={1}>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    spacing={1}
+                  >
+                    <Typography
+                      fontWeight={950}
+                    >
+                      {vista.titulo}
+                    </Typography>
+
+                    <Typography
+                      variant="h5"
+                      fontWeight={950}
+                      color={vista.color}
+                    >
+                      {vista.valor}
+                    </Typography>
+                  </Stack>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.3 }}
+                  >
+                    {vista.detalle}
+                  </Typography>
+                </Box>
+
+                {activa && (
+                  <ArrowForwardRounded
+                    sx={{
+                      color: vista.color
+                    }}
+                  />
+                )}
+              </Stack>
+            </Box>
+          );
+        })}
+      </Paper>
+
+      <Paper
+        variant="outlined"
+        sx={{
+          borderRadius: 5,
+          overflow: 'hidden',
+          borderColor:
+            'rgba(20,75,62,.12)',
+          boxShadow:
+            '0 18px 50px rgba(17,48,41,.07)'
+        }}
+      >
+        {vistaActiva === 'pendientes' ? (
+          <>
+            <Box
+              sx={{
+                px: {
+                  xs: 2,
+                  md: 3
+                },
+                py: 2.5,
+                borderBottom: 1,
+                borderColor: 'divider',
+                background:
+                  'linear-gradient(135deg, #fff8e8 0%, #fff 68%)'
+              }}
+            >
+              <Stack
+                direction={{
+                  xs: 'column',
+                  lg: 'row'
+                }}
+                justifyContent="space-between"
+                alignItems={{
+                  xs: 'stretch',
+                  lg: 'center'
+                }}
+                gap={2}
+              >
+                <Box>
+                  <Typography
+                    variant="overline"
+                    sx={{
+                      color: '#9a6a08',
+                      fontWeight: 950,
+                      letterSpacing: '.12em'
+                    }}
+                  >
+                    PRIORIDAD DE TESORERÍA
+                  </Typography>
+
+                  <Typography
+                    variant="h5"
+                    fontWeight={950}
+                  >
+                    Pagos pendientes de validación
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.4 }}
+                  >
+                    Revisa primero los movimientos más
+                    antiguos y valida cada reporte desde
+                    esta misma vista.
+                  </Typography>
+                </Box>
+
+                <Stack
+                  direction={{
+                    xs: 'column',
+                    sm: 'row'
+                  }}
+                  spacing={1}
+                >
+                  <TextField
+                    select
+                    size="small"
+                    label="Método"
+                    value={metodoFiltro}
+                    onChange={event =>
+                      setMetodoFiltro(
+                        event.target.value
+                      )
+                    }
+                    sx={{
+                      minWidth: 170
+                    }}
+                  >
+                    {[
+                      'Todos',
+                      'Transferencia',
+                      'Efectivo'
+                    ].map(opcion => (
+                      <MenuItem
+                        key={opcion}
+                        value={opcion}
+                      >
+                        {opcion}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <Box
+                    sx={{
+                      p: 0.45,
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(2, minmax(0, 1fr))',
+                      borderRadius: 999,
+                      bgcolor:
+                        'rgba(17,48,41,.055)',
+                      minWidth: 320
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      startIcon={
+                        <ArrowUpwardRounded />
+                      }
+                      onClick={() =>
+                        setOrdenPendientes(
+                          'antiguos'
+                        )
+                      }
+                      sx={{
+                        borderRadius: 999,
+                        fontWeight: 900,
+                        color:
+                          ordenPendientes ===
+                          'antiguos'
+                            ? '#fff'
+                            : 'text.secondary',
+                        bgcolor:
+                          ordenPendientes ===
+                          'antiguos'
+                            ? '#174b40'
+                            : 'transparent',
+                        '&:hover': {
+                          bgcolor:
+                            ordenPendientes ===
+                            'antiguos'
+                              ? '#123f35'
+                              : 'rgba(23,75,64,.06)'
+                        }
+                      }}
+                    >
+                      Antiguos
+                    </Button>
+
+                    <Button
+                      size="small"
+                      startIcon={
+                        <ArrowDownwardRounded />
+                      }
+                      onClick={() =>
+                        setOrdenPendientes(
+                          'nuevos'
+                        )
+                      }
+                      sx={{
+                        borderRadius: 999,
+                        fontWeight: 900,
+                        color:
+                          ordenPendientes ===
+                          'nuevos'
+                            ? '#fff'
+                            : 'text.secondary',
+                        bgcolor:
+                          ordenPendientes ===
+                          'nuevos'
+                            ? '#174b40'
+                            : 'transparent',
+                        '&:hover': {
+                          bgcolor:
+                            ordenPendientes ===
+                            'nuevos'
+                              ? '#123f35'
+                              : 'rgba(23,75,64,.06)'
+                        }
+                      }}
+                    >
+                      Recientes
+                    </Button>
+                  </Box>
+                </Stack>
+              </Stack>
+            </Box>
+
+            <Box
+              sx={{
+                p: {
+                  xs: 1.5,
+                  md: 2.25
+                },
+                bgcolor:
+                  'rgba(17,48,41,.018)'
+              }}
+            >
+              {pendientesVisibles.length ? (
+                <Stack spacing={1.35}>
+                  {pendientesVisibles.map(
+                    (pago, indice) => (
+                      <PagoPendienteCard
+                        key={pago.id}
+                        pago={pago}
+                        indice={indice}
+                        onValidar={() =>
+                          abrirDetalle(pago)
+                        }
+                      />
+                    )
+                  )}
+                </Stack>
+              ) : (
+                <EmptyTesoreria
+                  titulo="No hay pagos pendientes"
+                  detalle={
+                    metodoFiltro === 'Todos'
+                      ? 'Tesorería está al día con los movimientos recibidos.'
+                      : `No hay pagos pendientes por ${metodoFiltro.toLowerCase()}.`
+                  }
+                />
+              )}
+            </Box>
+          </>
+        ) : (
+          <EstadoCuentaPanel
+            tipo={
+              vistaActiva === 'servidores'
+                ? 'Servidor'
+                : 'Caminante'
+            }
+            grupo={grupoActivo}
+            personas={personasEstado}
+            busqueda={busquedaEstado}
+            onBusqueda={setBusquedaEstado}
+            condicion={condicionEstado}
+            onCondicion={setCondicionEstado}
+          />
+        )}
+      </Paper>
+
+      <Card
+        variant="outlined"
+        sx={{
+          borderRadius: 4
+        }}
+      >
         <CardContent>
           <Stack spacing={2}>
-            <Typography fontWeight={800}>Filtros del reporte</Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-end' }}>
-              <TextField
-                label="Fecha desde"
-                type="date"
-                value={fechaDesde}
-                onChange={e => setFechaDesde(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-              <TextField
-                label="Fecha hasta"
-                type="date"
-                value={fechaHasta}
-                onChange={e => setFechaHasta(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-              <Button variant="contained" onClick={aplicarFiltros}>
-                Aplicar
-              </Button>
-              <Button variant="outlined" onClick={limpiarFiltros}>
-                Limpiar
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => descargarReporteCsv(reporte)}
-                disabled={!reporte}
-                sx={{ minWidth: 220, minHeight: 40, whiteSpace: 'nowrap' }}
+            <Stack
+              direction={{
+                xs: 'column',
+                md: 'row'
+              }}
+              justifyContent="space-between"
+              alignItems={{
+                xs: 'stretch',
+                md: 'center'
+              }}
+              gap={1.5}
+            >
+              <Box>
+                <Typography
+                  fontWeight={900}
+                >
+                  Filtros del periodo
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  Limita los movimientos y reportes al
+                  rango de fechas que necesites.
+                </Typography>
+              </Box>
+
+              <Stack
+                direction={{
+                  xs: 'column',
+                  sm: 'row'
+                }}
+                spacing={1}
               >
-                Exportar estados de cuenta
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => descargarComprobantesTesoreriaExcel(api.data?.pagos)}
-                disabled={!comprobantesTodos.length}
-                sx={{ minWidth: 220, minHeight: 40, whiteSpace: 'nowrap' }}
-              >
-                Exportar comprobantes
-              </Button>
+                <TextField
+                  label="Fecha desde"
+                  type="date"
+                  value={fechaDesde}
+                  onChange={event =>
+                    setFechaDesde(
+                      event.target.value
+                    )
+                  }
+                  InputLabelProps={{
+                    shrink: true
+                  }}
+                />
+
+                <TextField
+                  label="Fecha hasta"
+                  type="date"
+                  value={fechaHasta}
+                  onChange={event =>
+                    setFechaHasta(
+                      event.target.value
+                    )
+                  }
+                  InputLabelProps={{
+                    shrink: true
+                  }}
+                />
+
+                <Button
+                  variant="contained"
+                  onClick={aplicarFiltros}
+                >
+                  Aplicar
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  onClick={limpiarFiltros}
+                >
+                  Limpiar
+                </Button>
+              </Stack>
             </Stack>
           </Stack>
         </CardContent>
       </Card>
 
-      {reporte && (
-        <Box
-          display="grid"
-          gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }}
-          gap={2}
+      <Dialog
+        open={!!selected}
+        onClose={cerrarDetalle}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 5,
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            px: 3,
+            pt: 3,
+            pb: 2,
+            background:
+              'linear-gradient(135deg, #edf8f3 0%, #fff 72%)'
+          }}
         >
-          <Indicador titulo="Personas" valor={reporte.total.cantidadPersonas} />
-          <Indicador titulo="Valor esperado" valor={formatearMoneda(reporte.total.valorEsperado)} />
-          <Indicador titulo="Valor recaudado" valor={formatearMoneda(reporte.total.valorRecaudado)} />
-          <Indicador titulo="Valor pendiente" valor={formatearMoneda(reporte.total.valorPendiente)} />
-        </Box>
-      )}
-
-      <Alert severity="info">
-        Puedes cambiar el orden de los acordeones arrastrándolos desde el indicador ⋮⋮.
-      </Alert>
-
-      {ordenAcordeones.map(idAcordeon => {
-        const [categoria, tipo] = idAcordeon.split('-');
-        const esResumen = categoria === 'resumen';
-        const grupo = esResumen
-          ? reporte?.grupos?.find(item => item.tipoPersona === tipo)
-          : null;
-        const pagosGrupo = pagosPorGrupo[tipo] || [];
-
-        if (esResumen && !grupo) return null;
-
-        function soltarAcordeon(event) {
-          event.preventDefault();
-          if (!acordeonArrastrado || acordeonArrastrado === idAcordeon) return;
-
-          const nuevoOrden = [...ordenAcordeones];
-          const origen = nuevoOrden.indexOf(acordeonArrastrado);
-          const destino = nuevoOrden.indexOf(idAcordeon);
-          nuevoOrden.splice(origen, 1);
-          nuevoOrden.splice(destino, 0, acordeonArrastrado);
-          setOrdenAcordeones(nuevoOrden);
-          localStorage.setItem('ordenAcordeonesPagos', JSON.stringify(nuevoOrden));
-          setAcordeonArrastrado(null);
-        }
-
-        return (
-          <Box
-            key={idAcordeon}
-            onDragOver={event => event.preventDefault()}
-            onDrop={soltarAcordeon}
+          <Typography
+            variant="overline"
             sx={{
-              opacity: acordeonArrastrado === idAcordeon ? 0.55 : 1,
-              transition: 'opacity 150ms ease'
+              color: '#176b58',
+              fontWeight: 950,
+              letterSpacing: '.12em'
             }}
           >
-            <Accordion defaultExpanded={idAcordeon !== 'comprobantes-Servidor'}>
-              <AccordionSummary
-                expandIcon={<Typography aria-hidden="true">⌄</Typography>}
-                aria-controls={idAcordeon}
-                id={`encabezado-${idAcordeon}`}
+            VALIDACIÓN DE TESORERÍA
+          </Typography>
+
+          <Typography
+            variant="h5"
+            fontWeight={950}
+          >
+            Revisar reporte de pago
+          </Typography>
+        </DialogTitle>
+
+        <DialogContent>
+          {selected && (
+            <Stack
+              spacing={2}
+              sx={{ pt: 2 }}
+            >
+              {errorAccion && (
+                <Alert severity="error">
+                  {errorAccion}
+                </Alert>
+              )}
+
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 3.5,
+                  bgcolor:
+                    'rgba(23,107,88,.035)'
+                }}
               >
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ width: '100%', pr: 2 }}>
-                  <Box
-                    draggable
-                    onDragStart={event => {
-                      event.stopPropagation();
-                      event.dataTransfer.effectAllowed = 'move';
-                      event.dataTransfer.setData('text/plain', idAcordeon);
-                      setAcordeonArrastrado(idAcordeon);
-                    }}
-                    onDragEnd={() => setAcordeonArrastrado(null)}
-                    onClick={event => event.stopPropagation()}
-                    title="Arrastrar para cambiar el orden"
-                    aria-label="Arrastrar para cambiar el orden"
-                    sx={{
-                      cursor: 'grab',
-                      userSelect: 'none',
-                      fontWeight: 900,
-                      fontSize: 22,
-                      lineHeight: 1,
-                      px: 0.5,
-                      '&:active': { cursor: 'grabbing' }
-                    }}
-                  >
-                    ⋮⋮
-                  </Box>
-                  <Box sx={{ width: '100%' }}>
-                    <Typography variant="h6" fontWeight={900}>
-                      {esResumen
-                        ? tipo === 'Caminante' ? 'Caminantes' : 'Servidores'
-                        : `Comprobantes de ${tipo === 'Caminante' ? 'caminantes' : 'servidores'}`}
+                <Stack
+                  direction={{
+                    xs: 'column',
+                    sm: 'row'
+                  }}
+                  justifyContent="space-between"
+                  gap={1}
+                >
+                  <Box>
+                    <Typography
+                      fontWeight={950}
+                    >
+                      {selected.personaNombre ||
+                        'Persona no identificada'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {esResumen
-                        ? `${grupo.cantidadPersonas} personas · Valor individual: ${formatearMoneda(grupo.valorIndividual)}`
-                        : `${pagosGrupo.length} comprobantes en el rango seleccionado`}
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
+                      {selected.tipoPersona} ·{' '}
+                      {selected.numeroInscripcion ||
+                        selected.documentoIdentidad ||
+                        selected.id}
+                    </Typography>
+                  </Box>
+
+                  <Box textAlign={{
+                    xs: 'left',
+                    sm: 'right'
+                  }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                    >
+                      VALOR REPORTADO
+                    </Typography>
+
+                    <Typography
+                      variant="h5"
+                      fontWeight={950}
+                      color="primary.main"
+                    >
+                      {formatearMoneda(
+                        selected.valorReportado
+                      )}
                     </Typography>
                   </Box>
                 </Stack>
-              </AccordionSummary>
+              </Paper>
 
-              <AccordionDetails id={idAcordeon}>
-                {esResumen ? (
-                  <Stack spacing={2}>
-                    <Box
-                      display="grid"
-                      gridTemplateColumns={{ xs: '1fr', sm: 'repeat(3, 1fr)' }}
-                      gap={2}
-                    >
-                      <Indicador titulo="Esperado" valor={formatearMoneda(grupo.valorEsperado)} />
-                      <Indicador titulo="Recaudado" valor={formatearMoneda(grupo.valorRecaudado)} />
-                      <Indicador titulo="Pendiente" valor={formatearMoneda(grupo.valorPendiente)} />
-                    </Box>
+              <Typography
+                variant="subtitle1"
+                fontWeight={900}
+              >
+                Información del pago
+              </Typography>
 
-                    <TableContainer>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Persona</TableCell>
-                            <TableCell align="right">Esperado</TableCell>
-                            <TableCell align="right">Recaudado</TableCell>
-                            <TableCell align="right">Pendiente</TableCell>
-                            <TableCell>Estado</TableCell>
-                            <TableCell>Condición</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {grupo.detalle.map(persona => (
-                            <TableRow key={`${grupo.tipoPersona}-${persona.id}`}>
-                              <TableCell>
-                                <Typography variant="body2" fontWeight={700}>{persona.nombre}</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {persona.numeroInscripcion || persona.documentoIdentidad || persona.id}
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right">{formatearMoneda(persona.valorEsperado)}</TableCell>
-                              <TableCell align="right">{formatearMoneda(persona.valorRecaudado)}</TableCell>
-                              <TableCell align="right">{formatearMoneda(persona.valorPendiente)}</TableCell>
-                              <TableCell>{persona.estadoPago}</TableCell>
-                              <TableCell>{persona.exentoPago ? 'Exento de pago' : 'Pago requerido'}</TableCell>
-                            </TableRow>
-                          ))}
-                          {!grupo.detalle.length && (
-                            <TableRow>
-                              <TableCell colSpan={6}>No hay personas activas en este grupo.</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Stack>
+              <Box
+                display="grid"
+                gridTemplateColumns={{
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)'
+                }}
+                gap={2}
+              >
+                <Dato
+                  etiqueta="Fecha del pago"
+                  valor={selected.fechaPago}
+                />
+                <Dato
+                  etiqueta="Método"
+                  valor={selected.medioPago}
+                />
+
+                {String(
+                  selected.medioPago || ''
+                ).toLowerCase() ===
+                'efectivo' ? (
+                  <>
+                    <Dato
+                      etiqueta="Nombre de quien recibió el dinero"
+                      valor={
+                        selected.nombrePagador
+                      }
+                    />
+                    <Dato
+                      etiqueta="Teléfono de la persona que tiene el dinero"
+                      valor={
+                        selected.telefonoPagador
+                      }
+                    />
+                  </>
                 ) : (
-                  <Stack spacing={1.5}>
-                    {pagosGrupo.map(p => (
-                      <Card key={p.id} variant="outlined">
-                        <CardContent>
-                          <Stack spacing={1}>
-                            <Typography fontWeight={900}>
-                              {formatearMoneda(p.valorReportado)} · {p.estado}
-                            </Typography>
-                            <Typography variant="body2">
-                              {p.personaNombre || 'Persona no identificada'} · Fecha: {p.fechaPago || 'Pendiente'} · Medio: {p.medioPago || 'Pendiente'}
-                            </Typography>
-                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                              <Button variant="outlined" onClick={() => abrirDetalle(p)}>
-                                Ver comprobante
-                              </Button>
-                              {p.estado === 'Pendiente' && (
-                                <Button variant="contained" onClick={() => abrirDetalle(p)}>
-                                  Validar
-                                </Button>
-                              )}
-                            </Stack>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {!pagosGrupo.length && (
-                      <Typography variant="body2" color="text.secondary">
-                        No hay comprobantes en el rango seleccionado.
-                      </Typography>
-                    )}
-                  </Stack>
+                  <>
+                    <Dato
+                      etiqueta="Banco o entidad"
+                      valor={
+                        selected.entidadPago
+                      }
+                    />
+                    <Dato
+                      etiqueta="Referencia"
+                      valor={
+                        selected.referenciaPago
+                      }
+                    />
+                    <Dato
+                      etiqueta="Nombre de quien pagó"
+                      valor={
+                        selected.nombrePagador
+                      }
+                    />
+                    <Dato
+                      etiqueta="Teléfono de quien pagó"
+                      valor={
+                        selected.telefonoPagador
+                      }
+                    />
+                  </>
                 )}
-              </AccordionDetails>
-            </Accordion>
-          </Box>
-        );
-      })}
+              </Box>
 
-      <Dialog open={!!selected} onClose={cerrarDetalle} fullWidth maxWidth="md">
-        <DialogTitle>Detalle del comprobante de pago</DialogTitle>
-        <DialogContent>
-          {selected && (
-            <Stack spacing={2} sx={{ pt: 1 }}>
-              {errorAccion && <Alert severity="error">{errorAccion}</Alert>}
-              <Typography variant="subtitle1" fontWeight={800}>Información de la persona</Typography>
-              <Stack display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)' }} gap={2}>
-                <Dato etiqueta="Tipo" valor={selected.tipoPersona} />
-                <Dato etiqueta="Nombre" valor={selected.personaNombre} />
-                <Dato etiqueta="Número de inscripción" valor={selected.numeroInscripcion} />
-                <Dato etiqueta="Documento" valor={selected.documentoIdentidad} />
-                <Dato etiqueta="Estado del reporte" valor={selected.estado} />
-              </Stack>
-              <Divider />
-              <Typography variant="subtitle1" fontWeight={800}>Información del pago</Typography>
-              <Stack display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)' }} gap={2}>
-                <Dato etiqueta="Valor reportado" valor={formatearMoneda(selected.valorReportado)} />
-                <Dato etiqueta="Fecha del pago" valor={selected.fechaPago} />
-                <Dato etiqueta="Medio de pago" valor={selected.medioPago} />
-                <Dato etiqueta="Banco o entidad" valor={selected.entidadPago} />
-                <Dato etiqueta="Referencia" valor={selected.referenciaPago} />
-                <Dato etiqueta="Nombre de quien pagó" valor={selected.nombrePagador} />
-                <Dato etiqueta="Teléfono de quien pagó" valor={selected.telefonoPagador} />
-                <Dato etiqueta="Supera el saldo pendiente" valor={selected.superaSaldo} />
-                {Number(selected.excedente || 0) > 0 && (
-                  <Dato etiqueta="Excedente reportado" valor={formatearMoneda(selected.excedente)} />
-                )}
-              </Stack>
-              <Dato etiqueta="Observaciones de quien reportó" valor={selected.observacionesReportante} />
-              <Divider />
-              <Typography variant="subtitle1" fontWeight={800}>Archivo adjunto</Typography>
-              <Stack display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)' }} gap={2}>
-                <Dato etiqueta="Nombre del archivo" valor={selected.comprobanteNombre} />
-                <Dato etiqueta="Tipo" valor={selected.comprobanteTipo} />
-                <Dato etiqueta="Tamaño" valor={formatearTamano(selected.comprobanteTamano)} />
-              </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                <Button component="a" href={selected.comprobanteUrl} target="_blank" rel="noopener noreferrer" variant="outlined" disabled={!selected.comprobanteUrl}>
-                  Abrir comprobante
-                </Button>
-                <Button component="a" href={selected.comprobanteDescargaUrl || selected.comprobanteUrl} target="_blank" rel="noopener noreferrer" variant="contained" disabled={!selected.comprobanteDescargaUrl && !selected.comprobanteUrl}>
-                  Descargar comprobante
-                </Button>
-              </Stack>
-              {selected.estado === 'Pendiente' ? (
+              <Dato
+                etiqueta="Observaciones de quien reportó"
+                valor={
+                  selected.observacionesReportante
+                }
+              />
+
+              {String(
+                selected.medioPago || ''
+              ).toLowerCase() !==
+                'efectivo' && (
                 <>
                   <Divider />
-                  <Typography variant="subtitle1" fontWeight={800}>Validación de tesorería</Typography>
-                  <TextField label="Valor aprobado" type="number" value={valor} onChange={e => setValor(e.target.value)} fullWidth />
-                  {Number(valor) !== Number(selected.valorReportado) && (
-                    <TextField label="Motivo de la corrección" value={motivo} onChange={e => setMotivo(e.target.value)} fullWidth />
+
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={900}
+                  >
+                    Comprobante
+                  </Typography>
+
+                  <Box
+                    display="grid"
+                    gridTemplateColumns={{
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)'
+                    }}
+                    gap={2}
+                  >
+                    <Dato
+                      etiqueta="Nombre del archivo"
+                      valor={
+                        selected.comprobanteNombre
+                      }
+                    />
+                    <Dato
+                      etiqueta="Tamaño"
+                      valor={formatearTamano(
+                        selected.comprobanteTamano
+                      )}
+                    />
+                  </Box>
+
+                  <Stack
+                    direction={{
+                      xs: 'column',
+                      sm: 'row'
+                    }}
+                    spacing={1}
+                  >
+                    <Button
+                      component="a"
+                      href={
+                        selected.comprobanteUrl
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="outlined"
+                      disabled={
+                        !selected.comprobanteUrl
+                      }
+                    >
+                      Abrir comprobante
+                    </Button>
+
+                    <Button
+                      component="a"
+                      href={
+                        selected.comprobanteDescargaUrl ||
+                        selected.comprobanteUrl
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="contained"
+                      disabled={
+                        !selected.comprobanteDescargaUrl &&
+                        !selected.comprobanteUrl
+                      }
+                    >
+                      Descargar comprobante
+                    </Button>
+                  </Stack>
+                </>
+              )}
+
+              {selected.estado ===
+              'Pendiente' ? (
+                <>
+                  <Divider />
+
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={900}
+                  >
+                    Decisión de Tesorería
+                  </Typography>
+
+                  <TextField
+                    label="Valor aprobado"
+                    type="number"
+                    value={valor}
+                    onChange={event =>
+                      setValor(
+                        event.target.value
+                      )
+                    }
+                    fullWidth
+                  />
+
+                  {Number(valor) !==
+                    Number(
+                      selected.valorReportado
+                    ) && (
+                    <TextField
+                      label="Motivo de la corrección"
+                      value={motivo}
+                      onChange={event =>
+                        setMotivo(
+                          event.target.value
+                        )
+                      }
+                      fullWidth
+                    />
                   )}
-                  <TextField label="Observaciones / motivo de rechazo" multiline minRows={3} value={obs} onChange={e => setObs(e.target.value)} fullWidth />
+
+                  <TextField
+                    label="Observaciones / motivo de rechazo"
+                    multiline
+                    minRows={3}
+                    value={obs}
+                    onChange={event =>
+                      setObs(
+                        event.target.value
+                      )
+                    }
+                    fullWidth
+                  />
                 </>
               ) : (
                 <>
                   <Divider />
-                  <Typography variant="subtitle1" fontWeight={800}>Resultado de la validación</Typography>
-                  <Stack display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)' }} gap={2}>
-                    <Dato etiqueta="Valor aprobado" valor={selected.valorAprobado === null ? 'No aplica' : formatearMoneda(selected.valorAprobado)} />
-                    <Dato etiqueta="Validado por" valor={selected.validadoPor} />
-                    <Dato etiqueta="Fecha de validación" valor={selected.fechaValidacion} />
-                    <Dato etiqueta="Motivo de modificación" valor={selected.motivoModificacionValor} />
-                  </Stack>
-                  <Dato etiqueta="Observaciones de tesorería" valor={selected.observacionesTesoreria} />
+
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={900}
+                  >
+                    Resultado de la validación
+                  </Typography>
+
+                  <Box
+                    display="grid"
+                    gridTemplateColumns={{
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)'
+                    }}
+                    gap={2}
+                  >
+                    <Dato
+                      etiqueta="Valor aprobado"
+                      valor={
+                        selected.valorAprobado ===
+                        null
+                          ? 'No aplica'
+                          : formatearMoneda(
+                              selected.valorAprobado
+                            )
+                      }
+                    />
+                    <Dato
+                      etiqueta="Validado por"
+                      valor={
+                        selected.validadoPor
+                      }
+                    />
+                    <Dato
+                      etiqueta="Fecha de validación"
+                      valor={
+                        selected.fechaValidacion
+                      }
+                    />
+                    <Dato
+                      etiqueta="Motivo de modificación"
+                      valor={
+                        selected.motivoModificacionValor
+                      }
+                    />
+                  </Box>
+
+                  <Dato
+                    etiqueta="Observaciones de tesorería"
+                    valor={
+                      selected.observacionesTesoreria
+                    }
+                  />
                 </>
               )}
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={cerrarDetalle} disabled={guardando}>Cerrar</Button>
-          {selected?.estado === 'Pendiente' && (
-            <>
-              <Button onClick={() => resolver('Rechazado')} color="error" disabled={guardando}>Rechazar</Button>
-              <Button onClick={() => resolver('Aprobado')} variant="contained" disabled={guardando}>
-                {guardando ? 'Guardando...' : 'Aprobar'}
-              </Button>
-            </>
-          )}
+
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 3
+          }}
+        >
+          <Button
+            onClick={cerrarDetalle}
+            disabled={guardando}
+          >
+            Cerrar
+          </Button>
+
+          {selected?.estado ===
+            'Pendiente' && (
+              <>
+                <Button
+                  onClick={() =>
+                    resolver('Rechazado')
+                  }
+                  color="error"
+                  variant="outlined"
+                  disabled={guardando}
+                >
+                  Rechazar
+                </Button>
+
+                <Button
+                  onClick={() =>
+                    resolver('Aprobado')
+                  }
+                  variant="contained"
+                  disabled={guardando}
+                >
+                  {guardando
+                    ? 'Guardando...'
+                    : 'Aprobar pago'}
+                </Button>
+              </>
+            )}
         </DialogActions>
       </Dialog>
     </Stack>
+  );
+}
+
+function KpiTesoreria({
+  icono,
+  titulo,
+  valor,
+  detalle,
+  color,
+  fondo
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        borderRadius: 4,
+        borderColor:
+          'rgba(20,75,62,.10)',
+        bgcolor: '#fff'
+      }}
+    >
+      <Stack
+        direction="row"
+        spacing={1.4}
+        alignItems="center"
+      >
+        <Avatar
+          sx={{
+            bgcolor: fondo,
+            color
+          }}
+        >
+          {icono}
+        </Avatar>
+
+        <Box>
+          <Typography
+            variant="h5"
+            fontWeight={950}
+            color={color}
+          >
+            {valor}
+          </Typography>
+
+          <Typography
+            fontWeight={900}
+            sx={{
+              mt: -0.2
+            }}
+          >
+            {titulo}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+          >
+            {detalle}
+          </Typography>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
+
+function PagoPendienteCard({
+  pago,
+  indice,
+  onValidar
+}) {
+  const efectivo =
+    String(pago.medioPago || '')
+      .toLowerCase() === 'efectivo';
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        position: 'relative',
+        p: {
+          xs: 2,
+          md: 2.25
+        },
+        pl: {
+          xs: 2,
+          md: 7.25
+        },
+        borderRadius: 3.5,
+        borderColor:
+          'rgba(20,75,62,.10)',
+        bgcolor: '#fff',
+        transition:
+          'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          borderColor:
+            'rgba(23,107,88,.28)',
+          boxShadow:
+            '0 14px 32px rgba(17,48,41,.08)'
+        },
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          top: 18,
+          bottom: 18,
+          width: 4,
+          borderRadius:
+            '0 8px 8px 0',
+          bgcolor: '#b98316'
+        }
+      }}
+    >
+      <Box
+        sx={{
+          display: {
+            xs: 'none',
+            md: 'grid'
+          },
+          placeItems: 'center',
+          position: 'absolute',
+          left: 16,
+          top: 18,
+          width: 34,
+          height: 34,
+          borderRadius: '50%',
+          bgcolor: '#fff8e8',
+          color: '#9a6a08',
+          fontWeight: 950
+        }}
+      >
+        {String(
+          indice + 1
+        ).padStart(2, '0')}
+      </Box>
+
+      <Stack
+        direction={{
+          xs: 'column',
+          lg: 'row'
+        }}
+        justifyContent="space-between"
+        gap={2}
+      >
+        <Box flex={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
+            <Typography
+              variant="h6"
+              fontWeight={950}
+            >
+              {pago.personaNombre ||
+                'Persona no identificada'}
+            </Typography>
+
+            <Chip
+              size="small"
+              label={
+                pago.tipoPersona ||
+                'Participante'
+              }
+              variant="outlined"
+            />
+
+            <Chip
+              size="small"
+              icon={
+                efectivo
+                  ? <StorefrontRounded />
+                  : <AccountBalanceWalletRounded />
+              }
+              label={
+                pago.medioPago ||
+                'Método no informado'
+              }
+              sx={{
+                bgcolor: efectivo
+                  ? '#fff8e8'
+                  : '#edf8f3'
+              }}
+            />
+          </Stack>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 0.5 }}
+          >
+            {pago.numeroInscripcion ||
+              pago.documentoIdentidad ||
+              pago.id}
+            {' · '}
+            {pago.fechaPago ||
+              'Fecha pendiente'}
+          </Typography>
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row'
+            }}
+            spacing={{
+              xs: 0.4,
+              sm: 2
+            }}
+            sx={{ mt: 1.25 }}
+          >
+            {efectivo ? (
+              <>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  Recibió:{' '}
+                  <strong>
+                    {pago.nombrePagador ||
+                      'No informado'}
+                  </strong>
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  Tel:{' '}
+                  {pago.telefonoPagador ||
+                    'No informado'}
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  {pago.entidadPago ||
+                    'Banco no informado'}
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  Ref:{' '}
+                  {pago.referenciaPago ||
+                    'No informada'}
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="success.main"
+                  fontWeight={800}
+                >
+                  {pago.comprobanteUrl
+                    ? 'Comprobante adjunto ✓'
+                    : 'Sin comprobante'}
+                </Typography>
+              </>
+            )}
+          </Stack>
+        </Box>
+
+        <Stack
+          alignItems={{
+            xs: 'stretch',
+            lg: 'flex-end'
+          }}
+          justifyContent="space-between"
+          spacing={1.25}
+        >
+          <Box
+            textAlign={{
+              xs: 'left',
+              lg: 'right'
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+            >
+              VALOR REPORTADO
+            </Typography>
+
+            <Typography
+              variant="h5"
+              fontWeight={950}
+              color="#176b58"
+            >
+              {formatearMoneda(
+                pago.valorReportado
+              )}
+            </Typography>
+          </Box>
+
+          <Button
+            variant="contained"
+            endIcon={<ArrowForwardRounded />}
+            onClick={onValidar}
+            sx={{
+              borderRadius: 999
+            }}
+          >
+            Validar pago
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
+function EstadoCuentaPanel({
+  tipo,
+  grupo,
+  personas,
+  busqueda,
+  onBusqueda,
+  condicion,
+  onCondicion
+}) {
+  const color =
+    tipo === 'Servidor'
+      ? '#315f78'
+      : '#176b58';
+
+  const fondo =
+    tipo === 'Servidor'
+      ? '#eef6fa'
+      : '#edf8f3';
+
+  return (
+    <>
+      <Box
+        sx={{
+          px: {
+            xs: 2,
+            md: 3
+          },
+          py: 2.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+          background:
+            `linear-gradient(135deg, ${fondo} 0%, #fff 70%)`
+        }}
+      >
+        <Stack
+          direction={{
+            xs: 'column',
+            lg: 'row'
+          }}
+          justifyContent="space-between"
+          alignItems={{
+            xs: 'stretch',
+            lg: 'center'
+          }}
+          gap={2}
+        >
+          <Box>
+            <Typography
+              variant="overline"
+              sx={{
+                color,
+                fontWeight: 950,
+                letterSpacing: '.12em'
+              }}
+            >
+              ESTADOS DE CUENTA
+            </Typography>
+
+            <Typography
+              variant="h5"
+              fontWeight={950}
+            >
+              {tipo === 'Servidor'
+                ? 'Servidores'
+                : 'Caminantes'}
+            </Typography>
+
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.35 }}
+            >
+              {grupo
+                ? `${grupo.cantidadPersonas} personas · Valor individual ${formatearMoneda(grupo.valorIndividual)}`
+                : 'Sin información disponible'}
+            </Typography>
+          </Box>
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row'
+            }}
+            spacing={1}
+          >
+            <TextField
+              size="small"
+              value={busqueda}
+              onChange={event =>
+                onBusqueda(
+                  event.target.value
+                )
+              }
+              placeholder="Nombre, documento o inscripción"
+              InputProps={{
+                startAdornment: (
+                  <SearchRounded
+                    sx={{
+                      mr: 1,
+                      color: 'text.secondary'
+                    }}
+                  />
+                )
+              }}
+              sx={{
+                minWidth: {
+                  xs: '100%',
+                  sm: 300
+                }
+              }}
+            />
+
+            <TextField
+              select
+              size="small"
+              label="Condición"
+              value={condicion}
+              onChange={event =>
+                onCondicion(
+                  event.target.value
+                )
+              }
+              sx={{
+                minWidth: 160
+              }}
+            >
+              {[
+                'Todos',
+                'Con saldo',
+                'Al día',
+                'Exentos'
+              ].map(opcion => (
+                <MenuItem
+                  key={opcion}
+                  value={opcion}
+                >
+                  {opcion}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+        </Stack>
+      </Box>
+
+      {grupo && (
+        <Box
+          display="grid"
+          gridTemplateColumns={{
+            xs: '1fr',
+            md: 'repeat(3, 1fr)'
+          }}
+          gap={1.5}
+          sx={{
+            px: {
+              xs: 1.5,
+              md: 2.25
+            },
+            pt: 2
+          }}
+        >
+          <Indicador
+            titulo="Esperado"
+            valor={formatearMoneda(
+              grupo.valorEsperado
+            )}
+          />
+
+          <Indicador
+            titulo="Recaudado"
+            valor={formatearMoneda(
+              grupo.valorRecaudado
+            )}
+          />
+
+          <Indicador
+            titulo="Pendiente"
+            valor={formatearMoneda(
+              grupo.valorPendiente
+            )}
+          />
+        </Box>
+      )}
+
+      <Box
+        sx={{
+          p: {
+            xs: 1.5,
+            md: 2.25
+          },
+          bgcolor:
+            'rgba(17,48,41,.018)'
+        }}
+      >
+        {personas.length ? (
+          <Box
+            display="grid"
+            gridTemplateColumns={{
+              xs: '1fr',
+              xl: 'repeat(2, minmax(0, 1fr))'
+            }}
+            gap={1.35}
+          >
+            {personas.map(persona => {
+              const esperado = Number(
+                persona.valorEsperado || 0
+              );
+              const recaudado = Number(
+                persona.valorRecaudado || 0
+              );
+
+              const porcentaje =
+                esperado > 0
+                  ? Math.min(
+                      100,
+                      Math.max(
+                        0,
+                        (recaudado /
+                          esperado) *
+                          100
+                      )
+                    )
+                  : 100;
+
+              const alDia =
+                Number(
+                  persona.valorPendiente || 0
+                ) <= 0;
+
+              return (
+                <Paper
+                  key={`${tipo}-${persona.id}`}
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 3.5,
+                    borderColor:
+                      'rgba(20,75,62,.10)',
+                    bgcolor: '#fff'
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
+                      gap={1}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={1.2}
+                        alignItems="center"
+                      >
+                        <Avatar
+                          sx={{
+                            bgcolor: fondo,
+                            color
+                          }}
+                        >
+                          {tipo === 'Servidor'
+                            ? <PersonRounded />
+                            : <GroupsRounded />}
+                        </Avatar>
+
+                        <Box>
+                          <Typography
+                            fontWeight={950}
+                          >
+                            {persona.nombre}
+                          </Typography>
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                          >
+                            {persona.numeroInscripcion ||
+                              persona.documentoIdentidad ||
+                              persona.id}
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <Chip
+                        size="small"
+                        label={
+                          persona.exentoPago
+                            ? 'Exento'
+                            : alDia
+                              ? 'Al día'
+                              : 'Con saldo'
+                        }
+                        sx={{
+                          fontWeight: 900,
+                          bgcolor:
+                            persona.exentoPago
+                              ? '#eef6fa'
+                              : alDia
+                                ? '#edf8f3'
+                                : '#fff8e8',
+                          color:
+                            persona.exentoPago
+                              ? '#315f78'
+                              : alDia
+                                ? '#176b58'
+                                : '#9a6a08'
+                        }}
+                      />
+                    </Stack>
+
+                    <Box>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        sx={{ mb: 0.7 }}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                        >
+                          Progreso de pago
+                        </Typography>
+
+                        <Typography
+                          variant="caption"
+                          fontWeight={900}
+                        >
+                          {Math.round(
+                            porcentaje
+                          )}%
+                        </Typography>
+                      </Stack>
+
+                      <LinearProgress
+                        variant="determinate"
+                        value={porcentaje}
+                        sx={{
+                          height: 8,
+                          borderRadius: 999,
+                          bgcolor:
+                            'rgba(23,107,88,.08)',
+                          '& .MuiLinearProgress-bar':
+                            {
+                              borderRadius: 999,
+                              bgcolor: color
+                            }
+                        }}
+                      />
+                    </Box>
+
+                    <Box
+                      display="grid"
+                      gridTemplateColumns="repeat(3, 1fr)"
+                      gap={1}
+                    >
+                      <Dato
+                        etiqueta="Esperado"
+                        valor={formatearMoneda(
+                          persona.valorEsperado
+                        )}
+                      />
+                      <Dato
+                        etiqueta="Abonado"
+                        valor={formatearMoneda(
+                          persona.valorRecaudado
+                        )}
+                      />
+                      <Dato
+                        etiqueta="Saldo"
+                        valor={formatearMoneda(
+                          persona.valorPendiente
+                        )}
+                      />
+                    </Box>
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Box>
+        ) : (
+          <EmptyTesoreria
+            titulo="Sin resultados"
+            detalle="No encontramos personas con los filtros seleccionados."
+          />
+        )}
+      </Box>
+    </>
+  );
+}
+
+function EmptyTesoreria({
+  titulo,
+  detalle
+}) {
+  return (
+    <Box
+      sx={{
+        py: 6,
+        px: 2,
+        textAlign: 'center'
+      }}
+    >
+      <Avatar
+        sx={{
+          mx: 'auto',
+          mb: 1.5,
+          width: 58,
+          height: 58,
+          bgcolor: '#edf8f3',
+          color: '#176b58'
+        }}
+      >
+        <CheckCircleRounded />
+      </Avatar>
+
+      <Typography
+        variant="h6"
+        fontWeight={950}
+      >
+        {titulo}
+      </Typography>
+
+      <Typography
+        color="text.secondary"
+        sx={{
+          mt: 0.5,
+          maxWidth: 520,
+          mx: 'auto'
+        }}
+      >
+        {detalle}
+      </Typography>
+    </Box>
   );
 }
