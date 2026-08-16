@@ -55,6 +55,12 @@ function routeRequest(parametros) {
           'Notificaciones consultadas correctamente'
       };
 
+    case 'administracionservicio':
+      return {
+        datos: obtenerAdministracionServicioRetiro(parametros.token, parametros.tipo),
+        mensaje: 'Administración de servicio consultada correctamente'
+      };
+
     case 'notificacioneswhatsapp':
       return {
         datos:

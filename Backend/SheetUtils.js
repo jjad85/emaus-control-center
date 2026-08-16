@@ -115,7 +115,9 @@ const HOJAS = {
   TEMAS: 'Temas',
   PAGOS: 'Pagos',
   FECHAS_IMPORTANTES: 'FechasImportantes',
-  DOCUMENTOS: 'Documentos'
+  DOCUMENTOS: 'Documentos',
+  ANGELITOS: 'Angelitos',
+  SERENATA: 'Serenata'
 };
 
 

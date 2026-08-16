@@ -22,6 +22,7 @@ import CalendarMonthRounded from '@mui/icons-material/CalendarMonthRounded';
 import LocationOnRounded from '@mui/icons-material/LocationOnRounded';
 import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import VolunteerActivismRounded from '@mui/icons-material/VolunteerActivismRounded';
+import MusicNoteRounded from '@mui/icons-material/MusicNoteRounded';
 
 import { useAuth } from '../auth/AuthContext';
 import LoginDialog from '../auth/LoginDialog';
@@ -305,6 +306,107 @@ export default function PublicHome() {
                     </Box>
                   ))}
                 </Box>
+              </Grid>
+            </Grid>
+          </Container>
+        </Box>
+
+        <Box id="quiero-servir" component="section" className="public-section" sx={{ bgcolor: '#f5f8f4' }}>
+          <Container maxWidth="xl">
+            <Grid container spacing={{ xs: 3, md: 5 }} alignItems="center">
+              <Grid size={{ xs: 12, md: 5 }}>
+                <Typography className="public-section-label">TAMBIÉN PUEDES SER PARTE</Typography>
+                <Typography component="h2" className="public-section-title">
+                  Lo que recibimos también se transforma en servicio.
+                </Typography>
+                <Typography className="public-section-copy">
+                  Si ya viviste un Retiro de Emaús, puedes acompañar a quienes vienen detrás y poner tu tiempo al servicio de esta experiencia.
+                </Typography>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 7 }}>
+                <Stack spacing={1.7}>
+                  <Box
+                    onClick={() => navigate('/servir/angelitos')}
+                    role="button"
+                    tabIndex={0}
+                    sx={{
+                      position: 'relative',
+                      overflow: 'hidden',
+                      p: { xs: 3, md: 3.5 },
+                      borderRadius: 5,
+                      cursor: 'pointer',
+                      bgcolor: '#fff',
+                      border: '1px solid rgba(23,107,88,.14)',
+                      boxShadow: '0 18px 45px rgba(17,48,41,.08)',
+                      transition: 'transform .2s ease, box-shadow .2s ease',
+                      '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 24px 55px rgba(17,48,41,.13)' },
+                      '&::after': { content: '""', position: 'absolute', width: 190, height: 190, borderRadius: '50%', right: -65, top: -85, bgcolor: '#176b58', opacity: .07 },
+                    }}
+                  >
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.2} alignItems={{ sm: 'center' }} position="relative" zIndex={1}>
+                      <Box sx={{ width: 68, height: 68, borderRadius: 3.5, display: 'grid', placeItems: 'center', bgcolor: '#edf8f3', color: '#176b58', flexShrink: 0 }}>
+                        <VolunteerActivismRounded sx={{ fontSize: 34 }} />
+                      </Box>
+                      <Box flex={1}>
+                        <Typography variant="overline" sx={{ color: '#176b58', fontWeight: 950, letterSpacing: '.12em' }}>QUIERO SERVIR</Typography>
+                        <Typography variant="h4" fontWeight={950}>Quiero ser Angelito</Typography>
+                        <Typography color="text.secondary" mt={.8} lineHeight={1.7}>
+                          Inscríbete para acompañar y servir durante el próximo retiro. Es necesario haber vivido Emaús previamente, sin importar cuándo o en qué comunidad.
+                        </Typography>
+                      </Box>
+                      <Button variant="contained" endIcon={<ArrowForwardRounded />} onClick={(event) => { event.stopPropagation(); navigate('/servir/angelitos'); }} sx={{ borderRadius: 999, px: 2.7, whiteSpace: 'nowrap' }}>
+                        Inscribirme
+                      </Button>
+                    </Stack>
+                  </Box>
+
+                  <Box
+                    onClick={() => navigate('/servir/apoyo-audiovisual')}
+                    role="button"
+                    tabIndex={0}
+                    sx={{
+                      position: 'relative',
+                      overflow: 'hidden',
+                      p: { xs: 3, md: 3.5 },
+                      borderRadius: 5,
+                      cursor: 'pointer',
+                      bgcolor: '#fff',
+                      border: '1px solid rgba(49,95,120,.16)',
+                      boxShadow: '0 18px 45px rgba(17,48,41,.07)',
+                      transition: 'transform .2s ease, box-shadow .2s ease',
+                      '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 24px 55px rgba(17,48,41,.12)' },
+                      '&::after': { content: '""', position: 'absolute', width: 190, height: 190, borderRadius: '50%', right: -65, top: -85, bgcolor: '#315f78', opacity: .07 },
+                    }}
+                  >
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.2} alignItems={{ sm: 'center' }} position="relative" zIndex={1}>
+                      <Box sx={{ width: 68, height: 68, borderRadius: 3.5, display: 'grid', placeItems: 'center', bgcolor: '#eef6fa', color: '#315f78', flexShrink: 0 }}>
+                        <MusicNoteRounded sx={{ fontSize: 34 }} />
+                      </Box>
+                      <Box flex={1}>
+                        <Typography variant="overline" sx={{ color: '#315f78', fontWeight: 950, letterSpacing: '.12em' }}>QUIERO SERVIR</Typography>
+                        <Typography variant="h4" fontWeight={950}>Quiero brindar apoyo audiovisual</Typography>
+                        <Typography color="text.secondary" mt={.8} lineHeight={1.7}>
+                          Si ya viviste Emaús y quieres apoyarnos en un momento especial del retiro, registra tus datos para que podamos coordinar tu participación.
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        endIcon={<ArrowForwardRounded />}
+                        onClick={(event) => { event.stopPropagation(); navigate('/servir/apoyo-audiovisual'); }}
+                        sx={{
+                          borderRadius: 999,
+                          px: 2.7,
+                          whiteSpace: 'nowrap',
+                          bgcolor: '#315f78',
+                          '&:hover': { bgcolor: '#274d61' },
+                        }}
+                      >
+                        Inscribirme
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Stack>
               </Grid>
             </Grid>
           </Container>

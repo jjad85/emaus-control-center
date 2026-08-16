@@ -13,7 +13,8 @@ function instalarMatrizRolesPermisosDefinitiva() {
     ['REGISTRO', 'Registro y gestión de aspirantes.', 'Sí'],
     ['TESORERIA', 'Gestión financiera y comprobantes.', 'Sí'],
     ['CAMPANERO', 'Operación del paso a paso.', 'Sí'],
-    ['LOGISTICA', 'Gestión logística, entregables y elementos físicos.', 'Sí']
+    ['LOGISTICA', 'Gestión logística, entregables y elementos físicos.', 'Sí'],
+    ['ANGELITOS', 'Servicio al retiro: administración de Angelitos y Serenata.', 'Sí']
   ];
 
   const permisos = obtenerCatalogoPermisosDefinitivo_();
@@ -125,6 +126,14 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['PASO_A_PASO_CAMBIAR_ORDEN','Operación del retiro','Paso a paso','Cambiar orden'],
     ['PASO_A_PASO_INICIAR','Operación del retiro','Paso a paso','Iniciar'],
     ['PASO_A_PASO_EDITAR','Operación del retiro','Paso a paso','Editar'],
+
+    ['SERVICIO_ANGELITOS_VER','Servicio al retiro','Angelitos','Ver inscritos'],
+    ['SERVICIO_ANGELITOS_GESTIONAR','Servicio al retiro','Angelitos','Aprobar y rechazar personas'],
+    ['SERVICIO_ANGELITOS_NOTIFICAR','Servicio al retiro','Angelitos','Notificar decisiones por WhatsApp'],
+    ['SERVICIO_SERENATA_VER','Servicio al retiro','Serenata','Ver inscritos'],
+    ['SERVICIO_SERENATA_GESTIONAR','Servicio al retiro','Serenata','Aprobar y rechazar personas'],
+    ['SERVICIO_SERENATA_NOTIFICAR','Servicio al retiro','Serenata','Notificar decisiones por WhatsApp'],
+
     ['SISTEMA_TODO','Sistema','Sistema','Acceso completo'],
     ['USUARIOS_CONSULTAR','Sistema','Usuarios','Consultar'],
     ['USUARIOS_CREAR','Sistema','Usuarios','Crear'],
@@ -139,12 +148,18 @@ function obtenerCatalogoPermisosDefinitivo_() {
 
 function obtenerMatrizInicialRolesPermisos_() {
   const todos = obtenerCatalogoPermisosDefinitivo_().map(function(x){return x.codigo;});
-  const todosRoles = ['ADMIN','AUDIOVISUAL','LIDER_RETIRO','LIDER_MESA','SERVIDOR','REGISTRO','TESORERIA','CAMPANERO','LOGISTICA'];
+  const todosRoles = ['ADMIN','AUDIOVISUAL','LIDER_RETIRO','LIDER_MESA','SERVIDOR','REGISTRO','TESORERIA','CAMPANERO','LOGISTICA','ANGELITOS'];
   const mapa = {};
   todosRoles.forEach(function(r){mapa[r]=[];});
   mapa.ADMIN = todos.slice();
   function dar(permiso, roles){roles.forEach(function(r){mapa[r].push(permiso);});}
-  const todosConsulta = todosRoles;
+
+  // ANGELITOS es un perfil funcional exclusivo de Servicio al retiro.
+  // No recibe automáticamente permisos generales de personas, logística,
+  // tesorería u operación.
+  const todosConsulta = todosRoles.filter(function(rol) {
+    return rol !== 'ANGELITOS';
+  });
   dar('DASHBOARD_VER', todosConsulta);
   dar('ASPIRANTES_VER_DETALLE', todosConsulta);
   dar('ASPIRANTES_REGISTRAR',['LIDER_RETIRO','LIDER_MESA','SERVIDOR','REGISTRO']);
@@ -200,6 +215,18 @@ function obtenerMatrizInicialRolesPermisos_() {
   dar('PASO_A_PASO_CAMBIAR_ORDEN',['LIDER_RETIRO']);
   dar('PASO_A_PASO_INICIAR',['LIDER_RETIRO','CAMPANERO']);
   dar('PASO_A_PASO_EDITAR',['LIDER_RETIRO']);
+
+  [
+    'SERVICIO_ANGELITOS_VER',
+    'SERVICIO_ANGELITOS_GESTIONAR',
+    'SERVICIO_ANGELITOS_NOTIFICAR',
+    'SERVICIO_SERENATA_VER',
+    'SERVICIO_SERENATA_GESTIONAR',
+    'SERVICIO_SERENATA_NOTIFICAR'
+  ].forEach(function(permiso) {
+    dar(permiso, ['ANGELITOS']);
+  });
+
   dar('SISTEMA_TODO',['LIDER_RETIRO']);
   dar('FECHAS_IMPORTANTES_GESTIONAR',['LIDER_RETIRO']);
   ['MI_CUENTA_VER','MI_MENU_REPORTAR_PAGO','CODIGO_VESTUARIO_VER','MIS_TEMAS_VER'].forEach(function(p){dar(p,todosConsulta);});

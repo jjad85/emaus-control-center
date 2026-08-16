@@ -81,6 +81,18 @@ function routePost(contenido) {
         mensaje: 'Cuenta del servidor consultada correctamente'
       };
 
+    case 'resolverinscripcionservicio':
+      return {
+        datos: resolverInscripcionServicioRetiro(
+          contenido.token,
+          contenido.tipo,
+          contenido.id,
+          contenido.estado,
+          contenido.observacionesGestion
+        ),
+        mensaje: 'Inscripción de servicio actualizada correctamente'
+      };
+
     case 'obteneropcionesregistrocaminante':
       return {
         datos:
@@ -327,6 +339,22 @@ function routePost(contenido) {
       return { datos: reportarPagoPublico(contenido.datos), mensaje: 'Pago reportado correctamente' };
     case 'validarpago':
       return { datos: validarPago(contenido.token, contenido.id, contenido.decision || {}), mensaje: 'Pago validado correctamente' };
+
+    case 'registrarangelitopublico':
+      return {
+        datos: registrarAngelitoPublico(
+          contenido.datos
+        ),
+        mensaje: 'Inscripción de Angelito recibida correctamente'
+      };
+
+    case 'registrarapoyoaudiovisualpublico':
+      return {
+        datos: registrarApoyoAudiovisualPublico(
+          contenido.datos
+        ),
+        mensaje: 'Inscripción de apoyo audiovisual recibida correctamente'
+      };
 
     case 'registraraspirantepublico':
       return {

@@ -48,6 +48,27 @@ function normalizarPermiso(item) {
   };
 }
 
+
+function obtenerNombreVisibleRol(rol) {
+  const codigo = String(rol || '').trim().toUpperCase();
+
+  if (codigo === 'ANGELITOS') {
+    return 'SERVICIO AL RETIRO';
+  }
+
+  return rol;
+}
+
+function obtenerDescripcionRolVisual(rol) {
+  const codigo = String(rol || '').trim().toUpperCase();
+
+  if (codigo === 'ANGELITOS') {
+    return 'Angelitos y Serenata';
+  }
+
+  return '';
+}
+
 export default function RolesPermisos() {
   const { token, tienePermiso } = useAuth();
   const api = useApi(() => obtenerAdministracionSistemaApi(token), [token]);
@@ -223,8 +244,16 @@ export default function RolesPermisos() {
               sx={{ borderRadius: 1.5, mb: 0.5 }}
             >
               <ListItemText
-                primary={<Typography fontWeight={rolSeleccionado === rol.rol ? 900 : 600}>{rol.rol}</Typography>}
-                secondary={`${cantidad} permiso${cantidad === 1 ? '' : 's'}`}
+                primary={
+                  <Typography fontWeight={rolSeleccionado === rol.rol ? 900 : 600}>
+                    {obtenerNombreVisibleRol(rol.rol)}
+                  </Typography>
+                }
+                secondary={
+                  obtenerDescripcionRolVisual(rol.rol)
+                    ? `${obtenerDescripcionRolVisual(rol.rol)} · ${cantidad} permiso${cantidad === 1 ? '' : 's'}`
+                    : `${cantidad} permiso${cantidad === 1 ? '' : 's'}`
+                }
               />
               {tieneCambios && <Chip label="Sin guardar" size="small" color="warning" variant="outlined" />}
             </ListItemButton>
@@ -271,7 +300,17 @@ export default function RolesPermisos() {
                 <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1.5}>
                   <Box>
                     <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-                      <Typography variant="h6" fontWeight={900}>{rolSeleccionado}</Typography>
+                      <Typography variant="h6" fontWeight={900}>
+                        {obtenerNombreVisibleRol(rolSeleccionado)}
+                      </Typography>
+                      {String(rolSeleccionado || '').trim().toUpperCase() === 'ANGELITOS' && (
+                        <Chip
+                          label="Rol interno: ANGELITOS"
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 800 }}
+                        />
+                      )}
                       {cambiosRolSeleccionado > 0 && (
                         <Chip label={`${cambiosRolSeleccionado} cambio${cambiosRolSeleccionado === 1 ? '' : 's'}`} size="small" color="warning" />
                       )}
@@ -279,6 +318,11 @@ export default function RolesPermisos() {
                     <Typography variant="body2" color="text.secondary">
                       {permisosRol.length} de {catalogo.length} permisos asignados
                     </Typography>
+                    {String(rolSeleccionado || '').trim().toUpperCase() === 'ANGELITOS' && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.35 }}>
+                        Este perfil administra el módulo Servicio al retiro. El código ANGELITOS se conserva por compatibilidad.
+                      </Typography>
+                    )}
                   </Box>
                   <Chip
                     icon={<SecurityRounded />}

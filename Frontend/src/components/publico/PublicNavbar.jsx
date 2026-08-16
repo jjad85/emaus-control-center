@@ -18,6 +18,7 @@ const enlaces = [
   ['Inicio', 'inicio'],
   ['Qué es Emaús', 'que-es-emaus'],
   ['Comunidad', 'comunidad'],
+  ['Quiero servir', 'quiero-servir'],
   ['Próximo retiro', 'proximo-retiro'],
   ['Preguntas', 'preguntas'],
 ];

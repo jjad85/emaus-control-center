@@ -55,6 +55,62 @@ function obtenerNotificaciones(token) {
     }
   }
 
+  const configuracionServicio = obtenerConfiguraciones();
+
+  if (
+    permisos.indexOf('SERVICIO_ANGELITOS_GESTIONAR') >= 0 &&
+    estaAlertaHabilitadaParaRol_('ANGELITOS_PENDIENTES_GESTION', sesion.rol)
+  ) {
+    const pendientesAngelitos = leerHojaComoObjetos(HOJAS.ANGELITOS || 'Angelitos')
+      .filter(function(item) {
+        return convertirBooleano(item.activo) &&
+          normalizarTexto(item.estadoInscripcion || 'Pendiente') === 'pendiente';
+      });
+
+    if (pendientesAngelitos.length) {
+      items.push({
+        id: 'ANGELITOS_PENDIENTES',
+        tipo: 'warning',
+        titulo: reemplazarVariablesNotificacionServicio_(
+          configuracionServicio.campanaAngelitosTitulo || '{{cantidad}} inscripciones de Angelitos pendientes',
+          { cantidad: pendientesAngelitos.length }
+        ),
+        mensaje: configuracionServicio.campanaAngelitosMensaje || 'Hay nuevas personas inscritas como Angelitos que requieren aprobación o rechazo.',
+        cantidad: pendientesAngelitos.length,
+        ruta: '/servicio/angelitos',
+        permiso: 'SERVICIO_ANGELITOS_GESTIONAR'
+      });
+      totalPendientes += pendientesAngelitos.length;
+    }
+  }
+
+  if (
+    permisos.indexOf('SERVICIO_SERENATA_GESTIONAR') >= 0 &&
+    estaAlertaHabilitadaParaRol_('SERENATA_PENDIENTES_GESTION', sesion.rol)
+  ) {
+    const pendientesSerenata = leerHojaComoObjetos(HOJAS.SERENATA || 'Serenata')
+      .filter(function(item) {
+        return convertirBooleano(item.activo) &&
+          normalizarTexto(item.estadoInscripcion || 'Pendiente') === 'pendiente';
+      });
+
+    if (pendientesSerenata.length) {
+      items.push({
+        id: 'SERENATA_PENDIENTES',
+        tipo: 'warning',
+        titulo: reemplazarVariablesNotificacionServicio_(
+          configuracionServicio.campanaSerenataTitulo || '{{cantidad}} inscripciones de Serenata pendientes',
+          { cantidad: pendientesSerenata.length }
+        ),
+        mensaje: configuracionServicio.campanaSerenataMensaje || 'Hay nuevas personas inscritas para Serenata que requieren aprobación o rechazo.',
+        cantidad: pendientesSerenata.length,
+        ruta: '/servicio/serenata',
+        permiso: 'SERVICIO_SERENATA_GESTIONAR'
+      });
+      totalPendientes += pendientesSerenata.length;
+    }
+  }
+
   // Entrega 3: notificaciones del flujo colaborativo de presentaciones.
   try {
     // obtenerNotificacionesTemas ya aplica destinatario y parametrización por tipo.
@@ -125,5 +181,17 @@ function probarNotificaciones() {
       null,
       2
     )
+  );
+}
+
+
+function reemplazarVariablesNotificacionServicio_(plantilla, variables) {
+  return String(plantilla || '').replace(
+    /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
+    function(_, clave) {
+      return variables[clave] === undefined || variables[clave] === null
+        ? ''
+        : String(variables[clave]);
+    }
   );
 }

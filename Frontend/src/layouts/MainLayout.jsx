@@ -50,6 +50,8 @@ import EventNoteRounded from '@mui/icons-material/EventNoteRounded';
 import FolderRounded from '@mui/icons-material/FolderRounded';
 import Inventory2Rounded from '@mui/icons-material/Inventory2Rounded';
 import MonitorHeartRounded from '@mui/icons-material/MonitorHeartRounded';
+import VolunteerActivismRounded from '@mui/icons-material/VolunteerActivismRounded';
+import MusicNoteRounded from '@mui/icons-material/MusicNoteRounded';
 
 import {
   Outlet,
@@ -107,6 +109,25 @@ const menuGroups = [
         path: '/servidores',
         icon: <PersonRounded />,
         permiso: 'SERVIDORES_VER_DETALLE',
+      },
+    ],
+  },
+  {
+    id: 'servicio-retiro',
+    label: 'Servicio al retiro',
+    icon: <VolunteerActivismRounded />,
+    items: [
+      {
+        label: 'Angelitos',
+        path: '/servicio/angelitos',
+        icon: <VolunteerActivismRounded />,
+        permiso: 'SERVICIO_ANGELITOS_VER',
+      },
+      {
+        label: 'Serenata',
+        path: '/servicio/serenata',
+        icon: <MusicNoteRounded />,
+        permiso: 'SERVICIO_SERENATA_VER',
       },
     ],
   },

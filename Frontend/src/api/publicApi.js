@@ -35,3 +35,22 @@ export async function responderAutorizacionesCaminantePublico(tokenAutorizacion,
   const response = await postAction('responderAutorizacionesCaminantePublico', { tokenAutorizacion, decision });
   return response.datos;
 }
+
+export async function registrarAngelitoPublico(datos) {
+  const response = await postAction(
+    'registrarAngelitoPublico',
+    { datos }
+  );
+
+  return response.datos;
+}
+
+
+export async function registrarApoyoAudiovisualPublico(datos) {
+  const response = await postAction(
+    'registrarApoyoAudiovisualPublico',
+    { datos }
+  );
+
+  return response.datos;
+}

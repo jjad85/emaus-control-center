@@ -633,7 +633,40 @@ function convertirEncabezadoCrud(
     'salt': 'salt',
 
     'clave hash': 'claveHash',
-    'clavehash': 'claveHash'
+    'clavehash': 'claveHash',
+
+    /*
+     * Encabezados técnicos usados por el módulo Angelitos.
+     *
+     * convertirEncabezadoCrud normaliza primero a minúsculas.
+     * Por eso un encabezado físico como "nombreCompleto" termina
+     * como "nombrecompleto" y, si no existe este mapeo, no coincide
+     * con la propiedad nombreCompleto enviada por el servicio.
+     */
+    'nombrecompleto': 'nombreCompleto',
+    'realizoemaus': 'realizoEmaus',
+    'parroquiaemaus': 'parroquiaEmaus',
+    'ciudademaus': 'ciudadEmaus',
+    'paisemaus': 'paisEmaus',
+    'anioemaus': 'anioEmaus',
+    'diaservicio': 'diaServicio',
+    'tipotransporte': 'tipoTransporte',
+    'vaenvehiculo': 'vaEnVehiculo',
+    'tienecupolibre': 'tieneCupoLibre',
+    'deseallevaralguien': 'deseaLlevarAlguien',
+    'cuposdisponibles': 'cuposDisponibles',
+    'lugarsalida': 'lugarSalida',
+    'horasalida': 'horaSalida',
+    'validacionemaus': 'validacionEmaus',
+    'estadoinscripcion': 'estadoInscripcion',
+    'origenregistro': 'origenRegistro',
+    'aceptadeclaracion': 'aceptaDeclaracion',
+    'fecharegistro': 'fechaRegistro',
+    'fechaactualizacion': 'fechaActualizacion',
+    'actualizadopor': 'actualizadoPor'
+    ,'observacionesgestion': 'observacionesGestion'
+    ,'fechadecision': 'fechaDecision'
+    ,'decididopor': 'decididoPor'
   };
 
   if (mapa[texto]) {

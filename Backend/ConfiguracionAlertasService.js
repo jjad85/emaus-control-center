@@ -7,6 +7,8 @@ function obtenerCatalogoAlertas_() {
   return [
     { codigo:'ASPIRANTES_PENDIENTES_GESTION', categoria:'Personas', nombre:'Aspirantes pendientes de gestión', descripcion:'Se muestra cuando existen aspirantes activos pendientes de convertir o rechazar.', codigoCampana:'ASPIRANTES_PENDIENTES' },
     { codigo:'PAGOS_PENDIENTES_VALIDACION', categoria:'Tesorería', nombre:'Pagos pendientes de validar', descripcion:'Se muestra cuando existen comprobantes reportados pendientes de validación.', codigoCampana:'PAGOS_PENDIENTES' },
+    { codigo:'ANGELITOS_PENDIENTES_GESTION', categoria:'Servicio al retiro', nombre:'Angelitos pendientes de gestión', descripcion:'Se muestra cuando existen inscripciones de Angelitos pendientes de aprobar o rechazar.', codigoCampana:'ANGELITOS_PENDIENTES' },
+    { codigo:'SERENATA_PENDIENTES_GESTION', categoria:'Servicio al retiro', nombre:'Serenata pendiente de gestión', descripcion:'Se muestra cuando existen inscripciones de Serenata pendientes de aprobar o rechazar.', codigoCampana:'SERENATA_PENDIENTES' },
     { codigo:'PRESENTACIONES_NOVEDADES', categoria:'Presentaciones', nombre:'Novedades para Audiovisuales', descripcion:'Notificaciones generadas por los servidores para revisión del equipo de Audiovisuales.', codigoCampana:'PRESENTACIONES_PENDIENTES' },
     { codigo:'PRESENTACION_CAMBIOS_AUDIOVISUALES', categoria:'Mis temas', nombre:'Cambios de Audiovisuales en presentaciones', descripcion:'Avisa al servidor cuando Audiovisuales comenta, aprueba, solicita ajustes o carga una nueva versión de su presentación.', codigoCampana:'MIS_TEMAS_PRESENTACION' },
     { codigo:'CANCION_CAMBIOS_AUDIOVISUALES', categoria:'Mis temas', nombre:'Cambios de Audiovisuales en canciones', descripcion:'Avisa al servidor cuando Audiovisuales actualiza el estado, deja observaciones o carga el archivo definitivo de una canción.', codigoCampana:'MIS_TEMAS_CANCION' },
@@ -40,6 +42,8 @@ function obtenerMatrizInicialAlertas_() {
   return {
     ASPIRANTES_PENDIENTES_GESTION:['ADMIN','LIDER_RETIRO','REGISTRO'],
     PAGOS_PENDIENTES_VALIDACION:['ADMIN','LIDER_RETIRO','TESORERIA'],
+    ANGELITOS_PENDIENTES_GESTION:['ADMIN','ANGELITOS'],
+    SERENATA_PENDIENTES_GESTION:['ADMIN','ANGELITOS'],
     PRESENTACIONES_NOVEDADES:['ADMIN','AUDIOVISUAL','LIDER_RETIRO'],
     PRESENTACION_CAMBIOS_AUDIOVISUALES:['ADMIN','LIDER_RETIRO','SERVIDOR'],
     CANCION_CAMBIOS_AUDIOVISUALES:['ADMIN','LIDER_RETIRO','SERVIDOR'],

@@ -16,6 +16,8 @@ import MainLayout from './layouts/MainLayout';
 import PublicHome from './pages/PublicHome';
 import RegistroAspirante from './pages/RegistroAspirante';
 import ReportarPago from './pages/ReportarPago';
+import RegistroAngelito from './pages/RegistroAngelito';
+import RegistroApoyoAudiovisual from './pages/RegistroApoyoAudiovisual';
 import Pagos from './pages/Pagos';
 import Dashboard from './pages/Dashboard';
 import Aspirantes from './pages/Aspirantes';
@@ -46,6 +48,7 @@ import Documentos from './pages/Documentos';
 import CentroLogistico from './pages/CentroLogistico';
 import ConfiguracionAlertas from './pages/ConfiguracionAlertas';
 import EstadoAplicacion from './pages/EstadoAplicacion';
+import ServicioRetiro from './pages/ServicioRetiro';
 
 export default function App() {
   return (
@@ -61,6 +64,8 @@ export default function App() {
 
         <Route path="/registro" element={<RegistroAspirante />} />
         <Route path="/reportar-pago" element={<ReportarPago />} />
+        <Route path="/servir/angelitos" element={<RegistroAngelito />} />
+        <Route path="/servir/apoyo-audiovisual" element={<RegistroApoyoAudiovisual />} />
         <Route path="/autorizaciones" element={<AutorizacionesCaminante />} />
 
         {/* Pantalla pública sin menú lateral ni autenticación */}
@@ -229,6 +234,16 @@ export default function App() {
 
           <Route path="/mi-cuenta" element={<PrivateRoute permiso="MI_CUENTA_VER"><MiCuenta /></PrivateRoute>} />
           <Route path="/codigo-vestuario" element={<PrivateRoute permiso="CODIGO_VESTUARIO_VER"><CodigoVestuario /></PrivateRoute>} />
+
+          <Route
+            path="/servicio/angelitos"
+            element={<PrivateRoute permiso="SERVICIO_ANGELITOS_VER"><ServicioRetiro key="servicio-angelitos" tipo="ANGELITOS" /></PrivateRoute>}
+          />
+
+          <Route
+            path="/servicio/serenata"
+            element={<PrivateRoute permiso="SERVICIO_SERENATA_VER"><ServicioRetiro key="servicio-serenata" tipo="SERENATA" /></PrivateRoute>}
+          />
 
           <Route
             path="/notificaciones-whatsapp"
