@@ -31,10 +31,6 @@ function registrarAngelitoPublico(datos) {
     throw crearErrorAplicacion('ANGELITO_NOMBRE_REQUERIDO', 'Debes ingresar tu nombre completo.');
   }
 
-  if (!documento) {
-    throw crearErrorAplicacion('ANGELITO_DOCUMENTO_REQUERIDO', 'Debes ingresar tu número de documento.');
-  }
-
   if (!/^3\d{9}$/.test(celular)) {
     throw crearErrorAplicacion('ANGELITO_CELULAR_INVALIDO', 'El celular debe iniciar por 3 y tener exactamente 10 dígitos.');
   }
@@ -113,7 +109,7 @@ function registrarAngelitoPublico(datos) {
   );
 
   const duplicado = existentes.find(function(item) {
-    return String(item.documento || '').trim() === documento &&
+    return String(item.celular || '').replace(/\D/g, '') === celular &&
       String(item.diaServicio || '').trim() === diaServicio &&
       convertirBooleano(item.activo);
   });
@@ -121,7 +117,7 @@ function registrarAngelitoPublico(datos) {
   if (duplicado) {
     throw crearErrorAplicacion(
       'ANGELITO_INSCRIPCION_DUPLICADA',
-      'Ya existe una inscripción activa con este documento para el día seleccionado.'
+      'Ya existe una inscripción activa con este celular para el día seleccionado.'
     );
   }
 

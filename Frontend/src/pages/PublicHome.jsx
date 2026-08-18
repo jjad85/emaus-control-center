@@ -362,7 +362,7 @@ export default function PublicHome() {
                   </Box>
 
                   <Box
-                    onClick={() => navigate('/servir/apoyo-audiovisual')}
+                    onClick={() => navigate('/servir/serenata')}
                     role="button"
                     tabIndex={0}
                     sx={{
@@ -385,21 +385,19 @@ export default function PublicHome() {
                       </Box>
                       <Box flex={1}>
                         <Typography variant="overline" sx={{ color: '#315f78', fontWeight: 950, letterSpacing: '.12em' }}>QUIERO SERVIR</Typography>
-                        <Typography variant="h4" fontWeight={950}>Quiero brindar apoyo audiovisual</Typography>
+                        <Typography variant="h4" fontWeight={950}>Quiero participar en la serenata</Typography>
                         <Typography color="text.secondary" mt={.8} lineHeight={1.7}>
-                          Si ya viviste Emaús y quieres apoyarnos en un momento especial del retiro, registra tus datos para que podamos coordinar tu participación.
+                          Si ya viviste Emaús y quieres participar en la serenata, registra tus datos para que podamos coordinar tu participación.
                         </Typography>
                       </Box>
                       <Button
                         variant="contained"
                         endIcon={<ArrowForwardRounded />}
-                        onClick={(event) => { event.stopPropagation(); navigate('/servir/apoyo-audiovisual'); }}
+                        onClick={(event) => { event.stopPropagation(); navigate('/servir/serenata'); }}
                         sx={{
                           borderRadius: 999,
                           px: 2.7,
                           whiteSpace: 'nowrap',
-                          bgcolor: '#315f78',
-                          '&:hover': { bgcolor: '#274d61' },
                         }}
                       >
                         Inscribirme

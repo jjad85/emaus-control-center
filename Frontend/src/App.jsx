@@ -65,6 +65,7 @@ export default function App() {
         <Route path="/registro" element={<RegistroAspirante />} />
         <Route path="/reportar-pago" element={<ReportarPago />} />
         <Route path="/servir/angelitos" element={<RegistroAngelito />} />
+        <Route path="/servir/serenata" element={<RegistroApoyoAudiovisual />} />
         <Route path="/servir/apoyo-audiovisual" element={<RegistroApoyoAudiovisual />} />
         <Route path="/autorizaciones" element={<AutorizacionesCaminante />} />
 

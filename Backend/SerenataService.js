@@ -46,13 +46,6 @@ function registrarApoyoAudiovisualPublico(datos) {
     );
   }
 
-  if (!documento) {
-    throw crearErrorAplicacion(
-      'SERENATA_DOCUMENTO_REQUERIDO',
-      'Debes ingresar tu número de documento.'
-    );
-  }
-
   if (!/^3\d{9}$/.test(celular)) {
     throw crearErrorAplicacion(
       'SERENATA_CELULAR_INVALIDO',
@@ -63,7 +56,7 @@ function registrarApoyoAudiovisualPublico(datos) {
   if (!realizoEmaus) {
     throw crearErrorAplicacion(
       'SERENATA_REQUIERE_EMAUS',
-      'Para brindar este apoyo es necesario haber vivido previamente un Retiro de Emaús.'
+      'Para participar en la serenata es necesario haber vivido previamente un Retiro de Emaús.'
     );
   }
 
@@ -141,7 +134,7 @@ function registrarApoyoAudiovisualPublico(datos) {
 
   const duplicado = existentes.find(function(item) {
     return (
-      String(item.documento || '').trim() === documento &&
+      String(item.celular || '').replace(/\D/g, '') === celular &&
       convertirBooleano(item.activo)
     );
   });
@@ -149,7 +142,7 @@ function registrarApoyoAudiovisualPublico(datos) {
   if (duplicado) {
     throw crearErrorAplicacion(
       'SERENATA_INSCRIPCION_DUPLICADA',
-      'Ya existe una inscripción activa con este documento.'
+      'Ya existe una inscripción activa con este celular.'
     );
   }
 

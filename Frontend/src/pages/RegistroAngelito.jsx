@@ -117,7 +117,7 @@ export default function RegistroAngelito() {
   const formularioValido = useMemo(() => {
     if (!realizoEmaus) return false;
     if (!form.parroquiaEmaus.trim() || !form.ciudadEmaus.trim()) return false;
-    if (!form.nombreCompleto.trim() || !form.documento.trim()) return false;
+    if (!form.nombreCompleto.trim()) return false;
     if (!/^3\d{9}$/.test(String(form.celular).replace(/\D/g, ''))) return false;
     if (!['Viernes', 'Sábado'].includes(form.diaServicio)) return false;
     if (!['Carro', 'Moto', 'Sin vehículo'].includes(form.tipoTransporte)) return false;
@@ -350,7 +350,6 @@ export default function RegistroAngelito() {
                       </Stack>
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth required label="Nombre completo" value={form.nombreCompleto} onChange={e => cambiar('nombreCompleto', e.target.value)} /></Grid>
-                        <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth required label="Número de documento" value={form.documento} onChange={e => cambiar('documento', e.target.value)} /></Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
                           <TextField
                             fullWidth
@@ -367,7 +366,6 @@ export default function RegistroAngelito() {
                             }
                           />
                         </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth type="email" label="Correo electrónico (opcional)" value={form.correo} onChange={e => cambiar('correo', e.target.value)} /></Grid>
                       </Grid>
                     </Paper>
 

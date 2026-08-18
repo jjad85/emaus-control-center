@@ -116,7 +116,7 @@ export default function RegistroApoyoAudiovisual() {
   const formularioValido = useMemo(() => {
     if (!realizoEmaus) return false;
     if (!form.parroquiaEmaus.trim() || !form.ciudadEmaus.trim()) return false;
-    if (!form.nombreCompleto.trim() || !form.documento.trim()) return false;
+    if (!form.nombreCompleto.trim()) return false;
     if (!/^3\d{9}$/.test(String(form.celular).replace(/\D/g, ''))) return false;
     if (!['Carro', 'Moto', 'Sin vehículo'].includes(form.tipoTransporte)) return false;
     if (vaEnVehiculo && !form.lugarSalida.trim()) return false;
@@ -230,7 +230,7 @@ export default function RegistroApoyoAudiovisual() {
                   />
                 </Stack>
                 <Typography variant="h2" fontWeight={950} sx={{ fontSize: { xs: '2.35rem', md: '4rem' }, color: '#10231f', lineHeight: 1.03 }}>
-                  Quiero brindar apoyo audiovisual
+                  Quiero participar en la serenata
                 </Typography>
                 <Typography sx={{ mt: 1.5, maxWidth: 760, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.08rem' }, lineHeight: 1.75 }}>
                   Si ya viviste un Retiro de Emaús, puedes ayudarnos en un momento especial poniendo tu tiempo y disposición al servicio de esta experiencia.
@@ -262,9 +262,9 @@ export default function RegistroApoyoAudiovisual() {
               <Box sx={{ width: 76, height: 76, mx: 'auto', borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: '#edf8f3', color: '#176b58' }}>
                 <CheckCircleRounded sx={{ fontSize: 42 }} />
               </Box>
-              <Typography variant="h4" fontWeight={950} mt={2}>¡Gracias por querer apoyar!</Typography>
+              <Typography variant="h4" fontWeight={950} mt={2}>¡Gracias por querer participar!</Typography>
               <Typography color="text.secondary" mt={1.2} mx="auto" maxWidth={620} lineHeight={1.7}>
-                Recibimos tu inscripción para brindar apoyo audiovisual. El equipo organizador revisará la información y se pondrá en contacto contigo con las indicaciones necesarias.
+                Recibimos tu inscripción para participar en la serenata. El equipo organizador revisará la información y se pondrá en contacto contigo con las indicaciones necesarias.
               </Typography>
               <Button variant="contained" onClick={() => navigate('/')} sx={{ mt: 3, borderRadius: 999, px: 3 }}>
                 Volver al inicio
@@ -296,7 +296,7 @@ export default function RegistroApoyoAudiovisual() {
                           selected={form.realizoEmaus === 'Sí'}
                           icono={<FavoriteRounded />}
                           titulo="Sí, ya viví Emaús"
-                          texto="Puedo continuar con mi inscripción para brindar apoyo audiovisual."
+                          texto="Puedo continuar con mi inscripción para participar en la serenata."
                           onClick={() => cambiarExperienciaEmaus('Sí')}
                         />
                       </Grid>
@@ -305,7 +305,7 @@ export default function RegistroApoyoAudiovisual() {
                           selected={form.realizoEmaus === 'No'}
                           icono={<ChurchRounded />}
                           titulo="No, todavía no"
-                          texto="Primero es necesario vivir el retiro antes de brindar este apoyo."
+                          texto="Primero es necesario vivir el retiro antes de participar en la serenata."
                           onClick={() => cambiarExperienciaEmaus('No')}
                         />
                       </Grid>
@@ -314,7 +314,7 @@ export default function RegistroApoyoAudiovisual() {
 
                   {form.realizoEmaus === 'No' && (
                     <Alert severity="info" sx={{ mt: 2, borderRadius: 3 }}>
-                      Para participar en este apoyo es necesario haber vivido previamente un Retiro de Emaús.
+                      Para participar en la serenata es necesario haber vivido previamente un Retiro de Emaús.
                     </Alert>
                   )}
 
@@ -348,7 +348,6 @@ export default function RegistroApoyoAudiovisual() {
                       </Stack>
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth required label="Nombre completo" value={form.nombreCompleto} onChange={e => cambiar('nombreCompleto', e.target.value)} /></Grid>
-                        <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth required label="Número de documento" value={form.documento} onChange={e => cambiar('documento', e.target.value)} /></Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
                           <TextField
                             fullWidth
@@ -365,7 +364,6 @@ export default function RegistroApoyoAudiovisual() {
                             }
                           />
                         </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth type="email" label="Correo electrónico (opcional)" value={form.correo} onChange={e => cambiar('correo', e.target.value)} /></Grid>
                       </Grid>
                     </Paper>
 
