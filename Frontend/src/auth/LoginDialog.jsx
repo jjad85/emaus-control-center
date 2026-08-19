@@ -16,13 +16,14 @@ import LockRounded from '@mui/icons-material/LockRounded';
 import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
 import VisibilityOffRounded from '@mui/icons-material/VisibilityOffRounded';
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import PasswordRecoveryDialog from './PasswordRecoveryDialog';
 import '../styles/portalPublico.css';
 
 export default function LoginDialog() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loginOpen, cerrarLogin, login, mensajeSesion } = useAuth();
   const [usuario, setUsuario] = useState('');
   const [clave, setClave] = useState('');
@@ -42,7 +43,24 @@ export default function LoginDialog() {
     setLoading(true);
     try {
       const sesion = await login(usuario.trim(), clave);
-      if (sesion.debeCambiarPassword) navigate('/cambiar-password-inicial', { replace: true });
+
+      if (sesion.debeCambiarPassword) {
+        navigate('/cambiar-password-inicial', { replace: true });
+      } else {
+        const rutaActual = location.pathname || '/';
+        const esRutaPublica =
+          rutaActual === '/' ||
+          rutaActual === '/registro' ||
+          rutaActual === '/reportar-pago' ||
+          rutaActual === '/autorizaciones' ||
+          rutaActual === '/pantalla-publica' ||
+          rutaActual.startsWith('/servir/');
+
+        if (esRutaPublica) {
+          navigate('/dashboard', { replace: true });
+        }
+      }
+
       setUsuario('');
       setClave('');
     } catch (err) {

@@ -59,7 +59,17 @@ function OpcionGrande({ selected, icono, titulo, texto, onClick, disabled = fals
   return (
     <Paper
       variant="outlined"
+      role="radio"
+      aria-checked={selected}
+      tabIndex={disabled ? -1 : 0}
       onClick={disabled ? undefined : onClick}
+      onKeyDown={(event) => {
+        if (disabled) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick?.();
+        }
+      }}
       sx={{
         p: 2,
         borderRadius: 3.5,
@@ -93,7 +103,15 @@ function OpcionGrande({ selected, icono, titulo, texto, onClick, disabled = fals
           <Typography fontWeight={950}>{titulo}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: .25 }}>{texto}</Typography>
         </Box>
-        <Radio checked={selected} disabled={disabled} />
+        <Radio
+          checked={selected}
+          disabled={disabled}
+          inputProps={{ 'aria-label': titulo }}
+          sx={{
+            pointerEvents: 'none',
+            flexShrink: 0,
+          }}
+        />
       </Stack>
     </Paper>
   );
