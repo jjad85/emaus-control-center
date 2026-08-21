@@ -79,9 +79,15 @@ function buscarPersonaPago(tipo, criterio, personaId) {
     return convertirBooleano(x.activo);
   });
 
+  /*
+   * IMPORTANTE: ASPIRANTES y CAMINANTES tienen secuencias de ID independientes.
+   * Un aspirante id=4 puede coexistir con un caminante id=4 que sea otra persona.
+   *
+   * Cuando viene criterio (numero de inscripcion/documento), ese dato identifica
+   * a la persona y tiene prioridad sobre el ID interno. El ID solo se usa como
+   * fallback cuando no existe criterio.
+   */
   const caminante = caminantes.find(function(c) {
-    if (id && String(c.id) === id) return true;
-
     const aspiranteRelacionado = aspirantes.find(function(a) {
       return (
         String(a.id) === String(c.aspiranteId) ||
@@ -89,14 +95,18 @@ function buscarPersonaPago(tipo, criterio, personaId) {
       );
     }) || {};
 
-    return [
-      c.numeroInscripcion,
-      c.documentoIdentidad,
-      aspiranteRelacionado.numeroInscripcion,
-      aspiranteRelacionado.documentoIdentidad
-    ].some(function(v) {
-      return normalizarTexto(v) === consulta;
-    });
+    if (consulta) {
+      return [
+        c.numeroInscripcion,
+        c.documentoIdentidad,
+        aspiranteRelacionado.numeroInscripcion,
+        aspiranteRelacionado.documentoIdentidad
+      ].some(function(v) {
+        return normalizarTexto(v) === consulta;
+      });
+    }
+
+    return Boolean(id) && String(c.id) === id;
   });
 
   if (caminante) {
@@ -114,14 +124,16 @@ function buscarPersonaPago(tipo, criterio, personaId) {
     if (convertido) return false;
     if (normalizarTexto(a.estadoSolicitud) === 'rechazado') return false;
 
-    if (id && String(a.id) === id) return true;
+    if (consulta) {
+      return [
+        a.numeroInscripcion,
+        a.documentoIdentidad
+      ].some(function(v) {
+        return normalizarTexto(v) === consulta;
+      });
+    }
 
-    return [
-      a.numeroInscripcion,
-      a.documentoIdentidad
-    ].some(function(v) {
-      return normalizarTexto(v) === consulta;
-    });
+    return Boolean(id) && String(a.id) === id;
   });
 
   if (!aspirante) {
@@ -355,6 +367,18 @@ function reportarPagoPublico(datos) {
         caminanteId,
         { usuario: 'PORTAL_PAGOS' }
       );
+
+      // Defensa contra asociaciones cruzadas: la conversión debe conservar
+      // exactamente la inscripción del aspirante seleccionado.
+      if (
+        normalizarTexto(caminanteConvertido.numeroInscripcion) !==
+        normalizarTexto(aspiranteActual.numeroInscripcion)
+      ) {
+        throw crearErrorAplicacion(
+          'IDENTIDAD_PAGO_INCONSISTENTE',
+          'No fue posible asociar el pago de forma segura con la persona seleccionada. No se registró el pago.'
+        );
+      }
 
       resumen = completarResumenPagosPersona_(
         caminanteConvertido,
