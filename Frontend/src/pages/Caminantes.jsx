@@ -58,6 +58,7 @@ import ProtectedButton from "../components/ProtectedButton";
 
 import CaminanteFormDialog from "../components/caminantes/CaminanteFormDialog";
 import CaminanteActionDialog from "../components/caminantes/CaminanteActionDialog";
+import EstadoCuentaPersona from "../components/pagos/EstadoCuentaPersona";
 
 const ESTADOS_PAGO = ["Pendiente", "Pago Parcial", "Pago Total"];
 
@@ -1001,6 +1002,18 @@ export default function Caminantes() {
 
         <DialogContent dividers>
           <Stack spacing={2.25}>
+            <Card variant="outlined">
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                  <PaymentsRounded color="primary" />
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={850}>Estado de cuenta</Typography>
+                    <Typography variant="body2" color="text.secondary">Abonos, comprobantes y trazabilidad financiera.</Typography>
+                  </Box>
+                </Stack>
+                <EstadoCuentaPersona token={token} tipoPersona="Caminante" personaId={detalleCaminante?.id} />
+              </CardContent>
+            </Card>
             <SeccionDetalle titulo="Información personal">
               <CampoDetalle
                 etiqueta="Número de inscripción"

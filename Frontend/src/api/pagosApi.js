@@ -54,3 +54,8 @@ export async function obtenerPagosCaminante(token, caminanteId) {
   const r = await getResource('pagoscaminante', { token, caminanteId });
   return r.datos;
 }
+
+export async function obtenerEstadoCuentaPersona(token, tipo, personaId) {
+  const r = await getResource('estadocuentapersona', { token, tipo, personaId });
+  return r.datos;
+}

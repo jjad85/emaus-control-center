@@ -188,7 +188,11 @@ function completarResumenPagosPersona_(persona, tipo) {
     return tipoPago === tipoPersona && String(idPago) === String(persona.id);
   });
   const aprobados = pagos.filter(function(p){ return normalizarTexto(p.estadoPagoReportado || p.estado) === 'aprobado'; });
+  const pendientes = pagos.filter(function(p){ return normalizarTexto(p.estadoPagoReportado || p.estado) === 'pendiente'; });
+  const rechazados = pagos.filter(function(p){ return normalizarTexto(p.estadoPagoReportado || p.estado) === 'rechazado'; });
   const totalAprobado = aprobados.reduce(function(s,p){ return s + Number(p.valorAprobado || p.valorReportado || 0); }, 0);
+  const totalPendienteValidacion = pendientes.reduce(function(s,p){ return s + Number(p.valorReportado || 0); }, 0);
+  const totalRechazado = rechazados.reduce(function(s,p){ return s + Number(p.valorReportado || 0); }, 0);
   const esExento = tipoPersona === 'Servidor' && Boolean(persona.exentoPago);
   const valorRetiroConfigurado = obtenerValorRetiroPorTipo_(tipoPersona);
   const valorRetiro = esExento ? 0 : valorRetiroConfigurado;
@@ -205,9 +209,20 @@ function completarResumenPagosPersona_(persona, tipo) {
     estadoPago: esExento ? 'Exento' : (totalAprobado <= 0 ? 'Pendiente' : totalAprobado < valorRetiro ? 'Pago Parcial' : 'Pago Total'),
     valorRetiro: valorRetiro,
     totalAprobado: totalAprobado,
+    totalPendienteValidacion: totalPendienteValidacion,
+    totalRechazado: totalRechazado,
+    cantidadPagos: pagos.length,
+    cantidadAprobados: aprobados.length,
+    cantidadPendientes: pendientes.length,
+    cantidadRechazados: rechazados.length,
     saldoPendiente: Math.max(valorRetiro - totalAprobado, 0),
     excedente: Math.max(totalAprobado - valorRetiro, 0),
-    pagos: pagos.map(function(p) { return normalizarPagoRespuesta(p, persona); })
+    pagos: pagos
+      .map(function(p) { return normalizarPagoRespuesta(p, persona); })
+      .sort(function(a, b) {
+        return new Date(b.fechaPago || b.fechaRegistro || 0).getTime() -
+          new Date(a.fechaPago || a.fechaRegistro || 0).getTime();
+      })
   };
 }
 
@@ -250,8 +265,11 @@ function normalizarPagoRespuesta(p, persona) {
     comprobanteTipo: p.comprobanteTipo,
     comprobanteTamano: Number(p.comprobanteTamano || 0),
     fechaRegistro: p.fechaRegistro,
+    fechaActualizacion: p.fechaActualizacion,
     fechaValidacion: p.fechaValidacion,
-    validadoPor: p.validadoPor
+    validadoPor: p.validadoPor,
+    actualizadoPor: p.actualizadoPor || '',
+    origenReporte: p.actualizadoPor || 'PORTAL_PAGOS'
   };
 }
 
@@ -524,6 +542,19 @@ function recalcularEstadoPagoServidor_(servidorId, usuario) {
 }
 
 function obtenerPagosCaminante(token,caminanteId){ validarPermiso(token,'CAMINANTES_VER_DETALLE'); return completarResumenPagosPersona_(leerRegistroPorIdSheet(HOJAS.CAMINANTES,caminanteId,{usuario:'CONSULTA'}), 'Caminante'); }
+
+function obtenerEstadoCuentaPersona(token, tipo, personaId) {
+  const tipoPersona = normalizarTipoPersonaPago_(tipo);
+  if (tipoPersona === 'Servidor') {
+    validarPermiso(token, 'SERVIDORES_VER_DETALLE');
+    return completarResumenPagosPersona_(obtenerServidorPorId(personaId), 'Servidor');
+  }
+  validarPermiso(token, 'CAMINANTES_VER_DETALLE');
+  return completarResumenPagosPersona_(
+    leerRegistroPorIdSheet(HOJAS.CAMINANTES, personaId, {usuario:'CONSULTA_ESTADO_CUENTA'}),
+    'Caminante'
+  );
+}
 
 
 function convertirFechaPago_(valor, finDelDia) {

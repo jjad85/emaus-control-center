@@ -95,6 +95,9 @@ function routeRequest(parametros) {
     case 'pagoscaminante':
       return { datos: obtenerPagosCaminante(parametros.token, parametros.caminanteId), mensaje: 'Pagos del caminante consultados correctamente' };
 
+    case 'estadocuentapersona':
+      return { datos: obtenerEstadoCuentaPersona(parametros.token, parametros.tipo, parametros.personaId), mensaje: 'Estado de cuenta consultado correctamente' };
+
     case 'servidores':
       return atenderServidores(
         parametros
