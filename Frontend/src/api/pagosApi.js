@@ -59,3 +59,13 @@ export async function obtenerEstadoCuentaPersona(token, tipo, personaId) {
   const r = await getResource('estadocuentapersona', { token, tipo, personaId });
   return r.datos;
 }
+
+
+export async function revertirAprobacionPago(token, id, motivo) {
+  const r = await postAction('revertiraprobacionpago', {
+    token,
+    id,
+    motivo,
+  });
+  return r.datos;
+}

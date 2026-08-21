@@ -269,7 +269,15 @@ function normalizarPagoRespuesta(p, persona) {
     fechaValidacion: p.fechaValidacion,
     validadoPor: p.validadoPor,
     actualizadoPor: p.actualizadoPor || '',
-    origenReporte: p.actualizadoPor || 'PORTAL_PAGOS'
+    origenReporte: p.actualizadoPor || 'PORTAL_PAGOS',
+
+    fechaReversion: p.fechaReversion || '',
+    revertidoPor: p.revertidoPor || '',
+    motivoReversion: p.motivoReversion || '',
+    estadoAnteriorReversion: p.estadoAnteriorReversion || '',
+    valorAprobadoAnterior: p.valorAprobadoAnterior || '',
+    validadoPorAnterior: p.validadoPorAnterior || '',
+    fechaValidacionAnterior: p.fechaValidacionAnterior || ''
   };
 }
 
@@ -524,6 +532,87 @@ function validarPago(token, id, decision) {
   }
   if (tipoPersona === 'Servidor') recalcularEstadoPagoServidor_(pago.servidorId, sesion.usuario);
   else recalcularEstadoPagoCaminante(pago.caminanteId,sesion.usuario);
+  return normalizarPagoRespuesta(actualizado);
+}
+
+function revertirAprobacionPago(token, id, motivo) {
+  const sesion = validarPermiso(token, 'PAGOS_VALIDAR_COMPROBANTE');
+  const pago = leerRegistroPorIdSheet(
+    HOJAS.PAGOS,
+    id,
+    { usuario: sesion.usuario }
+  );
+
+  if (!pago) {
+    throw crearErrorAplicacion(
+      'PAGO_NO_ENCONTRADO',
+      'No encontramos el pago solicitado.'
+    );
+  }
+
+  const estadoActual = String(
+    pago.estadoPagoReportado || ''
+  ).trim();
+
+  if (normalizarTexto(estadoActual) !== 'aprobado') {
+    throw crearErrorAplicacion(
+      'PAGO_NO_APROBADO',
+      'Solo se puede revertir un pago que actualmente esté aprobado.'
+    );
+  }
+
+  const motivoTexto = String(motivo || '').trim();
+
+  if (!motivoTexto) {
+    throw crearErrorAplicacion(
+      'MOTIVO_REVERSION_REQUERIDO',
+      'Debes indicar el motivo por el cual se revierte la aprobación.'
+    );
+  }
+
+  const ahora = new Date();
+
+  const actualizado = actualizarRegistroSheet(
+    HOJAS.PAGOS,
+    id,
+    {
+      estadoAnteriorReversion: estadoActual,
+      valorAprobadoAnterior: pago.valorAprobado || pago.valorReportado || '',
+      validadoPorAnterior: pago.validadoPor || '',
+      fechaValidacionAnterior: pago.fechaValidacion || '',
+
+      estadoPagoReportado: 'Pendiente',
+      valorAprobado: '',
+      validadoPor: '',
+      fechaValidacion: '',
+
+      fechaReversion: ahora,
+      revertidoPor: sesion.usuario,
+      motivoReversion: motivoTexto,
+
+      fechaActualizacion: ahora,
+      actualizadoPor: sesion.usuario
+    },
+    { usuario: sesion.usuario }
+  );
+
+  const tipoPersona = normalizarTipoPersonaPago_(
+    pago.tipoPersona ||
+    (pago.servidorId ? 'Servidor' : 'Caminante')
+  );
+
+  if (tipoPersona === 'Servidor') {
+    recalcularEstadoPagoServidor_(
+      pago.servidorId,
+      sesion.usuario
+    );
+  } else {
+    recalcularEstadoPagoCaminante(
+      pago.caminanteId,
+      sesion.usuario
+    );
+  }
+
   return normalizarPagoRespuesta(actualizado);
 }
 

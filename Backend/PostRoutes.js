@@ -340,6 +340,16 @@ function routePost(contenido) {
     case 'validarpago':
       return { datos: validarPago(contenido.token, contenido.id, contenido.decision || {}), mensaje: 'Pago validado correctamente' };
 
+    case 'revertiraprobacionpago':
+      return {
+        datos: revertirAprobacionPago(
+          contenido.token,
+          contenido.id,
+          contenido.motivo
+        ),
+        mensaje: 'Aprobación del pago revertida correctamente'
+      };
+
     case 'registrarangelitopublico':
       return {
         datos: registrarAngelitoPublico(

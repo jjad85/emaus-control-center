@@ -33,6 +33,8 @@ import ReceiptLongRounded from '@mui/icons-material/ReceiptLongRounded';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
 import SearchRounded from '@mui/icons-material/SearchRounded';
 import ScheduleRounded from '@mui/icons-material/ScheduleRounded';
+import HistoryRounded from '@mui/icons-material/HistoryRounded';
+import UndoRounded from '@mui/icons-material/UndoRounded';
 import StorefrontRounded from '@mui/icons-material/StorefrontRounded';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../auth/AuthContext';
@@ -59,6 +61,19 @@ function formatearTamano(bytes) {
   if (total < 1024) return `${total} B`;
   if (total < 1024 * 1024) return `${(total / 1024).toFixed(1)} KB`;
   return `${(total / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+
+function formatearFechaHora(valor) {
+  if (!valor) return 'No informado';
+
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return String(valor);
+
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(fecha);
 }
 
 function Dato({ etiqueta, valor }) {
@@ -332,6 +347,11 @@ export default function Pagos() {
     [pagos]
   );
 
+  const pagosReversados = useMemo(
+    () => pagos.filter(p => Boolean(p.fechaReversion)),
+    [pagos]
+  );
+
   const valorPendienteValidacion = useMemo(
     () =>
       pagosPendientes.reduce(
@@ -382,6 +402,34 @@ export default function Pagos() {
         : -diferencia;
     });
   }, [pagosPendientes, metodoFiltro, ordenPendientes]);
+
+  const reversadosVisibles = useMemo(() => {
+    const filtrados = pagosReversados.filter(pago => {
+      if (metodoFiltro === 'Todos') return true;
+      return String(pago.medioPago || '').toLowerCase() ===
+        metodoFiltro.toLowerCase();
+    });
+
+    return [...filtrados].sort((a, b) => {
+      const fechaA = new Date(
+        a.fechaReversion ||
+        a.fechaActualizacion ||
+        a.fechaRegistro ||
+        0
+      ).getTime();
+
+      const fechaB = new Date(
+        b.fechaReversion ||
+        b.fechaActualizacion ||
+        b.fechaRegistro ||
+        0
+      ).getTime();
+
+      return ordenPendientes === 'antiguos'
+        ? fechaA - fechaB
+        : fechaB - fechaA;
+    });
+  }, [pagosReversados, metodoFiltro, ordenPendientes]);
 
   const grupoActivo = useMemo(() => {
     const tipo =
@@ -514,6 +562,18 @@ export default function Pagos() {
       icono: <ScheduleRounded />,
       color: '#b98316',
       fondo: '#fff8e8'
+    },
+    {
+      id: 'reversados',
+      titulo: 'Pagos reversados',
+      valor: pagosReversados.length,
+      detalle:
+        pagosReversados.length > 0
+          ? 'Auditoría de aprobaciones revertidas'
+          : 'Sin reversión de pagos',
+      icono: <UndoRounded />,
+      color: '#8a5b12',
+      fondo: '#fff5df'
     },
     {
       id: 'caminantes',
@@ -761,7 +821,7 @@ export default function Pagos() {
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
-            lg: 'repeat(3, 1fr)'
+            lg: 'repeat(4, 1fr)'
           },
           gap: 1,
           bgcolor: '#fff'
@@ -1111,6 +1171,15 @@ export default function Pagos() {
               )}
             </Box>
           </>
+        ) : vistaActiva === 'reversados' ? (
+          <PagosReversadosPanel
+            pagos={reversadosVisibles}
+            metodoFiltro={metodoFiltro}
+            onMetodoFiltro={setMetodoFiltro}
+            orden={ordenPendientes}
+            onOrden={setOrdenPendientes}
+            onAbrir={abrirDetalle}
+          />
         ) : (
           <EstadoCuentaPanel
             tipo={
@@ -1484,6 +1553,133 @@ export default function Pagos() {
                       Descargar comprobante
                     </Button>
                   </Stack>
+                </>
+              )}
+
+              {selected.fechaReversion && (
+                <>
+                  <Divider />
+
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      borderRadius: 3.5,
+                      borderColor: 'rgba(185,131,22,.22)',
+                      bgcolor: '#fffaf0'
+                    }}
+                  >
+                    <Stack spacing={1.5}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                      >
+                        <HistoryRounded
+                          sx={{ color: '#8a5b12' }}
+                        />
+                        <Box>
+                          <Typography
+                            variant="subtitle1"
+                            fontWeight={950}
+                          >
+                            Historial de reversión
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                          >
+                            Este movimiento tuvo una aprobación revertida.
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <Box
+                        display="grid"
+                        gridTemplateColumns={{
+                          xs: '1fr',
+                          sm: 'repeat(2, 1fr)'
+                        }}
+                        gap={1.5}
+                      >
+                        <Dato
+                          etiqueta="Aprobación anterior"
+                          valor={formatearFechaHora(
+                            selected.fechaValidacionAnterior
+                          )}
+                        />
+                        <Dato
+                          etiqueta="Aprobado anteriormente por"
+                          valor={selected.validadoPorAnterior}
+                        />
+                        <Dato
+                          etiqueta="Valor aprobado anteriormente"
+                          valor={formatearMoneda(
+                            selected.valorAprobadoAnterior
+                          )}
+                        />
+                        <Dato
+                          etiqueta="Estado anterior"
+                          valor={
+                            selected.estadoAnteriorReversion ||
+                            'Aprobado'
+                          }
+                        />
+                        <Dato
+                          etiqueta="Fecha de reversión"
+                          valor={formatearFechaHora(
+                            selected.fechaReversion
+                          )}
+                        />
+                        <Dato
+                          etiqueta="Revertido por"
+                          valor={selected.revertidoPor}
+                        />
+                      </Box>
+
+                      <Box
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2.5,
+                          bgcolor: '#fff',
+                          border: '1px solid rgba(185,131,22,.16)'
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                        >
+                          MOTIVO DE LA REVERSIÓN
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          fontWeight={800}
+                          sx={{ mt: 0.35 }}
+                        >
+                          {selected.motivoReversion ||
+                            'No informado'}
+                        </Typography>
+                      </Box>
+
+                      <Alert
+                        severity={
+                          selected.estado === 'Pendiente'
+                            ? 'warning'
+                            : selected.estado === 'Aprobado'
+                              ? 'success'
+                              : 'info'
+                        }
+                      >
+                        Estado actual del movimiento:{' '}
+                        <strong>{selected.estado}</strong>
+                        {selected.estado === 'Pendiente'
+                          ? '. El pago debe ser revisado nuevamente por Tesorería.'
+                          : selected.estado === 'Aprobado'
+                            ? '. Después de la reversión fue aprobado nuevamente.'
+                            : '.'}
+                      </Alert>
+                    </Stack>
+                  </Paper>
                 </>
               )}
 
@@ -1958,6 +2154,330 @@ function PagoPendienteCard({
         </Stack>
       </Stack>
     </Paper>
+  );
+}
+
+
+function PagosReversadosPanel({
+  pagos,
+  metodoFiltro,
+  onMetodoFiltro,
+  orden,
+  onOrden,
+  onAbrir
+}) {
+  return (
+    <>
+      <Box
+        sx={{
+          px: {
+            xs: 2,
+            md: 3
+          },
+          py: 2.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+          background:
+            'linear-gradient(135deg, #fff5df 0%, #fff 72%)'
+        }}
+      >
+        <Stack
+          direction={{
+            xs: 'column',
+            lg: 'row'
+          }}
+          justifyContent="space-between"
+          alignItems={{
+            xs: 'stretch',
+            lg: 'center'
+          }}
+          gap={2}
+        >
+          <Box>
+            <Typography
+              variant="overline"
+              sx={{
+                color: '#8a5b12',
+                fontWeight: 950,
+                letterSpacing: '.12em'
+              }}
+            >
+              AUDITORÍA DE TESORERÍA
+            </Typography>
+
+            <Typography
+              variant="h5"
+              fontWeight={950}
+            >
+              Pagos reversados
+            </Typography>
+
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.4 }}
+            >
+              Consulta los pagos cuya aprobación fue revertida,
+              quién realizó la reversión, el motivo y su estado actual.
+            </Typography>
+          </Box>
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row'
+            }}
+            spacing={1}
+          >
+            <TextField
+              select
+              size="small"
+              label="Método"
+              value={metodoFiltro}
+              onChange={event =>
+                onMetodoFiltro(event.target.value)
+              }
+              sx={{ minWidth: 170 }}
+            >
+              {[
+                'Todos',
+                'Transferencia',
+                'Efectivo'
+              ].map(opcion => (
+                <MenuItem
+                  key={opcion}
+                  value={opcion}
+                >
+                  {opcion}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              size="small"
+              label="Orden"
+              value={orden}
+              onChange={event =>
+                onOrden(event.target.value)
+              }
+              sx={{ minWidth: 190 }}
+            >
+              <MenuItem value="antiguos">
+                Reversión más antigua
+              </MenuItem>
+              <MenuItem value="nuevos">
+                Reversión más reciente
+              </MenuItem>
+            </TextField>
+          </Stack>
+        </Stack>
+      </Box>
+
+      <Box
+        sx={{
+          p: {
+            xs: 1.5,
+            md: 2.25
+          },
+          bgcolor: 'rgba(138,91,18,.018)'
+        }}
+      >
+        {pagos.length ? (
+          <Stack spacing={1.35}>
+            {pagos.map(pago => (
+              <Paper
+                key={pago.id}
+                variant="outlined"
+                sx={{
+                  p: {
+                    xs: 2,
+                    md: 2.25
+                  },
+                  borderRadius: 3.5,
+                  borderColor:
+                    'rgba(138,91,18,.14)',
+                  bgcolor: '#fff',
+                  transition:
+                    'transform .18s ease, box-shadow .18s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow:
+                      '0 14px 32px rgba(70,48,10,.08)'
+                  }
+                }}
+              >
+                <Stack
+                  direction={{
+                    xs: 'column',
+                    lg: 'row'
+                  }}
+                  justifyContent="space-between"
+                  gap={2}
+                >
+                  <Box flex={1}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
+                      <Typography
+                        variant="h6"
+                        fontWeight={950}
+                      >
+                        {pago.personaNombre ||
+                          'Persona no identificada'}
+                      </Typography>
+
+                      <Chip
+                        size="small"
+                        icon={<UndoRounded />}
+                        label="Reversado"
+                        sx={{
+                          bgcolor: '#fff5df',
+                          color: '#8a5b12',
+                          fontWeight: 900
+                        }}
+                      />
+
+                      <Chip
+                        size="small"
+                        label={`Actual: ${pago.estado || 'Pendiente'}`}
+                        color={
+                          pago.estado === 'Aprobado'
+                            ? 'success'
+                            : pago.estado === 'Rechazado'
+                              ? 'error'
+                              : 'warning'
+                        }
+                        variant="outlined"
+                      />
+                    </Stack>
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.55 }}
+                    >
+                      {pago.tipoPersona} ·{' '}
+                      {pago.numeroInscripcion ||
+                        pago.documentoIdentidad ||
+                        pago.id}
+                    </Typography>
+
+                    <Box
+                      display="grid"
+                      gridTemplateColumns={{
+                        xs: '1fr',
+                        sm: 'repeat(3, 1fr)'
+                      }}
+                      gap={1.25}
+                      sx={{ mt: 1.5 }}
+                    >
+                      <Dato
+                        etiqueta="Fecha de reversión"
+                        valor={formatearFechaHora(
+                          pago.fechaReversion
+                        )}
+                      />
+                      <Dato
+                        etiqueta="Revertido por"
+                        valor={pago.revertidoPor}
+                      />
+                      <Dato
+                        etiqueta="Valor que estaba aprobado"
+                        valor={formatearMoneda(
+                          pago.valorAprobadoAnterior
+                        )}
+                      />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        mt: 1.3,
+                        p: 1.25,
+                        borderRadius: 2.5,
+                        bgcolor: '#fffaf0'
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        Motivo
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        fontWeight={800}
+                      >
+                        {pago.motivoReversion ||
+                          'No informado'}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Stack
+                    alignItems={{
+                      xs: 'stretch',
+                      lg: 'flex-end'
+                    }}
+                    justifyContent="space-between"
+                    spacing={1.25}
+                  >
+                    <Box
+                      textAlign={{
+                        xs: 'left',
+                        lg: 'right'
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        VALOR REPORTADO
+                      </Typography>
+                      <Typography
+                        variant="h5"
+                        fontWeight={950}
+                        color="#8a5b12"
+                      >
+                        {formatearMoneda(
+                          pago.valorReportado
+                        )}
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      variant="outlined"
+                      startIcon={<HistoryRounded />}
+                      onClick={() => onAbrir(pago)}
+                      sx={{
+                        borderRadius: 999,
+                        borderColor: '#8a5b12',
+                        color: '#8a5b12',
+                        '&:hover': {
+                          borderColor: '#6f470c',
+                          bgcolor: '#fffaf0'
+                        }
+                      }}
+                    >
+                      Ver historial
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <EmptyTesoreria
+            titulo="No hay pagos reversados"
+            detalle="Todavía no se han revertido aprobaciones dentro del periodo consultado."
+          />
+        )}
+      </Box>
+    </>
   );
 }
 

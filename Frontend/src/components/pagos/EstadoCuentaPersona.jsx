@@ -9,8 +9,9 @@ import {
   StorefrontRounded,
 } from '@mui/icons-material';
 import { useEffect, useMemo, useState } from 'react';
-import { obtenerEstadoCuentaPersona } from '../../api/pagosApi';
+import { obtenerEstadoCuentaPersona, revertirAprobacionPago } from '../../api/pagosApi';
 import StatusChip from '../StatusChip';
+import { useAuth } from '../../auth/AuthContext';
 
 const moneda = (v) => Number(v || 0).toLocaleString('es-CO', {style:'currency',currency:'COP',maximumFractionDigits:0});
 function fechaHora(v){ if(!v)return 'No informada'; const f=new Date(v); return Number.isNaN(f.getTime())?String(v):new Intl.DateTimeFormat('es-CO',{dateStyle:'medium',timeStyle:'short'}).format(f);}
@@ -20,8 +21,75 @@ function Resumen({titulo,valor}){return <Box sx={{p:1.4,border:1,borderColor:'di
 function Seccion({titulo,children}){return <Card variant="outlined"><CardContent><Typography fontWeight={850} sx={{mb:1.4}}>{titulo}</Typography><Grid container spacing={1.5}>{children}</Grid></CardContent></Card>;}
 
 export default function EstadoCuentaPersona({token,tipoPersona,personaId}){
+  const { permisos = [] } = useAuth();
+  const puedeRevertir = permisos.includes('PAGOS_VALIDAR_COMPROBANTE');
   const [data,setData]=useState(null),[cargando,setCargando]=useState(false),[error,setError]=useState(''),[filtro,setFiltro]=useState('Todos'),[detalle,setDetalle]=useState(null);
-  useEffect(()=>{let vivo=true; (async()=>{if(!token||!personaId)return; try{setCargando(true);setError('');const d=await obtenerEstadoCuentaPersona(token,tipoPersona,personaId);if(vivo)setData(d);}catch(e){if(vivo)setError(e?.message||'No fue posible consultar el estado de cuenta.');}finally{if(vivo)setCargando(false);}})(); return()=>{vivo=false};},[token,tipoPersona,personaId]);
+  const [dialogoReversion,setDialogoReversion]=useState(false);
+  const [motivoReversion,setMotivoReversion]=useState('');
+  const [revirtiendo,setRevirtiendo]=useState(false);
+  const [errorReversion,setErrorReversion]=useState('');
+  async function cargarEstadoCuenta() {
+    if(!token||!personaId) return;
+    try{
+      setCargando(true);
+      setError('');
+      const d=await obtenerEstadoCuentaPersona(token,tipoPersona,personaId);
+      setData(d);
+      if(detalle){
+        const actualizado=(d?.pagos||[]).find(p=>String(p.id)===String(detalle.id));
+        setDetalle(actualizado||null);
+      }
+    }catch(e){
+      setError(e?.message||'No fue posible consultar el estado de cuenta.');
+    }finally{
+      setCargando(false);
+    }
+  }
+
+  useEffect(()=>{
+    let vivo=true;
+    (async()=>{
+      if(!token||!personaId)return;
+      try{
+        setCargando(true);
+        setError('');
+        const d=await obtenerEstadoCuentaPersona(token,tipoPersona,personaId);
+        if(vivo)setData(d);
+      }catch(e){
+        if(vivo)setError(e?.message||'No fue posible consultar el estado de cuenta.');
+      }finally{
+        if(vivo)setCargando(false);
+      }
+    })();
+    return()=>{vivo=false};
+  },[token,tipoPersona,personaId]);
+
+  async function confirmarReversion() {
+    if(!detalle || !motivoReversion.trim()) {
+      setErrorReversion('Debes indicar el motivo de la reversión.');
+      return;
+    }
+
+    try {
+      setRevirtiendo(true);
+      setErrorReversion('');
+      await revertirAprobacionPago(
+        token,
+        detalle.id,
+        motivoReversion.trim()
+      );
+      setDialogoReversion(false);
+      setMotivoReversion('');
+      await cargarEstadoCuenta();
+    } catch (e) {
+      setErrorReversion(
+        e?.message ||
+        'No fue posible revertir la aprobación.'
+      );
+    } finally {
+      setRevirtiendo(false);
+    }
+  }
   const pagos=useMemo(()=>{const x=data?.pagos||[];return filtro==='Todos'?x:x.filter(p=>String(p.estado||'Pendiente')===filtro)},[data,filtro]);
   const avance=data?.exentoPago?100:(Number(data?.valorRetiro)>0?Math.min(100,(Number(data?.totalAprobado||0)/Number(data.valorRetiro))*100):0);
   if(cargando)return <Alert severity="info">Consultando estado de cuenta…</Alert>;
@@ -50,10 +118,83 @@ export default function EstadoCuentaPersona({token,tipoPersona,personaId}){
         <Card variant="outlined"><CardContent><Stack direction="row" justifyContent="space-between"><Box><Typography variant="caption">VALOR REPORTADO</Typography><Typography variant="h4" fontWeight={950}>{moneda(detalle.valorReportado)}</Typography></Box><Box><StatusChip value={detalle.estado||'Pendiente'}/>{detalle.estado==='Aprobado'&&<Typography mt={.7} color="success.main" fontWeight={800}>{moneda(detalle.valorAprobado??detalle.valorReportado)}</Typography>}</Box></Stack></CardContent></Card>
         <Seccion titulo="Información del pago"><Dato etiqueta="Fecha del pago" valor={fecha(detalle.fechaPago)}/><Dato etiqueta="Método" valor={detalle.medioPago}/><Dato etiqueta="Banco / entidad" valor={detalle.entidadPago}/><Dato etiqueta="Referencia" valor={detalle.referenciaPago}/><Dato etiqueta={String(detalle.medioPago||'').toLowerCase()==='efectivo'?'Nombre de quien recibió el dinero':'Nombre de quien pagó'} valor={detalle.nombrePagador}/><Dato etiqueta={String(detalle.medioPago||'').toLowerCase()==='efectivo'?'Teléfono de la persona que tiene el dinero':'Teléfono de quien pagó'} valor={detalle.telefonoPagador}/></Seccion>
         <Seccion titulo="Registro y validación"><Dato etiqueta="Fecha del reporte" valor={fechaHora(detalle.fechaRegistro)}/><Dato etiqueta="Origen del reporte" valor={detalle.origenReporte}/><Dato etiqueta="Fecha de validación" valor={fechaHora(detalle.fechaValidacion)}/><Dato etiqueta="Validado por" valor={detalle.validadoPor}/></Seccion>
+        {detalle.fechaReversion&&<Seccion titulo="Última reversión de aprobación"><Dato etiqueta="Fecha de reversión" valor={fechaHora(detalle.fechaReversion)}/><Dato etiqueta="Revertido por" valor={detalle.revertidoPor}/><Dato etiqueta="Estado anterior" valor={detalle.estadoAnteriorReversion}/><Dato etiqueta="Valor aprobado anteriormente" valor={moneda(detalle.valorAprobadoAnterior)}/><Dato ancho={12} etiqueta="Motivo de reversión" valor={detalle.motivoReversion}/></Seccion>}
         {(detalle.observacionesReportante||detalle.observacionesTesoreria||detalle.motivoModificacionValor)&&<Seccion titulo="Observaciones"><Dato ancho={12} etiqueta="Quien reportó" valor={detalle.observacionesReportante}/><Dato ancho={12} etiqueta="Tesorería" valor={detalle.observacionesTesoreria}/><Dato ancho={12} etiqueta="Motivo de ajuste" valor={detalle.motivoModificacionValor}/></Seccion>}
         {detalle.comprobanteUrl&&<Card variant="outlined"><CardContent><Typography fontWeight={850}>Comprobante</Typography><Typography variant="body2" color="text.secondary" mb={1}>{detalle.comprobanteNombre||'Archivo adjunto'}</Typography><Button component="a" href={detalle.comprobanteUrl} target="_blank" variant="outlined" startIcon={<OpenInNewRounded/>}>Abrir comprobante</Button>{detalle.comprobanteDescargaUrl&&<Button component="a" href={detalle.comprobanteDescargaUrl} target="_blank" variant="contained" sx={{ml:1}}>Descargar</Button>}</CardContent></Card>}
       </Stack>}</DialogContent>
-      <DialogActions><Button variant="contained" onClick={()=>setDetalle(null)}>Cerrar</Button></DialogActions>
+      <DialogActions sx={{px:3,py:2}}>
+        {detalle?.estado==='Aprobado'&&puedeRevertir&&
+          <Button
+            color="warning"
+            variant="outlined"
+            onClick={()=>{
+              setMotivoReversion('');
+              setErrorReversion('');
+              setDialogoReversion(true);
+            }}
+          >
+            Revertir aprobación
+          </Button>
+        }
+        <Button variant="contained" onClick={()=>setDetalle(null)}>Cerrar</Button>
+      </DialogActions>
+    </Dialog>
+
+    <Dialog
+      open={dialogoReversion}
+      onClose={()=>{if(!revirtiendo)setDialogoReversion(false)}}
+      fullWidth
+      maxWidth="sm"
+    >
+      <DialogTitle>Revertir aprobación del pago</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Alert severity="warning">
+            El pago volverá a estado Pendiente y dejará de sumar al total abonado.
+            No se eliminará el pago ni su comprobante.
+          </Alert>
+
+          {detalle&&
+            <Box>
+              <Typography variant="caption" color="text.secondary">PAGO A REVERTIR</Typography>
+              <Typography variant="h5" fontWeight={900}>{moneda(detalle.valorAprobado??detalle.valorReportado)}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {fecha(detalle.fechaPago)} · {detalle.medioPago||'Método no informado'}
+              </Typography>
+            </Box>
+          }
+
+          {errorReversion&&<Alert severity="error">{errorReversion}</Alert>}
+
+          <TextField
+            autoFocus
+            required
+            fullWidth
+            multiline
+            minRows={3}
+            label="Motivo de la reversión"
+            value={motivoReversion}
+            onChange={e=>setMotivoReversion(e.target.value)}
+            helperText="Este motivo quedará registrado en la trazabilidad del pago."
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button
+          onClick={()=>setDialogoReversion(false)}
+          disabled={revirtiendo}
+        >
+          Cancelar
+        </Button>
+        <Button
+          color="warning"
+          variant="contained"
+          onClick={confirmarReversion}
+          disabled={revirtiendo||!motivoReversion.trim()}
+        >
+          {revirtiendo?'Revirtiendo…':'Confirmar reversión'}
+        </Button>
+      </DialogActions>
     </Dialog>
   </>;
 }
