@@ -30,6 +30,12 @@ export async function obtenerMiServidorPago(token) {
   return r.datos;
 }
 
+
+export async function obtenerServidoresActivosParaEfectivo() {
+  const r = await getResource('servidoresreceptoresefectivo');
+  return r.datos || [];
+}
+
 export async function reportarPagoPublico(datos) {
   const r = await postAction('reportarpagopublico', { datos });
   return r.datos;

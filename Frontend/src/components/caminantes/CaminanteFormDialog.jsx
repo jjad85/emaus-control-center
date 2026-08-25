@@ -41,6 +41,10 @@ const FORM_INICIAL = {
   tipoRegistrante: 'ASPIRANTE',
   nombreRegistrante: '',
   telefonoRegistrante: '',
+  primerNombre: '',
+  segundoNombre: '',
+  primerApellido: '',
+  segundoApellido: '',
   nombreCompleto: '',
   documentoIdentidad: '',
   direccionResidencia: '',
@@ -151,6 +155,20 @@ function calcularEdad(fechaNacimiento) {
   return edad;
 }
 
+function construirNombreCompleto(formulario) {
+  return [
+    formulario.primerNombre,
+    formulario.segundoNombre,
+    formulario.primerApellido,
+    formulario.segundoApellido,
+  ]
+    .map((valor) => String(valor || '').trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function Seccion({ titulo, children }) {
   return (
     <Stack spacing={2}>
@@ -184,6 +202,10 @@ export default function CaminanteFormDialog({
         tipoRegistrante: obtenerDato(caminante, 'tipoRegistrante') || 'ASPIRANTE',
         nombreRegistrante: obtenerDato(caminante, 'nombreRegistrante'),
         telefonoRegistrante: normalizarCelularColombia(obtenerDato(caminante, 'telefonoRegistrante')),
+        primerNombre: obtenerDato(caminante, 'primerNombre'),
+        segundoNombre: obtenerDato(caminante, 'segundoNombre'),
+        primerApellido: obtenerDato(caminante, 'primerApellido'),
+        segundoApellido: obtenerDato(caminante, 'segundoApellido'),
         nombreCompleto: obtenerDato(caminante, 'nombreCompleto', 'nombre'),
         documentoIdentidad: obtenerDato(caminante, 'documentoIdentidad', 'documento', 'numeroDocumento'),
         direccionResidencia: obtenerDato(caminante, 'direccionResidencia', 'direccion'),
@@ -252,7 +274,9 @@ export default function CaminanteFormDialog({
     );
     return Boolean(
       registranteValido &&
-      form.nombreCompleto.trim() &&
+      form.primerNombre.trim() &&
+      form.primerApellido.trim() &&
+      form.segundoApellido.trim() &&
       form.documentoIdentidad.trim() &&
       form.fechaNacimiento &&
       edad !== null &&
@@ -300,7 +324,8 @@ export default function CaminanteFormDialog({
 
     const datos = {
       ...form,
-      nombre: form.nombreCompleto,
+      nombreCompleto: construirNombreCompleto(form),
+      nombre: construirNombreCompleto(form),
       telefono: form.celular,
       tallaCamiseta: form.tallaCamisa,
       contacto1: {
@@ -359,7 +384,10 @@ export default function CaminanteFormDialog({
                 <Grid size={{ xs: 12, md: 6 }}><CelularField label="Teléfono del registrante" value={form.telefonoRegistrante} onChange={(valor) => actualizarCampo('telefonoRegistrante', valor)} required /></Grid>
               </>}
 
-              <Grid size={{ xs: 12 }}><TextField label="Nombre completo" value={form.nombreCompleto} onChange={(e) => actualizarCampo('nombreCompleto', e.target.value)} fullWidth required /></Grid>
+              <Grid size={{ xs: 12, md: 6 }}><TextField label="Primer nombre" value={form.primerNombre} onChange={(e) => actualizarCampo('primerNombre', e.target.value)} fullWidth required /></Grid>
+              <Grid size={{ xs: 12, md: 6 }}><TextField label="Segundo nombre" value={form.segundoNombre} onChange={(e) => actualizarCampo('segundoNombre', e.target.value)} fullWidth helperText="Opcional" /></Grid>
+              <Grid size={{ xs: 12, md: 6 }}><TextField label="Primer apellido" value={form.primerApellido} onChange={(e) => actualizarCampo('primerApellido', e.target.value)} fullWidth required /></Grid>
+              <Grid size={{ xs: 12, md: 6 }}><TextField label="Segundo apellido" value={form.segundoApellido} onChange={(e) => actualizarCampo('segundoApellido', e.target.value)} fullWidth required /></Grid>
               <Grid size={{ xs: 12, md: 6 }}><TextField label="Documento de identidad" value={form.documentoIdentidad} onChange={(e) => actualizarCampo('documentoIdentidad', e.target.value)} fullWidth required /></Grid>
               <Grid size={{ xs: 12, md: 6 }}><TextField type="date" label="Fecha de nacimiento" value={form.fechaNacimiento} onChange={(e) => actualizarCampo('fechaNacimiento', e.target.value)} fullWidth required InputLabelProps={{ shrink: true }} error={esMenor} helperText={esMenor ? 'Debe tener 18 años o más.' : edad !== null ? `Edad: ${edad} años` : ''} /></Grid>
               <Grid size={{ xs: 12, md: 8 }}><TextField label="Dirección de residencia" value={form.direccionResidencia} onChange={(e) => actualizarCampo('direccionResidencia', e.target.value)} fullWidth /></Grid>

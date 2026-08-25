@@ -316,6 +316,7 @@ export default function Pagos() {
   const [motivo, setMotivo] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [errorAccion, setErrorAccion] = useState('');
+  const [dialogoEfectivo, setDialogoEfectivo] = useState(false);
 
   const api = useApi(
     async () => {
@@ -351,6 +352,110 @@ export default function Pagos() {
     () => pagos.filter(p => Boolean(p.fechaReversion)),
     [pagos]
   );
+
+  const composicionRecaudo = useMemo(() => {
+    const resumen = {
+      caminantes: 0,
+      servidores: 0,
+      transferencias: 0,
+      efectivo: 0,
+      sinMetodo: 0,
+      total: 0
+    };
+
+    pagosAprobados.forEach(pago => {
+      const valor = Number(
+        pago.valorAprobado ??
+        pago.valorReportado ??
+        0
+      ) || 0;
+
+      resumen.total += valor;
+
+      if (String(pago.tipoPersona || '').toLowerCase() === 'servidor') {
+        resumen.servidores += valor;
+      } else if (String(pago.tipoPersona || '').toLowerCase() === 'caminante') {
+        resumen.caminantes += valor;
+      }
+
+      const medio = String(pago.medioPago || '').trim().toLowerCase();
+
+      if (medio === 'transferencia') {
+        resumen.transferencias += valor;
+      } else if (medio === 'efectivo') {
+        resumen.efectivo += valor;
+      } else {
+        resumen.sinMetodo += valor;
+      }
+    });
+
+    return resumen;
+  }, [pagosAprobados]);
+
+  const distribucionEfectivo = useMemo(() => {
+    const mapa = new Map();
+
+    pagosAprobados
+      .filter(
+        pago =>
+          String(pago.medioPago || '')
+            .trim()
+            .toLowerCase() === 'efectivo'
+      )
+      .forEach(pago => {
+        const nombre =
+          String(pago.nombrePagador || '').trim() ||
+          'Sin responsable identificado';
+
+        const telefono =
+          String(pago.telefonoPagador || '').trim();
+
+        const clave = `${nombre.toLowerCase()}|${telefono}`;
+
+        const valor = Number(
+          pago.valorAprobado ??
+          pago.valorReportado ??
+          0
+        ) || 0;
+
+        if (!mapa.has(clave)) {
+          mapa.set(clave, {
+            nombre,
+            telefono,
+            total: 0,
+            cantidad: 0,
+            pagos: []
+          });
+        }
+
+        const item = mapa.get(clave);
+        item.total += valor;
+        item.cantidad += 1;
+        item.pagos.push({
+          id: pago.id,
+          personaNombre:
+            pago.personaNombre || 'Persona no identificada',
+          tipoPersona:
+            pago.tipoPersona || 'Participante',
+          numeroInscripcion:
+            pago.numeroInscripcion || '',
+          fechaPago:
+            pago.fechaPago || pago.fechaRegistro || '',
+          valor
+        });
+      });
+
+    return Array.from(mapa.values())
+      .map(item => ({
+        ...item,
+        pagos: item.pagos.sort((a, b) => {
+          const fechaA = new Date(a.fechaPago || 0).getTime();
+          const fechaB = new Date(b.fechaPago || 0).getTime();
+          return fechaB - fechaA;
+        })
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [pagosAprobados]);
 
   const valorPendienteValidacion = useMemo(
     () =>
@@ -812,6 +917,123 @@ export default function Pagos() {
           fondo="#fff1f1"
         />
       </Box>
+
+      <Paper
+        variant="outlined"
+        sx={{
+          p: {
+            xs: 2,
+            md: 2.5
+          },
+          borderRadius: 4,
+          borderColor: 'rgba(20,75,62,.10)',
+          background:
+            'linear-gradient(135deg, rgba(237,248,243,.72) 0%, #fff 72%)'
+        }}
+      >
+        <Stack spacing={1.75}>
+          <Box>
+            <Typography
+              variant="overline"
+              sx={{
+                color: '#176b58',
+                fontWeight: 950,
+                letterSpacing: '.12em'
+              }}
+            >
+              COMPOSICIÓN DEL RECAUDO APROBADO
+            </Typography>
+            <Typography
+              variant="h6"
+              fontWeight={950}
+            >
+              ¿Dónde está el dinero recaudado?
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.3 }}
+            >
+              Solo se contabilizan pagos aprobados. Las dos lecturas deben
+              representar el mismo recaudo: por tipo de persona y por método de pago.
+            </Typography>
+          </Box>
+
+          <Box
+            display="grid"
+            gridTemplateColumns={{
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              lg: 'repeat(4, 1fr)'
+            }}
+            gap={1.25}
+          >
+            <KpiTesoreria
+              icono={<GroupsRounded />}
+              titulo="Dinero de caminantes"
+              valor={formatearMoneda(composicionRecaudo.caminantes)}
+              detalle="Pagos aprobados de caminantes"
+              color="#176b58"
+              fondo="#edf8f3"
+            />
+
+            <KpiTesoreria
+              icono={<PersonRounded />}
+              titulo="Dinero de servidores"
+              valor={formatearMoneda(composicionRecaudo.servidores)}
+              detalle="Pagos aprobados de servidores"
+              color="#315f78"
+              fondo="#eef6fa"
+            />
+
+            <KpiTesoreria
+              icono={<AccountBalanceWalletRounded />}
+              titulo="Transferencias"
+              valor={formatearMoneda(composicionRecaudo.transferencias)}
+              detalle="Recaudo aprobado por transferencia"
+              color="#315f78"
+              fondo="#eef6fa"
+            />
+
+            <KpiTesoreria
+              icono={<StorefrontRounded />}
+              titulo="Efectivo"
+              valor={formatearMoneda(composicionRecaudo.efectivo)}
+              detalle="Haz clic para ver quién tiene el dinero"
+              color="#8a5b12"
+              fondo="#fff8e8"
+              onClick={() => setDialogoEfectivo(true)}
+            />
+          </Box>
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row'
+            }}
+            justifyContent="space-between"
+            gap={0.5}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+            >
+              Total aprobado: <strong>{formatearMoneda(composicionRecaudo.total)}</strong>
+            </Typography>
+
+            {composicionRecaudo.sinMetodo > 0 && (
+              <Typography
+                variant="caption"
+                color="warning.main"
+                fontWeight={850}
+              >
+                {formatearMoneda(composicionRecaudo.sinMetodo)} de pagos históricos
+                no tienen método clasificado.
+              </Typography>
+            )}
+          </Stack>
+        </Stack>
+      </Paper>
 
       <Paper
         variant="outlined"
@@ -1840,6 +2062,278 @@ export default function Pagos() {
             )}
         </DialogActions>
       </Dialog>
+      <Dialog
+        open={dialogoEfectivo}
+        onClose={() => setDialogoEfectivo(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>
+          <Stack
+            direction="row"
+            spacing={1.2}
+            alignItems="center"
+          >
+            <Avatar
+              sx={{
+                bgcolor: '#fff8e8',
+                color: '#8a5b12'
+              }}
+            >
+              <StorefrontRounded />
+            </Avatar>
+
+            <Box>
+              <Typography
+                variant="h6"
+                fontWeight={950}
+              >
+                Distribución del efectivo
+              </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                Quién tiene actualmente el dinero recibido en efectivo
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                borderRadius: 3.5,
+                bgcolor: '#fff8e8',
+                borderColor:
+                  'rgba(138,91,18,.15)'
+              }}
+            >
+              <Stack
+                direction={{
+                  xs: 'column',
+                  sm: 'row'
+                }}
+                justifyContent="space-between"
+                gap={1}
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    TOTAL EN EFECTIVO APROBADO
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    fontWeight={950}
+                    color="#8a5b12"
+                  >
+                    {formatearMoneda(
+                      composicionRecaudo.efectivo
+                    )}
+                  </Typography>
+                </Box>
+
+                <Box
+                  textAlign={{
+                    xs: 'left',
+                    sm: 'right'
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    RESPONSABLES CON DINERO
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    fontWeight={950}
+                  >
+                    {distribucionEfectivo.length}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+
+            {distribucionEfectivo.length ? (
+              <Stack spacing={1.25}>
+                {distribucionEfectivo.map(
+                  (responsable, indice) => (
+                    <Paper
+                      key={`${responsable.nombre}-${responsable.telefono}-${indice}`}
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        borderRadius: 3.5,
+                        borderColor:
+                          'rgba(20,75,62,.10)'
+                      }}
+                    >
+                      <Stack spacing={1.5}>
+                        <Stack
+                          direction={{
+                            xs: 'column',
+                            sm: 'row'
+                          }}
+                          justifyContent="space-between"
+                          gap={1}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={1.2}
+                            alignItems="center"
+                          >
+                            <Avatar
+                              sx={{
+                                bgcolor: '#edf8f3',
+                                color: '#176b58'
+                              }}
+                            >
+                              <PersonRounded />
+                            </Avatar>
+
+                            <Box>
+                              <Typography
+                                variant="subtitle1"
+                                fontWeight={950}
+                              >
+                                {responsable.nombre}
+                              </Typography>
+
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                {responsable.telefono ||
+                                  'Sin celular registrado'}
+                              </Typography>
+                            </Box>
+                          </Stack>
+
+                          <Box
+                            textAlign={{
+                              xs: 'left',
+                              sm: 'right'
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              DINERO EN SU PODER
+                            </Typography>
+
+                            <Typography
+                              variant="h5"
+                              fontWeight={950}
+                              color="#176b58"
+                            >
+                              {formatearMoneda(
+                                responsable.total
+                              )}
+                            </Typography>
+
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {responsable.cantidad}{' '}
+                              {responsable.cantidad === 1
+                                ? 'pago'
+                                : 'pagos'}
+                            </Typography>
+                          </Box>
+                        </Stack>
+
+                        <Divider />
+
+                        <Stack spacing={0.8}>
+                          {responsable.pagos.map(
+                            pago => (
+                              <Box
+                                key={pago.id}
+                                sx={{
+                                  display: 'grid',
+                                  gridTemplateColumns: {
+                                    xs: '1fr',
+                                    sm: '1fr auto'
+                                  },
+                                  gap: 1,
+                                  p: 1.1,
+                                  borderRadius: 2.5,
+                                  bgcolor:
+                                    'rgba(23,107,88,.035)'
+                                }}
+                              >
+                                <Box>
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={850}
+                                  >
+                                    {pago.personaNombre}
+                                  </Typography>
+
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {pago.tipoPersona}
+                                    {pago.numeroInscripcion
+                                      ? ` · ${pago.numeroInscripcion}`
+                                      : ''}
+                                    {' · '}
+                                    {formatearFechaHora(
+                                      pago.fechaPago
+                                    )}
+                                  </Typography>
+                                </Box>
+
+                                <Typography
+                                  fontWeight={950}
+                                  color="#176b58"
+                                  sx={{
+                                    alignSelf: 'center'
+                                  }}
+                                >
+                                  {formatearMoneda(
+                                    pago.valor
+                                  )}
+                                </Typography>
+                              </Box>
+                            )
+                          )}
+                        </Stack>
+                      </Stack>
+                    </Paper>
+                  )
+                )}
+              </Stack>
+            ) : (
+              <Alert severity="info">
+                No hay pagos aprobados en efectivo para los filtros seleccionados.
+              </Alert>
+            )}
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() =>
+              setDialogoEfectivo(false)
+            }
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Stack>
   );
 }
@@ -1850,17 +2344,44 @@ function KpiTesoreria({
   valor,
   detalle,
   color,
-  fondo
+  fondo,
+  onClick
 }) {
   return (
     <Paper
       variant="outlined"
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? event => {
+              if (
+                event.key === 'Enter' ||
+                event.key === ' '
+              ) {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       sx={{
         p: 2,
         borderRadius: 4,
         borderColor:
           'rgba(20,75,62,.10)',
-        bgcolor: '#fff'
+        bgcolor: '#fff',
+        cursor: onClick ? 'pointer' : 'default',
+        transition:
+          'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
+        '&:hover': onClick
+          ? {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 12px 28px rgba(17,48,41,.08)',
+              borderColor: color
+            }
+          : undefined
       }}
     >
       <Stack

@@ -134,6 +134,10 @@ export default function Servidores() {
     setSelected(servidor);
     setDialogo(tipo);
     setForm({
+      primerNombre: servidor.primerNombre || '',
+      segundoNombre: servidor.segundoNombre || '',
+      primerApellido: servidor.primerApellido || '',
+      segundoApellido: servidor.segundoApellido || '',
       nombre: servidor.nombre || '',
       documentoIdentidad: servidor.documentoIdentidad || '',
       correo: servidor.correo || '',
@@ -664,7 +668,20 @@ export default function Servidores() {
 
             {dialogo === 'editar' && (
               <>
-                <TextField label="Nombre" value={form.nombre || ''} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+                <Grid container spacing={1.5}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField label="Primer nombre" value={form.primerNombre || ''} onChange={(e) => setForm({ ...form, primerNombre: e.target.value })} required fullWidth />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField label="Segundo nombre" value={form.segundoNombre || ''} onChange={(e) => setForm({ ...form, segundoNombre: e.target.value })} helperText="Opcional" fullWidth />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField label="Primer apellido" value={form.primerApellido || ''} onChange={(e) => setForm({ ...form, primerApellido: e.target.value })} required fullWidth />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField label="Segundo apellido" value={form.segundoApellido || ''} onChange={(e) => setForm({ ...form, segundoApellido: e.target.value })} required fullWidth />
+                  </Grid>
+                </Grid>
                 <TextField
                   label="Documento de identidad"
                   value={form.documentoIdentidad || ''}

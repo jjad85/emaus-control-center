@@ -101,7 +101,10 @@ const INICIAL = {
   tipoRegistrante: '',
   nombreRegistrante: '',
   telefonoRegistrante: '',
-  nombreCompleto: '',
+  primerNombre: '',
+  segundoNombre: '',
+  primerApellido: '',
+  segundoApellido: '',
   documentoIdentidad: '',
   direccionResidencia: '',
   fechaNacimiento: '',
@@ -144,6 +147,30 @@ const INICIAL = {
   autorizaTratamientoDatos: '',
   autorizaFotografias: 'No',
 };
+
+function normalizarNombrePropio(valor) {
+  return String(valor || '')
+    .trim()
+    .toLocaleLowerCase('es-CO')
+    .replace(/(^|[\s'-])([a-záéíóúüñ])/g, (coincidencia, separador, letra) =>
+      `${separador}${letra.toLocaleUpperCase('es-CO')}`
+    )
+    .replace(/\s+/g, ' ');
+}
+
+function construirNombreCompleto(formulario) {
+  return [
+    formulario.primerNombre,
+    formulario.segundoNombre,
+    formulario.primerApellido,
+    formulario.segundoApellido,
+  ]
+    .map((valor) => normalizarNombrePropio(valor))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 function Campo({
   label,
@@ -453,6 +480,23 @@ export default function RegistroAspirante({ registroInterno = false }) {
       ...actual,
       [campo]: valor,
     }));
+
+    // La alerta superior no debe quedarse "pegada" mientras
+    // la persona está corrigiendo los campos marcados en rojo.
+    if (error) {
+      setError('');
+    }
+  }
+
+  function tieneValor(valor) {
+    return !campoVacio(valor);
+  }
+
+  function normalizarCampoNombre(campo) {
+    setForm((actual) => ({
+      ...actual,
+      [campo]: normalizarNombrePropio(actual[campo]),
+    }));
   }
 
   function confirmarTipoRegistrante() {
@@ -531,19 +575,31 @@ export default function RegistroAspirante({ registroInterno = false }) {
   const validacionPaso =
     useMemo(() => {
       if (paso === 0) {
-        const registranteValido = form.tipoRegistrante !== 'INVITADOR' || (form.nombreRegistrante && celularValido(form.telefonoRegistrante));
+        /*
+         * En registro interno no se debe bloquear el paso por datos
+         * ocultos del registrante. La autenticación ya identifica al
+         * administrador/servidor que está haciendo el registro.
+         */
+        const registranteValido =
+          registroInterno ||
+          form.tipoRegistrante !== 'INVITADOR' ||
+          (
+            tieneValor(form.nombreRegistrante) &&
+            celularValido(form.telefonoRegistrante)
+          );
+
         return Boolean(
           registranteValido &&
-          form.nombreCompleto &&
-          form.documentoIdentidad &&
-          form.direccionResidencia &&
-          form.fechaNacimiento &&
+          tieneValor(form.primerNombre) &&
+          tieneValor(form.primerApellido) &&
+          tieneValor(form.segundoApellido) &&
+          tieneValor(form.documentoIdentidad) &&
+          tieneValor(form.direccionResidencia) &&
+          tieneValor(form.fechaNacimiento) &&
           calcularEdad(form.fechaNacimiento) >= 18 &&
-          form.barrio &&
-          celularValido(
-            form.celular
-          ) &&
-          form.estadoCivil
+          tieneValor(form.barrio) &&
+          celularValido(form.celular) &&
+          tieneValor(form.estadoCivil)
         );
       }
 
@@ -648,7 +704,14 @@ export default function RegistroAspirante({ registroInterno = false }) {
     }
 
     try {
-      const datosFormulario = { ...form };
+      const datosFormulario = {
+        ...form,
+        primerNombre: normalizarNombrePropio(form.primerNombre),
+        segundoNombre: normalizarNombrePropio(form.segundoNombre),
+        primerApellido: normalizarNombrePropio(form.primerApellido),
+        segundoApellido: normalizarNombrePropio(form.segundoApellido),
+        nombreCompleto: construirNombreCompleto(form),
+      };
       if (form.tipoRegistrante === 'INVITADOR') {
         datosFormulario.autorizaTratamientoDatos = 'Pendiente';
         datosFormulario.autorizaFotografias = 'Pendiente';
@@ -1240,20 +1303,46 @@ export default function RegistroAspirante({ registroInterno = false }) {
                 container
                 spacing={2}
               >
-                <Grid size={12}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Campo
-                    label="Nombre completo"
-                    value={form.nombreCompleto}
-                    onChange={(valor) =>
-                      cambiar(
-                        'nombreCompleto',
-                        valor
-                      )
-                    }
+                    label="Primer nombre"
+                    value={form.primerNombre}
+                    onChange={(valor) => cambiar('primerNombre', valor)}
+                    onBlur={() => normalizarCampoNombre('primerNombre')}
                     required
-                    error={errorObligatorio(
-                      'nombreCompleto'
-                    )}
+                    error={errorObligatorio('primerNombre')}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Campo
+                    label="Segundo nombre"
+                    value={form.segundoNombre}
+                    onChange={(valor) => cambiar('segundoNombre', valor)}
+                    onBlur={() => normalizarCampoNombre('segundoNombre')}
+                    helperText="Opcional"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Campo
+                    label="Primer apellido"
+                    value={form.primerApellido}
+                    onChange={(valor) => cambiar('primerApellido', valor)}
+                    onBlur={() => normalizarCampoNombre('primerApellido')}
+                    required
+                    error={errorObligatorio('primerApellido')}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Campo
+                    label="Segundo apellido"
+                    value={form.segundoApellido}
+                    onChange={(valor) => cambiar('segundoApellido', valor)}
+                    onBlur={() => normalizarCampoNombre('segundoApellido')}
+                    required
+                    error={errorObligatorio('segundoApellido')}
                   />
                 </Grid>
 

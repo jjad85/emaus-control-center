@@ -1,5 +1,6 @@
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -36,6 +37,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   buscarPersonaPago,
   obtenerMiServidorPago,
+  obtenerServidoresActivosParaEfectivo,
   obtenerValorRetiroPago,
   reportarPagoPublico,
 } from '../api/pagosApi';
@@ -55,6 +57,7 @@ const FORM_INICIAL = {
   valorReportado: '',
   fechaPago: '',
   medioPago: 'Transferencia',
+  receptorServidorId: '',
   entidadPago: '',
   referenciaPago: '',
   nombrePagador: '',
@@ -150,6 +153,9 @@ export default function ReportarPago() {
   const [resultadoReporte, setResultadoReporte] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [servidoresReceptores, setServidoresReceptores] = useState([]);
+  const [cargandoServidoresReceptores, setCargandoServidoresReceptores] = useState(false);
+  const [errorServidoresReceptores, setErrorServidoresReceptores] = useState('');
 
   useEffect(() => {
     if (authLoading) return;
@@ -211,6 +217,49 @@ export default function ReportarPago() {
   useEffect(() => {
     setValorRetiro(valoresRetiro[tipoPersona] || null);
   }, [tipoPersona, valoresRetiro]);
+
+  useEffect(() => {
+    let vigente = true;
+
+    async function cargarServidoresReceptores() {
+      if (form.medioPago !== 'Efectivo') return;
+      if (servidoresReceptores.length > 0) return;
+
+      try {
+        setCargandoServidoresReceptores(true);
+        setErrorServidoresReceptores('');
+        const items = await obtenerServidoresActivosParaEfectivo();
+
+        if (vigente) {
+          setServidoresReceptores(
+            [...(items || [])].sort((a, b) =>
+              String(a.nombre || '').localeCompare(
+                String(b.nombre || ''),
+                'es',
+                { sensitivity: 'base' }
+              )
+            )
+          );
+        }
+      } catch (e) {
+        if (vigente) {
+          setServidoresReceptores([]);
+          setErrorServidoresReceptores(
+            e?.message ||
+            'No fue posible cargar la lista de servidores autorizados.'
+          );
+        }
+      } finally {
+        if (vigente) setCargandoServidoresReceptores(false);
+      }
+    }
+
+    cargarServidoresReceptores();
+
+    return () => {
+      vigente = false;
+    };
+  }, [form.medioPago, servidoresReceptores.length]);
 
   const etiquetaPersona = tipoPersona === 'Servidor' ? 'servidor' : 'persona';
   const valorInformativo = useMemo(
@@ -782,12 +831,24 @@ export default function ReportarPago() {
                             setForm((actual) => ({
                               ...actual,
                               medioPago,
+                              receptorServidorId:
+                                medioPago === 'Efectivo'
+                                  ? actual.receptorServidorId
+                                  : '',
                               entidadPago: medioPago === 'Transferencia'
                                 ? (actual.entidadPago || cuenta.banco)
                                 : '',
                               referenciaPago: medioPago === 'Transferencia'
                                 ? actual.referenciaPago
                                 : '',
+                              nombrePagador:
+                                medioPago === 'Transferencia'
+                                  ? actual.nombrePagador
+                                  : '',
+                              telefonoPagador:
+                                medioPago === 'Transferencia'
+                                  ? actual.telefonoPagador
+                                  : '',
                               archivo: medioPago === 'Transferencia'
                                 ? actual.archivo
                                 : null,
@@ -813,30 +874,134 @@ export default function ReportarPago() {
                           </>
                         )}
 
-                        <TextField
-                          label={
-                            form.medioPago === 'Efectivo'
-                              ? 'Nombre de quien recibió el dinero'
-                              : 'Nombre de quien pagó'
-                          }
-                          value={form.nombrePagador}
-                          onChange={(e) => setForm({ ...form, nombrePagador: e.target.value })}
-                        />
-                        <TextField
-                          label={
-                            form.medioPago === 'Efectivo'
-                              ? 'Teléfono de la persona que tiene el dinero'
-                              : 'Teléfono de quien pagó'
-                          }
-                          value={form.telefonoPagador}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              telefonoPagador: e.target.value.replace(/\D/g, '').slice(0, 10),
-                            })
-                          }
-                          inputProps={{ inputMode: 'numeric', maxLength: 10 }}
-                        />
+                        {form.medioPago === 'Efectivo' ? (
+                          <>
+                            <Autocomplete
+                              options={servidoresReceptores}
+                              loading={cargandoServidoresReceptores}
+                              value={
+                                servidoresReceptores.find(
+                                  (servidor) =>
+                                    String(servidor.id) ===
+                                    String(form.receptorServidorId)
+                                ) || null
+                              }
+                              onChange={(_, servidor) => {
+                                setForm((actual) => ({
+                                  ...actual,
+                                  receptorServidorId: servidor?.id || '',
+                                  nombrePagador: servidor?.nombre || '',
+                                  telefonoPagador: servidor?.celular || '',
+                                }));
+                              }}
+                              getOptionLabel={(servidor) =>
+                                servidor?.nombre || ''
+                              }
+                              isOptionEqualToValue={(opcion, valor) =>
+                                String(opcion?.id) === String(valor?.id)
+                              }
+                              filterOptions={(opciones, estado) => {
+                                const termino = String(
+                                  estado.inputValue || ''
+                                )
+                                  .trim()
+                                  .toLocaleLowerCase('es-CO');
+
+                                if (!termino) return opciones;
+
+                                return opciones.filter((servidor) => {
+                                  const nombre = String(
+                                    servidor.nombre || ''
+                                  ).toLocaleLowerCase('es-CO');
+
+                                  const celular = String(
+                                    servidor.celular || ''
+                                  );
+
+                                  return (
+                                    nombre.includes(termino) ||
+                                    celular.includes(termino)
+                                  );
+                                });
+                              }}
+                              noOptionsText="No encontramos un servidor activo con ese filtro."
+                              loadingText="Cargando servidores activos..."
+                              renderOption={(props, servidor) => (
+                                <Box
+                                  component="li"
+                                  {...props}
+                                  key={servidor.id}
+                                >
+                                  <Box>
+                                    <Typography fontWeight={850}>
+                                      {servidor.nombre}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      {servidor.celular ||
+                                        'Sin celular registrado'}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              )}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  required
+                                  label="Nombre de quien recibió el dinero"
+                                  placeholder="Busca por nombre o celular"
+                                  helperText={
+                                    errorServidoresReceptores ||
+                                    'Selecciona exclusivamente un servidor activo de la lista.'
+                                  }
+                                  error={Boolean(errorServidoresReceptores)}
+                                />
+                              )}
+                            />
+
+                            <TextField
+                              label="Teléfono de la persona que tiene el dinero"
+                              value={form.telefonoPagador}
+                              InputProps={{ readOnly: true }}
+                              helperText={
+                                form.receptorServidorId
+                                  ? 'Se carga automáticamente desde el servidor seleccionado.'
+                                  : 'Selecciona primero quién recibió el dinero.'
+                              }
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <TextField
+                              label="Nombre de quien pagó"
+                              value={form.nombrePagador}
+                              onChange={(e) =>
+                                setForm({
+                                  ...form,
+                                  nombrePagador: e.target.value,
+                                })
+                              }
+                            />
+                            <TextField
+                              label="Teléfono de quien pagó"
+                              value={form.telefonoPagador}
+                              onChange={(e) =>
+                                setForm({
+                                  ...form,
+                                  telefonoPagador: e.target.value
+                                    .replace(/\D/g, '')
+                                    .slice(0, 10),
+                                })
+                              }
+                              inputProps={{
+                                inputMode: 'numeric',
+                                maxLength: 10,
+                              }}
+                            />
+                          </>
+                        )}
                       </Box>
 
                       {form.medioPago === 'Transferencia' ? (
@@ -866,7 +1031,7 @@ export default function ReportarPago() {
                         </Paper>
                       ) : (
                         <Alert severity="info" sx={{ borderRadius: 3 }}>
-                          Para pagos en efectivo no se solicita comprobante. Registra claramente quién recibió el dinero y su teléfono.
+                          Para pagos en efectivo no se solicita comprobante. Debes seleccionar de la lista el servidor activo que recibió el dinero; su celular se cargará automáticamente.
                         </Alert>
                       )}
 
@@ -889,6 +1054,7 @@ export default function ReportarPago() {
                           Number(form.valorReportado) <= 0 ||
                           !form.fechaPago ||
                           (form.medioPago === 'Transferencia' && !form.archivo) ||
+                          (form.medioPago === 'Efectivo' && !form.receptorServidorId) ||
                           !form.nombrePagador.trim() ||
                           !/^3\d{9}$/.test(form.telefonoPagador)
                         }
