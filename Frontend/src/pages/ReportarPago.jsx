@@ -66,6 +66,21 @@ const FORM_INICIAL = {
   archivo: null,
 };
 
+function soloDigitosMoneda(valor) {
+  return String(valor || '').replace(/\D/g, '');
+}
+function formatoCampoMoneda(valor) {
+  const digitos = soloDigitosMoneda(valor);
+  return digitos ? `$ ${Number(digitos).toLocaleString('es-CO')}` : '';
+}
+function obtenerSugerenciaValor(valor, valorRetiro) {
+  const numero = Number(soloDigitosMoneda(valor) || 0);
+  const referencia = Number(valorRetiro || 0);
+  return numero >= 1 && numero <= 999 && referencia >= 10000
+    ? numero * 1000
+    : null;
+}
+
 function moneda(valor) {
   return Number(valor || 0).toLocaleString('es-CO', {
     style: 'currency',
@@ -153,6 +168,8 @@ export default function ReportarPago() {
   const [resultadoReporte, setResultadoReporte] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmarValorBajo, setConfirmarValorBajo] = useState(false);
+  const [valorBajoConfirmado, setValorBajoConfirmado] = useState(false);
   const [servidoresReceptores, setServidoresReceptores] = useState([]);
   const [cargandoServidoresReceptores, setCargandoServidoresReceptores] = useState(false);
   const [errorServidoresReceptores, setErrorServidoresReceptores] = useState('');
@@ -354,12 +371,12 @@ export default function ReportarPago() {
     lector.readAsDataURL(archivo);
   }
 
-  async function enviar() {
+  async function enviarPagoConfirmado() {
     try {
       setLoading(true);
       setError('');
+      const valorPago = Number(soloDigitosMoneda(form.valorReportado));
 
-      const valorPago = Number(form.valorReportado);
       if (
         valorPago > Number(persona.saldoPendiente || 0) &&
         !window.confirm(
@@ -367,12 +384,11 @@ export default function ReportarPago() {
             valorPago - Number(persona.saldoPendiente || 0)
           )}. ¿Deseas continuar?`
         )
-      ) {
-        return;
-      }
+      ) return;
 
       const resultado = await reportarPagoPublico({
         ...form,
+        valorReportado: valorPago,
         medioPago: form.medioPago,
         tipoPersona,
         personaId: persona.id,
@@ -386,6 +402,15 @@ export default function ReportarPago() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function enviar() {
+    const sugerencia = obtenerSugerenciaValor(form.valorReportado, valorRetiro);
+    if (sugerencia && !valorBajoConfirmado) {
+      setConfirmarValorBajo(true);
+      return;
+    }
+    await enviarPagoConfirmado();
   }
 
   function cerrarConfirmacion() {
@@ -811,9 +836,20 @@ export default function ReportarPago() {
                       >
                         <TextField
                           label="Valor pagado"
-                          type="number"
-                          value={form.valorReportado}
-                          onChange={(e) => setForm({ ...form, valorReportado: e.target.value })}
+                          type="text"
+                          value={formatoCampoMoneda(form.valorReportado)}
+                          onChange={(e) => {
+                            const valor = soloDigitosMoneda(e.target.value);
+                            setValorBajoConfirmado(false);
+                            setForm((actual) => ({ ...actual, valorReportado: valor }));
+                          }}
+                          inputProps={{ inputMode: 'numeric' }}
+                          error={Boolean(obtenerSugerenciaValor(form.valorReportado, valorRetiro))}
+                          helperText={
+                            obtenerSugerenciaValor(form.valorReportado, valorRetiro)
+                              ? `Verifica el valor: estás reportando ${moneda(Number(form.valorReportado || 0))}.`
+                              : 'Ingresa el valor en pesos. Ejemplo: 270000 → $ 270.000.'
+                          }
                         />
                         <TextField
                           label="Fecha del pago"
@@ -1078,6 +1114,42 @@ export default function ReportarPago() {
       {esPublico && <PublicNavbar onLogin={() => nav('/login')} />}
       {contenido}
       {esPublico && <PublicFooter />}
+
+      <Dialog open={confirmarValorBajo} onClose={() => setConfirmarValorBajo(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Verifica el valor del pago</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Estás reportando <strong>{moneda(Number(form.valorReportado || 0))}</strong>. Este valor parece inusualmente bajo.
+          </Alert>
+          <Typography>
+            ¿Querías reportar <strong>{moneda(obtenerSugerenciaValor(form.valorReportado, valorRetiro) || 0)}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, flexWrap: 'wrap' }}>
+          <Button onClick={() => setConfirmarValorBajo(false)}>Volver</Button>
+          <Button
+            variant="outlined"
+            onClick={async () => {
+              setValorBajoConfirmado(true);
+              setConfirmarValorBajo(false);
+              await enviarPagoConfirmado();
+            }}
+          >
+            Sí, reportar {moneda(Number(form.valorReportado || 0))}
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const sugerencia = obtenerSugerenciaValor(form.valorReportado, valorRetiro);
+              setForm((actual) => ({ ...actual, valorReportado: String(sugerencia || '') }));
+              setValorBajoConfirmado(false);
+              setConfirmarValorBajo(false);
+            }}
+          >
+            Corregir a {moneda(obtenerSugerenciaValor(form.valorReportado, valorRetiro) || 0)}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={confirmacionAbierta} onClose={cerrarConfirmacion} aria-labelledby="confirmacion-pago-titulo">
         <DialogTitle id="confirmacion-pago-titulo">Pago reportado</DialogTitle>

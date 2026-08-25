@@ -51,6 +51,13 @@ export async function obtenerReportePagos(token, params = {}) {
   return r.datos;
 }
 
+export async function editarValorPagoPendiente(token, id, valorReportado, motivo) {
+  const r = await postAction('editarvalorpagopendiente', {
+    token, id, valorReportado, motivo,
+  });
+  return r.datos;
+}
+
 export async function validarPago(token, id, decision) {
   const r = await postAction('validarpago', { token, id, decision });
   return r.datos;

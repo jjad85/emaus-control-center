@@ -655,6 +655,34 @@ export default function Pagos() {
     }
   }
 
+  async function guardarCorreccionPendiente() {
+    try {
+      const nuevoValor = Number(valor || 0);
+      if (!nuevoValor || nuevoValor <= 0) {
+        setErrorAccion('El valor reportado debe ser mayor a cero.');
+        return;
+      }
+      if (nuevoValor === Number(selected.valorReportado || 0)) {
+        setErrorAccion('No hay cambios en el valor reportado.');
+        return;
+      }
+      if (!String(motivo || '').trim()) {
+        setErrorAccion('Debes indicar el motivo de la corrección.');
+        return;
+      }
+
+      setGuardando(true);
+      setErrorAccion('');
+      await editarValorPagoPendiente(token, selected.id, nuevoValor, motivo);
+      setSelected(null);
+      api.reload();
+    } catch (error) {
+      setErrorAccion(error?.message || 'No fue posible corregir el valor del pago.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   const vistas = [
     {
       id: 'pendientes',
@@ -2036,6 +2064,17 @@ export default function Pagos() {
           {selected?.estado ===
             'Pendiente' && (
               <>
+                {Number(valor) !== Number(selected.valorReportado || 0) && (
+                  <Button
+                    onClick={guardarCorreccionPendiente}
+                    variant="outlined"
+                    color="warning"
+                    disabled={guardando || !String(motivo || '').trim()}
+                  >
+                    Guardar corrección
+                  </Button>
+                )}
+
                 <Button
                   onClick={() =>
                     resolver('Rechazado')
