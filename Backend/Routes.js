@@ -98,6 +98,12 @@ function routeRequest(parametros) {
     case 'estadocuentapersona':
       return { datos: obtenerEstadoCuentaPersona(parametros.token, parametros.tipo, parametros.personaId), mensaje: 'Estado de cuenta consultado correctamente' };
 
+    case 'servidoresreceptoresefectivo':
+      return {
+        datos: obtenerServidoresActivosParaEfectivo(),
+        mensaje: 'Servidores activos consultados correctamente'
+      };
+
     case 'servidores':
       return atenderServidores(
         parametros

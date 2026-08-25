@@ -620,11 +620,17 @@ function opcionesCrudCaminante(
 function prepararDatosCaminante(
   datos
 ) {
+  const nombres = validarNombresPersona(
+    datos,
+    'El caminante'
+  );
+
   return Object.assign({}, datos, {
-    nombre:
-      String(
-        datos.nombre || ''
-      ).trim(),
+    primerNombre: nombres.primerNombre,
+    segundoNombre: nombres.segundoNombre,
+    primerApellido: nombres.primerApellido,
+    segundoApellido: nombres.segundoApellido,
+    nombre: nombres.nombreCompleto,
 
     telefono:
       validarCelularColombia(
@@ -776,12 +782,10 @@ function prepararDatosCaminante(
 function validarDatosCaminante(
   datos
 ) {
-  if (!datos.nombre) {
-    throw crearErrorAplicacion(
-      'NOMBRE_REQUERIDO',
-      'Debe ingresar el nombre completo.'
-    );
-  }
+  validarNombresPersona(
+    datos,
+    'El caminante'
+  );
 
   if (!datos.telefono) {
     throw crearErrorAplicacion(
@@ -1196,6 +1200,14 @@ function convertirRegistroCaminanteRespuesta(
 
     nombre:
       registro.nombre,
+    primerNombre:
+      registro.primerNombre || '',
+    segundoNombre:
+      registro.segundoNombre || '',
+    primerApellido:
+      registro.primerApellido || '',
+    segundoApellido:
+      registro.segundoApellido || '',
 
     telefono:
       registro.telefono,

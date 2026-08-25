@@ -324,8 +324,18 @@ function convertirAspiranteEnCaminanteInterno(
     tipoRegistrante: aspirante.tipoRegistrante || 'ASPIRANTE',
     nombreRegistrante: aspirante.nombreRegistrante || '',
     telefonoRegistrante: aspirante.telefonoRegistrante || '',
+    primerNombre: aspirante.primerNombre || '',
+    segundoNombre: aspirante.segundoNombre || '',
+    primerApellido: aspirante.primerApellido || '',
+    segundoApellido: aspirante.segundoApellido || '',
     nombre:
-      aspirante.nombreCompleto,
+      aspirante.nombreCompleto ||
+      construirNombreCompletoPersona(
+        aspirante.primerNombre,
+        aspirante.segundoNombre,
+        aspirante.primerApellido,
+        aspirante.segundoApellido
+      ),
 
     telefono:
       aspirante.celular,
@@ -570,9 +580,36 @@ function prepararAspirante(
       limpiarTextoAspirante(entrada.nombreRegistrante),
     telefonoRegistrante:
       limpiarTextoAspirante(entrada.telefonoRegistrante),
+    primerNombre:
+      normalizarParteNombrePersona(
+        limpiarTextoAspirante(
+          entrada.primerNombre
+        )
+      ),
+    segundoNombre:
+      normalizarParteNombrePersona(
+        limpiarTextoAspirante(
+          entrada.segundoNombre
+        )
+      ),
+    primerApellido:
+      normalizarParteNombrePersona(
+        limpiarTextoAspirante(
+          entrada.primerApellido
+        )
+      ),
+    segundoApellido:
+      normalizarParteNombrePersona(
+        limpiarTextoAspirante(
+          entrada.segundoApellido
+        )
+      ),
     nombreCompleto:
-      limpiarTextoAspirante(
-        entrada.nombreCompleto
+      construirNombreCompletoPersona(
+        limpiarTextoAspirante(entrada.primerNombre),
+        limpiarTextoAspirante(entrada.segundoNombre),
+        limpiarTextoAspirante(entrada.primerApellido),
+        limpiarTextoAspirante(entrada.segundoApellido)
       ),
     documentoIdentidad:
       limpiarTextoAspirante(
@@ -874,11 +911,12 @@ function validarAspirante(
     validarFormatoCelularAspirante(registro.telefonoRegistrante, 'El teléfono del registrante', true);
   }
 
+  validarNombresPersona(
+    registro,
+    'El aspirante'
+  );
+
   const requeridos = [
-    [
-      registro.nombreCompleto,
-      'Nombre completo'
-    ],
     [
       registro.documentoIdentidad,
       'Documento de identidad'

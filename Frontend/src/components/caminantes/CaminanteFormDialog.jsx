@@ -276,7 +276,6 @@ export default function CaminanteFormDialog({
       registranteValido &&
       form.primerNombre.trim() &&
       form.primerApellido.trim() &&
-      form.segundoApellido.trim() &&
       form.documentoIdentidad.trim() &&
       form.fechaNacimiento &&
       edad !== null &&
@@ -387,7 +386,7 @@ export default function CaminanteFormDialog({
               <Grid size={{ xs: 12, md: 6 }}><TextField label="Primer nombre" value={form.primerNombre} onChange={(e) => actualizarCampo('primerNombre', e.target.value)} fullWidth required /></Grid>
               <Grid size={{ xs: 12, md: 6 }}><TextField label="Segundo nombre" value={form.segundoNombre} onChange={(e) => actualizarCampo('segundoNombre', e.target.value)} fullWidth helperText="Opcional" /></Grid>
               <Grid size={{ xs: 12, md: 6 }}><TextField label="Primer apellido" value={form.primerApellido} onChange={(e) => actualizarCampo('primerApellido', e.target.value)} fullWidth required /></Grid>
-              <Grid size={{ xs: 12, md: 6 }}><TextField label="Segundo apellido" value={form.segundoApellido} onChange={(e) => actualizarCampo('segundoApellido', e.target.value)} fullWidth required /></Grid>
+              <Grid size={{ xs: 12, md: 6 }}><TextField label="Segundo apellido" value={form.segundoApellido} onChange={(e) => actualizarCampo('segundoApellido', e.target.value)} fullWidth helperText="Opcional" /></Grid>
               <Grid size={{ xs: 12, md: 6 }}><TextField label="Documento de identidad" value={form.documentoIdentidad} onChange={(e) => actualizarCampo('documentoIdentidad', e.target.value)} fullWidth required /></Grid>
               <Grid size={{ xs: 12, md: 6 }}><TextField type="date" label="Fecha de nacimiento" value={form.fechaNacimiento} onChange={(e) => actualizarCampo('fechaNacimiento', e.target.value)} fullWidth required InputLabelProps={{ shrink: true }} error={esMenor} helperText={esMenor ? 'Debe tener 18 años o más.' : edad !== null ? `Edad: ${edad} años` : ''} /></Grid>
               <Grid size={{ xs: 12, md: 8 }}><TextField label="Dirección de residencia" value={form.direccionResidencia} onChange={(e) => actualizarCampo('direccionResidencia', e.target.value)} fullWidth /></Grid>

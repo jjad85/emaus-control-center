@@ -209,3 +209,90 @@ function validarCelularColombia(
 
   return numero;
 }
+
+
+/**
+ * Construye el nombre completo estándar de una persona a partir
+ * de sus componentes. El segundo nombre es opcional.
+ */
+function normalizarParteNombrePersona(valor) {
+  return String(valor || '')
+    .trim()
+    .toLowerCase()
+    .replace(
+      /(^|[\s'-])([a-záéíóúüñ])/g,
+      function(coincidencia, separador, letra) {
+        return separador + letra.toUpperCase();
+      }
+    )
+    .replace(/\s+/g, ' ');
+}
+
+function construirNombreCompletoPersona(
+  primerNombre,
+  segundoNombre,
+  primerApellido,
+  segundoApellido
+) {
+  return [
+    primerNombre,
+    segundoNombre,
+    primerApellido,
+    segundoApellido
+  ]
+    .map(function(valor) {
+      return normalizarParteNombrePersona(valor);
+    })
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Valida la estructura mínima de nombres solicitada por negocio.
+ * Obligatorios:
+ * - primer nombre
+ * - primer apellido
+ * El segundo apellido es opcional.
+ */
+function validarNombresPersona(datos, etiqueta) {
+  const entrada = datos || {};
+  const prefijo = String(etiqueta || 'La persona');
+
+  const primerNombre =
+    normalizarParteNombrePersona(entrada.primerNombre);
+  const segundoNombre =
+    normalizarParteNombrePersona(entrada.segundoNombre);
+  const primerApellido =
+    normalizarParteNombrePersona(entrada.primerApellido);
+  const segundoApellido =
+    normalizarParteNombrePersona(entrada.segundoApellido);
+
+  if (!primerNombre) {
+    throw crearErrorAplicacion(
+      'PRIMER_NOMBRE_REQUERIDO',
+      prefijo + ': el primer nombre es obligatorio.'
+    );
+  }
+
+  if (!primerApellido) {
+    throw crearErrorAplicacion(
+      'PRIMER_APELLIDO_REQUERIDO',
+      prefijo + ': el primer apellido es obligatorio.'
+    );
+  }
+
+  return {
+    primerNombre: primerNombre,
+    segundoNombre: segundoNombre,
+    primerApellido: primerApellido,
+    segundoApellido: segundoApellido,
+    nombreCompleto: construirNombreCompletoPersona(
+      primerNombre,
+      segundoNombre,
+      primerApellido,
+      segundoApellido
+    )
+  };
+}

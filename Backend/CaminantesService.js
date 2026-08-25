@@ -127,9 +127,32 @@ function enriquecerCaminanteConAspirante(
     caminante
   );
 
+  enriquecido.primerNombre =
+    caminante.primerNombre ||
+    aspirante.primerNombre ||
+    '';
+  enriquecido.segundoNombre =
+    caminante.segundoNombre ||
+    aspirante.segundoNombre ||
+    '';
+  enriquecido.primerApellido =
+    caminante.primerApellido ||
+    aspirante.primerApellido ||
+    '';
+  enriquecido.segundoApellido =
+    caminante.segundoApellido ||
+    aspirante.segundoApellido ||
+    '';
+
   enriquecido.nombre =
     caminante.nombre ||
     aspirante.nombreCompleto ||
+    construirNombreCompletoPersona(
+      enriquecido.primerNombre,
+      enriquecido.segundoNombre,
+      enriquecido.primerApellido,
+      enriquecido.segundoApellido
+    ) ||
     '';
 
   enriquecido.telefono =
@@ -314,6 +337,10 @@ function convertirCaminante(registro) {
     id: registro.id || '',
 
     nombre: registro.nombre || '',
+    primerNombre: registro.primerNombre || '',
+    segundoNombre: registro.segundoNombre || '',
+    primerApellido: registro.primerApellido || '',
+    segundoApellido: registro.segundoApellido || '',
 
     telefono: registro.telefono || '',
 

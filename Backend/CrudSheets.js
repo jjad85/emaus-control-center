@@ -566,6 +566,14 @@ function convertirEncabezadoCrud(
 
     'nombre': 'nombre',
     'nombre completo': 'nombreCompleto',
+    'primer nombre': 'primerNombre',
+    'segundo nombre': 'segundoNombre',
+    'primer apellido': 'primerApellido',
+    'segundo apellido': 'segundoApellido',
+    'primernombre': 'primerNombre',
+    'segundonombre': 'segundoNombre',
+    'primerapellido': 'primerApellido',
+    'segundoapellido': 'segundoApellido',
 
     'telefono': 'telefono',
 

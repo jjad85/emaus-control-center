@@ -679,7 +679,7 @@ export default function Servidores() {
                     <TextField label="Primer apellido" value={form.primerApellido || ''} onChange={(e) => setForm({ ...form, primerApellido: e.target.value })} required fullWidth />
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField label="Segundo apellido" value={form.segundoApellido || ''} onChange={(e) => setForm({ ...form, segundoApellido: e.target.value })} required fullWidth />
+                    <TextField label="Segundo apellido" value={form.segundoApellido || ''} onChange={(e) => setForm({ ...form, segundoApellido: e.target.value })} helperText="Opcional" fullWidth />
                   </Grid>
                 </Grid>
                 <TextField

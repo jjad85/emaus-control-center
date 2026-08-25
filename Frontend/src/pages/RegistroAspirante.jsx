@@ -310,6 +310,16 @@ export default function RegistroAspirante({ registroInterno = false }) {
     setErrorTipoRegistrante,
   ] = useState('');
 
+  const [
+    dialogoSinSegundoApellido,
+    setDialogoSinSegundoApellido,
+  ] = useState(false);
+
+  const [
+    sinSegundoApellidoConfirmado,
+    setSinSegundoApellidoConfirmado,
+  ] = useState(false);
+
   const portal =
     portalApi.data || {};
 
@@ -481,6 +491,10 @@ export default function RegistroAspirante({ registroInterno = false }) {
       [campo]: valor,
     }));
 
+    if (campo === 'segundoApellido') {
+      setSinSegundoApellidoConfirmado(false);
+    }
+
     // La alerta superior no debe quedarse "pegada" mientras
     // la persona está corrigiendo los campos marcados en rojo.
     if (error) {
@@ -592,7 +606,6 @@ export default function RegistroAspirante({ registroInterno = false }) {
           registranteValido &&
           tieneValor(form.primerNombre) &&
           tieneValor(form.primerApellido) &&
-          tieneValor(form.segundoApellido) &&
           tieneValor(form.documentoIdentidad) &&
           tieneValor(form.direccionResidencia) &&
           tieneValor(form.fechaNacimiento) &&
@@ -662,6 +675,17 @@ export default function RegistroAspirante({ registroInterno = false }) {
       form,
     ]);
 
+  function avanzarPaso() {
+    setError('');
+    setMostrarErrores(false);
+    setPaso((actual) =>
+      Math.min(
+        PASOS.length - 1,
+        actual + 1
+      )
+    );
+  }
+
   function siguiente() {
     setMostrarErrores(true);
 
@@ -672,14 +696,23 @@ export default function RegistroAspirante({ registroInterno = false }) {
       return;
     }
 
-    setError('');
-    setMostrarErrores(false);
-    setPaso((actual) =>
-      Math.min(
-        PASOS.length - 1,
-        actual + 1
-      )
-    );
+    if (
+      paso === 0 &&
+      campoVacio(form.segundoApellido) &&
+      !sinSegundoApellidoConfirmado
+    ) {
+      setError('');
+      setDialogoSinSegundoApellido(true);
+      return;
+    }
+
+    avanzarPaso();
+  }
+
+  function confirmarSinSegundoApellido() {
+    setSinSegundoApellidoConfirmado(true);
+    setDialogoSinSegundoApellido(false);
+    avanzarPaso();
   }
 
   async function enviar() {
@@ -1341,8 +1374,7 @@ export default function RegistroAspirante({ registroInterno = false }) {
                     value={form.segundoApellido}
                     onChange={(valor) => cambiar('segundoApellido', valor)}
                     onBlur={() => normalizarCampoNombre('segundoApellido')}
-                    required
-                    error={errorObligatorio('segundoApellido')}
+                    helperText="Opcional. Si no tienes segundo apellido, podrás confirmarlo al continuar."
                   />
                 </Grid>
 
@@ -2394,6 +2426,44 @@ export default function RegistroAspirante({ registroInterno = false }) {
           </Box>
         </Stack>
       </Container>
+
+      <Dialog
+        open={dialogoSinSegundoApellido}
+        onClose={() => setDialogoSinSegundoApellido(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Confirma el segundo apellido
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Dejaste vacío el campo <strong>Segundo apellido</strong>.
+          </Alert>
+
+          <Typography>
+            Por favor confirma que estás seguro de que la persona
+            <strong> no tiene segundo apellido</strong>.
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            onClick={() => setDialogoSinSegundoApellido(false)}
+          >
+            Volver y completar
+          </Button>
+
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={confirmarSinSegundoApellido}
+          >
+            Confirmo que no tiene segundo apellido
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={dialogoAutorizacion === 'datos'}

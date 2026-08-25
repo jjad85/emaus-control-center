@@ -325,6 +325,23 @@ function reportarPagoPublico(datos) {
     );
   }
 
+  let receptorEfectivo = null;
+
+  if (medioPago === 'Efectivo') {
+    const receptorServidorId =
+      String(entrada.receptorServidorId || '').trim();
+
+    if (!receptorServidorId) {
+      throw crearErrorAplicacion(
+        'SERVIDOR_RECEPTOR_REQUERIDO',
+        'Debes seleccionar de la lista el servidor que recibió el dinero.'
+      );
+    }
+
+    receptorEfectivo =
+      obtenerServidorReceptorEfectivo_(receptorServidorId);
+  }
+
   const tipoPersona = normalizarTipoPersonaPago_(entrada.tipoPersona);
   let resumen = buscarPersonaPago(
     tipoPersona,
@@ -424,11 +441,20 @@ function reportarPagoPublico(datos) {
       medioPago: medioPago,
       entidadPago: String(entrada.entidadPago || ''),
       referenciaPago: String(entrada.referenciaPago || ''),
-      nombrePagador: String(entrada.nombrePagador || ''),
-      telefonoPagador: validarCelularColombia(
-        entrada.telefonoPagador,
-        { etiqueta: medioPago === 'Efectivo' ? 'El teléfono de la persona que tiene el dinero' : 'El teléfono del pagador' }
-      ),
+      nombrePagador:
+        medioPago === 'Efectivo'
+          ? receptorEfectivo.nombre
+          : String(entrada.nombrePagador || ''),
+      telefonoPagador:
+        medioPago === 'Efectivo'
+          ? receptorEfectivo.celular
+          : validarCelularColombia(
+              entrada.telefonoPagador,
+              {
+                etiqueta:
+                  'El teléfono del pagador'
+              }
+            ),
       comprobanteUrl: comprobante.url,
       comprobanteId: comprobante.id,
       comprobanteNombre: comprobante.nombre,
@@ -513,6 +539,55 @@ function obtenerPagos(token, filtros) {
         : caminantesPorId[String(pago.caminanteId)] || {};
       return normalizarPagoRespuesta(pago, persona);
     });
+}
+
+function editarValorPagoPendiente(token, id, valorReportado, motivo) {
+  const sesion = validarPermiso(token, 'PAGOS_VALIDAR_COMPROBANTE');
+  const pago = leerRegistroPorIdSheet(HOJAS.PAGOS, id, { usuario: sesion.usuario });
+
+  if (normalizarTexto(pago.estadoPagoReportado || pago.estado || '') !== 'pendiente') {
+    throw crearErrorAplicacion('PAGO_NO_EDITABLE', 'Solo se puede corregir el valor de un pago que esté pendiente.');
+  }
+
+  const valorAnterior = Number(pago.valorReportado || 0);
+  const valorNuevo = Number(valorReportado);
+  const motivoTexto = String(motivo || '').trim();
+
+  if (!valorNuevo || valorNuevo <= 0) {
+    throw crearErrorAplicacion('VALOR_PAGO_INVALIDO', 'El valor reportado debe ser mayor a cero.');
+  }
+  if (valorNuevo === valorAnterior) {
+    throw crearErrorAplicacion('VALOR_SIN_CAMBIOS', 'El nuevo valor es igual al valor actualmente reportado.');
+  }
+  if (!motivoTexto) {
+    throw crearErrorAplicacion('MOTIVO_CORRECCION_REQUERIDO', 'Debes indicar el motivo de la corrección.');
+  }
+
+  const actualizado = actualizarRegistroSheet(
+    HOJAS.PAGOS, id,
+    {
+      valorReportado: valorNuevo,
+      motivoModificacionValor: motivoTexto,
+      fechaActualizacion: new Date(),
+      actualizadoPor: sesion.usuario
+    },
+    { usuario: sesion.usuario }
+  );
+
+  registrarAuditoria({
+    usuario: sesion.usuario,
+    nombre: sesion.nombre || '',
+    accion: 'CORREGIR_VALOR_PAGO_PENDIENTE',
+    entidad: 'Pagos',
+    idRegistro: id,
+    detalle: JSON.stringify({
+      valorAnterior: valorAnterior,
+      valorNuevo: valorNuevo,
+      motivo: motivoTexto
+    })
+  });
+
+  return normalizarPagoRespuesta(actualizado);
 }
 
 function validarPago(token, id, decision) {

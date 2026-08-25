@@ -53,6 +53,62 @@ function obtenerMiCuentaServidor(token) {
   return obtenerServidorPorId(servidorId);
 }
 
+function obtenerServidoresActivosParaEfectivo() {
+  return obtenerServidores({})
+    .filter(function(servidor) {
+      return Boolean(servidor.activo);
+    })
+    .map(function(servidor) {
+      return {
+        id: servidor.id || '',
+        nombre: servidor.nombre || '',
+        celular: servidor.celular || ''
+      };
+    })
+    .filter(function(servidor) {
+      return Boolean(
+        String(servidor.id || '').trim() &&
+        String(servidor.nombre || '').trim()
+      );
+    })
+    .sort(function(a, b) {
+      return String(a.nombre || '').localeCompare(
+        String(b.nombre || '')
+      );
+    });
+}
+
+function obtenerServidorReceptorEfectivo_(id) {
+  const servidor = obtenerServidores({})
+    .find(function(item) {
+      return (
+        String(item.id) === String(id) &&
+        Boolean(item.activo)
+      );
+    });
+
+  if (!servidor) {
+    throw crearErrorAplicacion(
+      'SERVIDOR_RECEPTOR_INVALIDO',
+      'Debes seleccionar un servidor activo para registrar un pago en efectivo.'
+    );
+  }
+
+  const celular = validarCelularColombia(
+    servidor.celular,
+    {
+      etiqueta:
+        'El celular del servidor que recibió el dinero'
+    }
+  );
+
+  return {
+    id: servidor.id,
+    nombre: String(servidor.nombre || '').trim(),
+    celular: celular
+  };
+}
+
 function obtenerServidorPorId(id) {
   const servidor = obtenerServidores({}).find(function(item) {
     return String(item.id) === String(id);
@@ -80,6 +136,10 @@ function convertirServidor(registro) {
   return {
     id: registro.id || '',
     nombre: registro.nombre || '',
+    primerNombre: registro.primerNombre || '',
+    segundoNombre: registro.segundoNombre || '',
+    primerApellido: registro.primerApellido || '',
+    segundoApellido: registro.segundoApellido || '',
     documentoIdentidad: registro.documentoIdentidad || '',
     fotoPerfilId: registro.fotoPerfilId || '',
     fotoPerfilUrl: registro.fotoPerfilUrl || '',
@@ -122,6 +182,10 @@ function resumirServidor(servidor) {
   return {
     id: servidor.id || '',
     nombre: servidor.nombre || '',
+    primerNombre: servidor.primerNombre || '',
+    segundoNombre: servidor.segundoNombre || '',
+    primerApellido: servidor.primerApellido || '',
+    segundoApellido: servidor.segundoApellido || '',
     documentoIdentidad: servidor.documentoIdentidad || '',
     fotoPerfilId: servidor.fotoPerfilId || '',
     fotoPerfilUrl: servidor.fotoPerfilUrl || '',
@@ -157,12 +221,12 @@ function obtenerOpcionesGestionServidor(token, servidorId) {
 function editarServidor(token, id, datos) {
   const sesion = validarPermiso(token, 'SERVIDORES_EDITAR');
   const entrada = datos || {};
-  const nombre = String(entrada.nombre || '').trim();
+  const nombres = validarNombresPersona(
+    entrada,
+    'El servidor'
+  );
+  const nombre = nombres.nombreCompleto;
   const documentoIdentidad = String(entrada.documentoIdentidad || '').trim();
-
-  if (!nombre) {
-    throw crearErrorAplicacion('NOMBRE_SERVIDOR_REQUERIDO', 'El nombre es obligatorio.');
-  }
 
   return ejecutarCrudConBloqueo(function() {
     if (documentoIdentidad) {
@@ -183,6 +247,10 @@ function editarServidor(token, id, datos) {
       HOJAS.SERVIDORES,
       id,
       {
+        primerNombre: nombres.primerNombre,
+        segundoNombre: nombres.segundoNombre,
+        primerApellido: nombres.primerApellido,
+        segundoApellido: nombres.segundoApellido,
         nombre: nombre,
         documentoIdentidad: documentoIdentidad,
         correo: String(entrada.correo || '').trim(),
