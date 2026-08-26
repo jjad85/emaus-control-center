@@ -590,15 +590,95 @@ function editarValorPagoPendiente(token, id, valorReportado, motivo) {
   return normalizarPagoRespuesta(actualizado);
 }
 
+function normalizarValorPago_(valor) {
+  if (typeof valor === 'number') {
+    return isFinite(valor) ? valor : 0;
+  }
+
+  const texto = String(valor || '').trim();
+  if (!texto) return 0;
+
+  // En este sistema los pagos se manejan en pesos enteros.
+  // Esto evita interpretar "380.000" como 380 al usar Number().
+  const soloDigitos = texto.replace(/\D/g, '');
+
+  return Number(soloDigitos || 0);
+}
+
 function validarPago(token, id, decision) {
   const sesion=validarPermiso(token,'PAGOS_VALIDAR_COMPROBANTE');
   const pago=leerRegistroPorIdSheet(HOJAS.PAGOS,id,{usuario:sesion.usuario});
-  const estado=normalizarTexto(decision.estado)==='aprobado'?'Aprobado':'Rechazado';
-  const valorAprobado=estado==='Aprobado'?Number(decision.valorAprobado||pago.valorReportado):'';
-  if (estado==='Aprobado' && (!valorAprobado || valorAprobado<=0)) throw crearErrorAplicacion('VALOR_APROBADO_INVALIDO','El valor aprobado debe ser mayor a cero.');
-  if (Number(pago.valorReportado)!==Number(valorAprobado) && estado==='Aprobado' && !String(decision.motivoModificacionValor||'').trim()) throw crearErrorAplicacion('MOTIVO_REQUERIDO','Indique el motivo de la corrección del valor.');
+  const estado =
+    normalizarTexto(decision.estado) === 'aprobado'
+      ? 'Aprobado'
+      : 'Rechazado';
+
+  const valorReportadoNormalizado =
+    normalizarValorPago_(
+      pago.valorReportado
+    );
+
+  const valorAprobado =
+    estado === 'Aprobado'
+      ? normalizarValorPago_(
+          decision.valorAprobado ||
+          pago.valorReportado
+        )
+      : '';
+
+  const huboCorreccionValor =
+    estado === 'Aprobado' &&
+    valorReportadoNormalizado !==
+      valorAprobado;
+
+  if (
+    estado === 'Aprobado' &&
+    (!valorAprobado || valorAprobado <= 0)
+  ) {
+    throw crearErrorAplicacion(
+      'VALOR_APROBADO_INVALIDO',
+      'El valor aprobado debe ser mayor a cero.'
+    );
+  }
+
+  if (
+    huboCorreccionValor &&
+    !String(
+      decision.motivoModificacionValor ||
+      ''
+    ).trim()
+  ) {
+    throw crearErrorAplicacion(
+      'MOTIVO_REQUERIDO',
+      'Indique el motivo de la corrección del valor.'
+    );
+  }
   if (estado==='Rechazado' && !String(decision.observacionesTesoreria||'').trim()) throw crearErrorAplicacion('MOTIVO_RECHAZO_REQUERIDO','Indique el motivo del rechazo.');
-  const actualizado=actualizarRegistroSheet(HOJAS.PAGOS,id,{estadoPagoReportado:estado,valorAprobado:valorAprobado,observacionesTesoreria:String(decision.observacionesTesoreria||''),motivoModificacionValor:String(decision.motivoModificacionValor||''),validadoPor:sesion.usuario,fechaValidacion:new Date(),fechaActualizacion:new Date(),actualizadoPor:sesion.usuario},{usuario:sesion.usuario});
+  const actualizado = actualizarRegistroSheet(
+    HOJAS.PAGOS,
+    id,
+    {
+      estadoPagoReportado: estado,
+      valorAprobado: valorAprobado,
+      observacionesTesoreria:
+        String(
+          decision.observacionesTesoreria ||
+          ''
+        ),
+      motivoModificacionValor:
+        huboCorreccionValor
+          ? String(
+              decision.motivoModificacionValor ||
+              ''
+            )
+          : '',
+      validadoPor: sesion.usuario,
+      fechaValidacion: new Date(),
+      fechaActualizacion: new Date(),
+      actualizadoPor: sesion.usuario
+    },
+    { usuario: sesion.usuario }
+  );
   const tipoPersona = normalizarTipoPersonaPago_(pago.tipoPersona || (pago.servidorId ? 'Servidor' : 'Caminante'));
   if (estado === 'Rechazado' && tipoPersona === 'Caminante') {
     const caminante = leerRegistroPorIdSheet(HOJAS.CAMINANTES, pago.caminanteId, {usuario:sesion.usuario});

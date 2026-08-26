@@ -55,6 +55,21 @@ function formatearMoneda(valor) {
   });
 }
 
+function normalizarValorCop(valor) {
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? valor : 0;
+  }
+
+  const texto = String(valor ?? '').trim();
+  if (!texto) return 0;
+
+  // Los valores del sistema son pesos enteros.
+  // Acepta 380000, 380.000, $ 380.000, 380,000, etc.
+  const soloDigitos = texto.replace(/\D/g, '');
+  return Number(soloDigitos || 0);
+}
+
+
 function formatearTamano(bytes) {
   const total = Number(bytes || 0);
   if (!total) return 'No informado';
@@ -610,7 +625,7 @@ export default function Pagos() {
   function abrirDetalle(pago) {
     setSelected(pago);
     setValor(
-      String(pago.valorReportado || '')
+      String(normalizarValorCop(pago.valorReportado))
     );
     setObs(
       pago.observacionesTesoreria || ''
@@ -632,14 +647,31 @@ export default function Pagos() {
       setGuardando(true);
       setErrorAccion('');
 
+      const valorAprobadoNormalizado =
+        normalizarValorCop(valor);
+
+      const valorReportadoNormalizado =
+        normalizarValorCop(
+          selected.valorReportado
+        );
+
+      const huboCorreccionValor =
+        estado === 'Aprobado' &&
+        valorAprobadoNormalizado !==
+          valorReportadoNormalizado;
+
       await validarPago(
         token,
         selected.id,
         {
           estado,
-          valorAprobado: valor,
+          valorAprobado:
+            valorAprobadoNormalizado,
           observacionesTesoreria: obs,
-          motivoModificacionValor: motivo
+          motivoModificacionValor:
+            huboCorreccionValor
+              ? motivo
+              : ''
         }
       );
 
@@ -657,12 +689,18 @@ export default function Pagos() {
 
   async function guardarCorreccionPendiente() {
     try {
-      const nuevoValor = Number(valor || 0);
+      const nuevoValor =
+        normalizarValorCop(valor);
       if (!nuevoValor || nuevoValor <= 0) {
         setErrorAccion('El valor reportado debe ser mayor a cero.');
         return;
       }
-      if (nuevoValor === Number(selected.valorReportado || 0)) {
+      if (
+        nuevoValor ===
+        normalizarValorCop(
+          selected.valorReportado
+        )
+      ) {
         setErrorAccion('No hay cambios en el valor reportado.');
         return;
       }
@@ -1949,16 +1987,31 @@ export default function Pagos() {
                     label="Valor aprobado"
                     type="number"
                     value={valor}
-                    onChange={event =>
+                    onChange={event => {
                       setValor(
                         event.target.value
+                      );
+                      setErrorAccion('');
+                    }}
+                    helperText={
+                      normalizarValorCop(valor) ===
+                      normalizarValorCop(
+                        selected.valorReportado
                       )
+                        ? `Mismo valor reportado: ${formatearMoneda(
+                            normalizarValorCop(
+                              selected.valorReportado
+                            )
+                          )}`
+                        : `Nuevo valor: ${formatearMoneda(
+                            normalizarValorCop(valor)
+                          )}`
                     }
                     fullWidth
                   />
 
-                  {Number(valor) !==
-                    Number(
+                  {normalizarValorCop(valor) !==
+                    normalizarValorCop(
                       selected.valorReportado
                     ) && (
                     <TextField
@@ -2064,7 +2117,10 @@ export default function Pagos() {
           {selected?.estado ===
             'Pendiente' && (
               <>
-                {Number(valor) !== Number(selected.valorReportado || 0) && (
+                {normalizarValorCop(valor) !==
+                  normalizarValorCop(
+                    selected.valorReportado
+                  ) && (
                   <Button
                     onClick={guardarCorreccionPendiente}
                     variant="outlined"
