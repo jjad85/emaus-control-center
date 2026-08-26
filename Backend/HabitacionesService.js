@@ -476,6 +476,22 @@ function obtenerCandidatosHabitacion(
         };
       })
       .sort(function(a, b) {
+        if (tipo === 'Caminante') {
+          var mesaA =
+            obtenerNumeroMesaOrdenHabitacion_(
+              a.mesa
+            );
+
+          var mesaB =
+            obtenerNumeroMesaOrdenHabitacion_(
+              b.mesa
+            );
+
+          if (mesaA !== mesaB) {
+            return mesaA - mesaB;
+          }
+        }
+
         return String(
           a.nombre || ''
         ).localeCompare(
@@ -489,6 +505,28 @@ function obtenerCandidatosHabitacion(
     tipoPersona: tipo,
     candidatos: candidatos
   };
+}
+
+function obtenerNumeroMesaOrdenHabitacion_(
+  mesa
+) {
+  var texto =
+    String(mesa || '').trim();
+
+  if (!texto) {
+    return 999999;
+  }
+
+  var coincidencia =
+    texto.match(/\d+/);
+
+  if (!coincidencia) {
+    return 999998;
+  }
+
+  return Number(
+    coincidencia[0]
+  );
 }
 
 function asignarPersonasHabitacion(

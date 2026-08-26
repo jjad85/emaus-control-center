@@ -59,3 +59,8 @@ export async function registrarAspiranteServidorApi(token, datos) {
   const response = await postAction('registrarAspiranteServidor', { token, datos });
   return response.datos;
 }
+
+export async function editarAspiranteApi(token, id, datos) {
+  const response = await postAction('editaraspirante', { token, id, datos });
+  return response.datos;
+}

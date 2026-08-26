@@ -68,6 +68,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['DASHBOARD_VER','Dashboard','Dashboard','Ver dashboard'],
     ['ASPIRANTES_VER_DETALLE','Personas','Aspirantes','Ver detalle'],
     ['ASPIRANTES_REGISTRAR','Personas','Aspirantes','Registrar aspirante'],
+    ['ASPIRANTES_EDITAR','Personas','Aspirantes','Editar aspirante'],
     ['ALIMENTACION_EXPORTAR','Personas','Aspirantes','Exportar alimentación'],
     ['ASPIRANTES_NOTIFICAR_PREINSCRIPCION','Personas','Aspirantes','Notificar preinscripción'],
     ['ASPIRANTES_CAMBIAR_ESTADO','Personas','Aspirantes','Cambiar estado'],
@@ -163,6 +164,7 @@ function obtenerMatrizInicialRolesPermisos_() {
   dar('DASHBOARD_VER', todosConsulta);
   dar('ASPIRANTES_VER_DETALLE', todosConsulta);
   dar('ASPIRANTES_REGISTRAR',['LIDER_RETIRO','LIDER_MESA','SERVIDOR','REGISTRO']);
+  dar('ASPIRANTES_EDITAR',['LIDER_RETIRO','REGISTRO']);
   dar('ASPIRANTES_NOTIFICAR_PREINSCRIPCION',['LIDER_RETIRO','REGISTRO']);
   dar('ASPIRANTES_CAMBIAR_ESTADO',['LIDER_RETIRO','REGISTRO']);
   dar('CAMINANTES_VER_DETALLE',todosConsulta);

@@ -153,6 +153,56 @@ function registrarAspiranteServidor(token, datos) {
   });
 }
 
+function editarAspirante(token, id, datos) {
+  const sesion = validarPermiso(token, 'ASPIRANTES_EDITAR');
+  const actual = obtenerAspirantePorId(id);
+  validarAspiranteEditable(actual);
+
+  const preparado = prepararAspirante(Object.assign({}, actual, datos || {}));
+  preparado.numeroInscripcion = actual.numeroInscripcion || '';
+  preparado.estadoSolicitud = actual.estadoSolicitud || 'Pendiente';
+  preparado.observacionesGestion = actual.observacionesGestion || '';
+  preparado.caminanteId = actual.caminanteId || '';
+
+  [
+    'autorizaTratamientoDatos','versionAutorizacionDatos','fechaAceptacionDatos','textoAutorizacionDatos',
+    'autorizaFotografias','versionAutorizacionFotografias','fechaAceptacionFotografias','textoAutorizacionFotografias'
+  ].forEach(function(campo) {
+    preparado[campo] = actual[campo] || preparado[campo] || '';
+  });
+
+  validarAspirante(preparado);
+
+  const documento = normalizarTexto(preparado.documentoIdentidad);
+  const duplicado = leerHojaComoObjetos(HOJAS.ASPIRANTES).find(function(item) {
+    return String(item.id) !== String(id) &&
+      normalizarTexto(item.documentoIdentidad) === documento;
+  });
+
+  if (duplicado) {
+    throw crearErrorAplicacion('ASPIRANTE_DOCUMENTO_DUPLICADO', 'Ya existe otro aspirante con ese documento.');
+  }
+
+  const actualizado = actualizarRegistroSheet(
+    HOJAS.ASPIRANTES, id, preparado, opcionesCrudAspirante(sesion.usuario)
+  );
+
+  registrarAuditoria({
+    usuario: sesion.usuario,
+    nombre: sesion.nombre || '',
+    accion: 'EDITAR_ASPIRANTE',
+    entidad: 'Aspirantes',
+    idRegistro: id,
+    detalle: JSON.stringify({
+      numeroInscripcion: actual.numeroInscripcion || '',
+      nombreAnterior: actual.nombreCompleto || '',
+      nombreNuevo: actualizado.nombreCompleto || ''
+    })
+  });
+
+  return actualizado;
+}
+
 function actualizarEstadoAspirante(
   token,
   id,

@@ -791,7 +791,9 @@ function obtenerEstadoCuentaPersona(token, tipo, personaId) {
   const tipoPersona = normalizarTipoPersonaPago_(tipo);
   if (tipoPersona === 'Servidor') {
     validarPermiso(token, 'SERVIDORES_VER_DETALLE');
-    return completarResumenPagosPersona_(obtenerServidorPorId(personaId), 'Servidor');
+    const servidor = obtenerServidorPorId(personaId);
+    if (!servidor) throw crearErrorAplicacion('SERVIDOR_NO_ENCONTRADO','No encontramos el servidor solicitado.');
+    return completarResumenPagosPersona_(servidor, 'Servidor');
   }
   validarPermiso(token, 'CAMINANTES_VER_DETALLE');
   return completarResumenPagosPersona_(

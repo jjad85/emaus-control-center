@@ -539,10 +539,8 @@ function obtenerCandidatosMesaCaminantes(
           id: caminante.id || '',
           nombre:
             caminante.nombre || '',
-          documento:
-            caminante.documentoIdentidad ||
-            caminante.documento ||
-            '',
+          edad:
+            Number(caminante.edad || calcularEdadAspirante(caminante.fechaNacimiento) || 0),
           habitacion:
             caminante.habitacion || '',
           estadoPago:
@@ -553,12 +551,10 @@ function obtenerCandidatosMesaCaminantes(
         };
       })
       .sort(function(a, b) {
-        return String(
-          a.nombre || ''
-        ).localeCompare(
-          String(b.nombre || ''),
-          'es'
-        );
+        const edadA = Number(a.edad || 999);
+        const edadB = Number(b.edad || 999);
+        if (edadA !== edadB) return edadA - edadB;
+        return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
       });
 
   return {

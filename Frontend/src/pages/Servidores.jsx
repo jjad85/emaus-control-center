@@ -116,6 +116,7 @@ export default function Servidores() {
   const [mensaje, setMensaje] = useState('');
   const [form, setForm] = useState({});
   const [detalleServidor, setDetalleServidor] = useState(null);
+  const [confirmarSinSegundoApellido,setConfirmarSinSegundoApellido]=useState(false);
   const [
     servidorGestionEquipos,
     setServidorGestionEquipos,
@@ -233,7 +234,7 @@ export default function Servidores() {
     setForm({});
   }
 
-  async function guardar() {
+  async function ejecutarGuardado() {
     if (!selected) return;
     setGuardando(true);
     try {
@@ -257,6 +258,14 @@ export default function Servidores() {
     } finally {
       setGuardando(false);
     }
+  }
+
+  async function guardar() {
+    if (dialogo === 'editar' && !String(form.segundoApellido || '').trim()) {
+      setConfirmarSinSegundoApellido(true);
+      return;
+    }
+    await ejecutarGuardado();
   }
 
   if (api.loading && !api.data) return <LoadingState />;
@@ -412,6 +421,7 @@ export default function Servidores() {
                 </CardContent>
 
                 <CardActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
+                  <Button size="small" startIcon={<PaymentsRounded />} onClick={() => setDetalleServidor(servidor)}>Estado de cuenta</Button>
                   <ProtectedButton permiso="SERVIDORES_EDITAR" size="small" startIcon={<EditRounded />} onClick={() => abrirAccion('editar', servidor)}>Editar</ProtectedButton>
                   <ProtectedButton
                     permiso="SERVIDORES_ASIGNAR_EQUIPO"
@@ -632,6 +642,18 @@ export default function Servidores() {
 
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button variant="contained" onClick={() => setDetalleServidor(null)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmarSinSegundoApellido} onClose={()=>setConfirmarSinSegundoApellido(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Confirma el segundo apellido</DialogTitle>
+        <DialogContent dividers>
+          <Alert severity="warning" sx={{mb:2}}>El campo <strong>Segundo apellido</strong> está vacío.</Alert>
+          <Typography>Confirma que este servidor realmente tiene un solo apellido.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={()=>setConfirmarSinSegundoApellido(false)}>Volver y completar</Button>
+          <Button variant="contained" color="warning" onClick={async()=>{setConfirmarSinSegundoApellido(false);await ejecutarGuardado();}}>Confirmo que tiene un solo apellido</Button>
         </DialogActions>
       </Dialog>
 

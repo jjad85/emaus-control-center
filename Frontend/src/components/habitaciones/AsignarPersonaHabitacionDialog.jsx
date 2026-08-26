@@ -260,7 +260,54 @@ export default function AsignarPersonaHabitacionDialog({
                 <Autocomplete
                   multiple
                   options={
-                    datos?.candidatos || []
+                    [...(datos?.candidatos || [])]
+                      .sort((a, b) => {
+                        if (
+                          tipoPersona ===
+                          'Caminante'
+                        ) {
+                          const numeroMesa = (
+                            valor
+                          ) => {
+                            const texto =
+                              String(
+                                valor || ''
+                              ).trim();
+
+                            if (!texto) {
+                              return 999999;
+                            }
+
+                            const coincidencia =
+                              texto.match(/\d+/);
+
+                            return coincidencia
+                              ? Number(
+                                  coincidencia[0]
+                                )
+                              : 999998;
+                          };
+
+                          const mesaA =
+                            numeroMesa(a.mesa);
+
+                          const mesaB =
+                            numeroMesa(b.mesa);
+
+                          if (mesaA !== mesaB) {
+                            return mesaA - mesaB;
+                          }
+                        }
+
+                        return String(
+                          a.nombre || ''
+                        ).localeCompare(
+                          String(
+                            b.nombre || ''
+                          ),
+                          'es'
+                        );
+                      })
                   }
                   value={seleccionados}
                   onChange={(_, nuevos) => {
@@ -347,7 +394,7 @@ export default function AsignarPersonaHabitacionDialog({
                               'Servidor'
                             : opcion.mesa
                               ? `Mesa ${opcion.mesa}`
-                              : 'Caminante sin mesa'
+                              : 'Sin mesa · aparece al final'
                         }
                       />
                     </li>

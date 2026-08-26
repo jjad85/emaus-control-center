@@ -191,6 +191,7 @@ export default function CaminanteFormDialog({
 }) {
   const [form, setForm] = useState(FORM_INICIAL);
   const [error, setError] = useState('');
+  const [confirmarSinSegundoApellido,setConfirmarSinSegundoApellido]=useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -307,7 +308,7 @@ export default function CaminanteFormDialog({
     });
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event, omitirConfirmacionApellido = false) {
     event.preventDefault();
     setError('');
 
@@ -318,6 +319,11 @@ export default function CaminanteFormDialog({
 
     if (!puedeEnviar) {
       setError('Complete los datos obligatorios, incluidos los dos contactos de emergencia.');
+      return;
+    }
+
+    if (!String(form.segundoApellido || '').trim() && !omitirConfirmacionApellido) {
+      setConfirmarSinSegundoApellido(true);
       return;
     }
 
@@ -356,8 +362,9 @@ export default function CaminanteFormDialog({
   }
 
   return (
-    <Dialog
-      open={open}
+    <>
+      <Dialog
+        open={open}
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="lg"
@@ -457,5 +464,17 @@ export default function CaminanteFormDialog({
         </Button>
       </DialogActions>
     </Dialog>
+    <Dialog open={confirmarSinSegundoApellido} onClose={()=>setConfirmarSinSegundoApellido(false)} fullWidth maxWidth="sm">
+      <DialogTitle>Confirma el segundo apellido</DialogTitle>
+      <DialogContent dividers>
+        <Alert severity="warning" sx={{mb:2}}>El campo <strong>Segundo apellido</strong> está vacío.</Alert>
+        <Typography>Confirma que este caminante realmente tiene un solo apellido.</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={()=>setConfirmarSinSegundoApellido(false)}>Volver y completar</Button>
+        <Button variant="contained" color="warning" onClick={async()=>{setConfirmarSinSegundoApellido(false);await handleSubmit({preventDefault(){}},true);}}>Confirmo que tiene un solo apellido</Button>
+      </DialogActions>
+      </Dialog>
+    </>
   );
 }

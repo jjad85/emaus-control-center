@@ -191,7 +191,11 @@ export default function AsignarCaminantesMesaDialog({
               <Autocomplete
                 multiple
                 options={
-                  datos?.candidatos || []
+                  [...(datos?.candidatos || [])].sort((a,b)=>{
+                    const edadA=Number(a.edad||999);
+                    const edadB=Number(b.edad||999);
+                    return edadA!==edadB ? edadA-edadB : String(a.nombre||'').localeCompare(String(b.nombre||''),'es');
+                  })
                 }
                 value={seleccionados}
                 onChange={(_, nuevos) => {
@@ -235,12 +239,8 @@ export default function AsignarCaminantesMesaDialog({
                         opcion.nombre
                       }
                       secondary={[
-                        opcion.documento
-                          ? `Documento: ${opcion.documento}`
-                          : '',
-                        opcion.habitacion
-                          ? `Habitación: ${opcion.habitacion}`
-                          : '',
+                        Number(opcion.edad) > 0 ? `Edad: ${opcion.edad} años` : 'Edad no disponible',
+                        opcion.habitacion ? `Habitación: ${opcion.habitacion}` : '',
                       ]
                         .filter(Boolean)
                         .join(' · ')}

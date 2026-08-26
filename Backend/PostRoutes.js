@@ -396,6 +396,9 @@ function routePost(contenido) {
         mensaje: 'Aspirante registrado correctamente'
       };
 
+    case 'editaraspirante':
+      return { datos: editarAspirante(contenido.token, contenido.id, contenido.datos || {}), mensaje: 'Aspirante actualizado correctamente' };
+
     case 'actualizarestadoaspirante':
       return {
         datos:

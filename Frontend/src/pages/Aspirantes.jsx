@@ -28,6 +28,7 @@ import SearchRounded from '@mui/icons-material/SearchRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import PhoneRounded from '@mui/icons-material/PhoneRounded';
 import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
+import EditRounded from '@mui/icons-material/EditRounded';
 import PersonAddRounded from '@mui/icons-material/PersonAddRounded';
 import DownloadRounded from '@mui/icons-material/DownloadRounded';
 
@@ -40,6 +41,7 @@ import { useNavigate } from 'react-router-dom';
 
 import {
   actualizarEstadoAspiranteApi,
+  editarAspiranteApi,
   obtenerAspirantes,
 } from '../api/aspirantesApi';
 
@@ -50,6 +52,7 @@ import ErrorState from '../components/ErrorState';
 import LoadingState from '../components/LoadingState';
 import PageHeader from '../components/PageHeader';
 import WhatsAppNotifyButton from '../components/WhatsAppNotifyButton';
+import AspiranteEditDialog from '../components/aspirantes/AspiranteEditDialog';
 
 function colorEstado(estado) {
   const valor = String(estado || '').toLowerCase();
@@ -617,6 +620,8 @@ function notificacionesWhatsappUnicas(
 function TarjetaAspirante({
   item,
   onVerDetalle,
+  onEditar,
+  puedeEditar,
   colorBorde,
   token,
   puedeNotificar,
@@ -759,6 +764,16 @@ function TarjetaAspirante({
           >
             Ver detalle
           </Button>
+          {puedeEditar && (
+            <Button
+              startIcon={<EditRounded />}
+              onClick={() => onEditar(item)}
+              variant="contained"
+              fullWidth
+            >
+              Editar
+            </Button>
+          )}
         </Stack>
       </Stack>
     </Paper>
@@ -774,6 +789,8 @@ function PanelEstadoAspirantes({
   colorSuave,
   mensajeVacio,
   onVerDetalle,
+  onEditar,
+  puedeEditar,
   token,
   puedeNotificar,
   onNotificacionCompletada,
@@ -1159,9 +1176,9 @@ function PanelEstadoAspirantes({
                   >
                     <TarjetaAspirante
                       item={item}
-                      onVerDetalle={
-                        onVerDetalle
-                      }
+                      onVerDetalle={onVerDetalle}
+                      onEditar={onEditar}
+                      puedeEditar={puedeEditar}
                       colorBorde="transparent"
                       token={token}
                       puedeNotificar={
@@ -1288,6 +1305,7 @@ export default function Aspirantes() {
 
   const [busqueda, setBusqueda] = useState('');
   const [seleccionado, setSeleccionado] = useState(null);
+  const [aspiranteEditar, setAspiranteEditar] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [celebracion, setCelebracion] = useState(null);
   const [grupoAbierto, setGrupoAbierto] = useState('pendientes');
@@ -1361,6 +1379,19 @@ export default function Aspirantes() {
         ).trim()
       )
     );
+  }
+
+  async function guardarEdicionAspirante(datos) {
+    if (!aspiranteEditar) return;
+    setProcesando(true);
+    try {
+      await editarAspiranteApi(token, aspiranteEditar.id, datos);
+      setAspiranteEditar(null);
+      setSeleccionado(null);
+      await api.reload();
+    } finally {
+      setProcesando(false);
+    }
   }
 
   async function cambiarEstado(estado) {
@@ -1657,6 +1688,8 @@ export default function Aspirantes() {
                 : 'No hay aspirantes rechazados.'
           }
           onVerDetalle={setSeleccionado}
+          onEditar={setAspiranteEditar}
+          puedeEditar={puede('ASPIRANTES_EDITAR')}
           token={token}
           puedeNotificar={
             puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
@@ -1978,6 +2011,18 @@ export default function Aspirantes() {
           >
             Cerrar
           </Button>
+          {puede('ASPIRANTES_EDITAR') && seleccionado && !aspiranteBloqueado(seleccionado) && (
+            <Button
+              variant="outlined"
+              startIcon={<EditRounded />}
+              onClick={() => {
+                setAspiranteEditar(seleccionado);
+                setSeleccionado(null);
+              }}
+            >
+              Editar aspirante
+            </Button>
+          )}
 
           {(puede('ASPIRANTES_NOTIFICAR_PREINSCRIPCION') ||
             puede('ASPIRANTES_CAMBIAR_ESTADO')) &&
@@ -2039,6 +2084,8 @@ export default function Aspirantes() {
             )}
         </DialogActions>
       </Dialog>
+
+      <AspiranteEditDialog open={Boolean(aspiranteEditar)} aspirante={aspiranteEditar} loading={procesando} onClose={()=>setAspiranteEditar(null)} onSave={guardarEdicionAspirante} />
 
       {celebracion && (
         <ConfetiCelebracion />
