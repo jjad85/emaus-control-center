@@ -64,3 +64,19 @@ export async function liberarMesaFueraDeRango(
 
   return response.datos;
 }
+
+export async function exportarCaminantesMesaApi(
+  token,
+  numeroMesa
+) {
+  const response =
+    await postAction(
+      'exportarcaminantesmesa',
+      {
+        token,
+        numeroMesa,
+      }
+    );
+
+  return response.datos;
+}

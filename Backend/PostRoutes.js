@@ -909,6 +909,18 @@ function routePost(contenido) {
       };
 
 
+    case 'exportarcaminantesmesa':
+      return {
+        datos:
+          obtenerExportacionCaminantesMesa(
+            contenido.token,
+            contenido.numeroMesa
+          ),
+        mensaje:
+          'Listado de caminantes generado correctamente'
+      };
+
+
     case 'obtenercandidatosmesacaminantes':
       return {
         datos:

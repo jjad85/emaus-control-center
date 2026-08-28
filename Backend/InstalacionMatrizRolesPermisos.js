@@ -105,6 +105,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['HABITACIONES_EDITAR','Logística','Habitaciones','Editar'],
     ['HABITACIONES_ASIGNAR_PERSONA','Logística','Habitaciones','Asignar persona'],
     ['MESAS_VER_DETALLE','Logística','Mesas','Ver detalle'],
+    ['MESAS_EXPORTAR_CAMINANTES','Logística','Mesas','Exportar caminantes de la mesa'],
     ['MESAS_ASIGNAR_CAMINANTE','Logística','Mesas','Asignar caminante'],
     ['MESAS_ELIMINAR','Logística','Mesas','Eliminar mesa'],
     ['PRESENTACIONES_TODO','Logística','Presentaciones','Acceso completo'],
@@ -195,6 +196,7 @@ function obtenerMatrizInicialRolesPermisos_() {
   dar('HABITACIONES_EDITAR',['LIDER_RETIRO']);
   dar('HABITACIONES_ASIGNAR_PERSONA',['LIDER_RETIRO']);
   dar('MESAS_VER_DETALLE',todosConsulta);
+  dar('MESAS_EXPORTAR_CAMINANTES',['LIDER_RETIRO','LIDER_MESA']);
   dar('MESAS_ASIGNAR_CAMINANTE',['LIDER_RETIRO']);
   dar('MESAS_ELIMINAR',['LIDER_RETIRO']);
   dar('PRESENTACIONES_TODO',['AUDIOVISUAL','LIDER_RETIRO']);

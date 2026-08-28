@@ -3,6 +3,7 @@ import {
   AlertTitle,
   Avatar,
   Box,
+  Button,
   Chip,
   Divider,
   Drawer,
@@ -12,6 +13,7 @@ import {
   Stack,
   Tooltip,
   Typography,
+  Snackbar,
 } from '@mui/material';
 import { useState } from 'react';
 import PersonAddAltRounded from '@mui/icons-material/PersonAddAltRounded';
@@ -21,7 +23,8 @@ import EventSeatRounded from '@mui/icons-material/EventSeatRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
 import AssignmentTurnedInRounded from '@mui/icons-material/AssignmentTurnedInRounded';
-import { obtenerMesas } from '../api/mesasApi';
+import DownloadRounded from '@mui/icons-material/DownloadRounded';
+import { obtenerMesas, exportarCaminantesMesaApi } from '../api/mesasApi';
 import { useAuth } from '../auth/AuthContext';
 import ProtectedButton from '../components/ProtectedButton';
 import AsignarCaminantesMesaDialog from '../components/mesas/AsignarCaminantesMesaDialog';
@@ -32,6 +35,7 @@ import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
 import StatusChip from '../components/StatusChip';
 import AvatarServidor from '../components/servidores/AvatarServidor';
+import { descargarCaminantesMesaExcel } from '../utils/excelMesas';
 
 function ServidorMesa({ etiqueta, servidor, compact = false }) {
   return (
@@ -228,11 +232,73 @@ function MesaVisual({ mesa, onOpen, onAssign }) {
 }
 
 export default function Mesas() {
-  const { token } = useAuth();
+  const {
+    token,
+    tienePermiso,
+    sesion,
+  } = useAuth();
+
+  const rolActual = String(
+    sesion?.rol || ''
+  )
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+  const rolPuedeExportarMesa = [
+    'admin',
+    'administrador',
+    'administrador sistema',
+    'administrador del sistema',
+    'lider retiro',
+    'lider del retiro',
+    'lider mesa',
+    'lider de mesa',
+  ].includes(rolActual);
+
+  const puedeExportarMesa =
+    tienePermiso(
+      'MESAS_EXPORTAR_CAMINANTES'
+    ) ||
+    rolPuedeExportarMesa;
   const api = useApi(() => obtenerMesas(), []);
   const [selected, setSelected] = useState(null);
   const [mesaAsignar, setMesaAsignar] = useState(null);
   const [mesaLiberar, setMesaLiberar] = useState(null);
+  const [exportandoMesa, setExportandoMesa] = useState(false);
+  const [avisoExportacion, setAvisoExportacion] = useState('');
+
+  async function exportarMesa(mesa) {
+    if (!mesa) return;
+
+    setExportandoMesa(true);
+
+    try {
+      const datos =
+        await exportarCaminantesMesaApi(
+          token,
+          mesa.numero
+        );
+
+      await descargarCaminantesMesaExcel(
+        datos
+      );
+
+      setAvisoExportacion(
+        `Se exportaron ${datos.cantidadCaminantes || 0} caminantes de la Mesa ${mesa.numero}.`
+      );
+    } catch (error) {
+      setAvisoExportacion(
+        error?.message ||
+        'No fue posible exportar la mesa.'
+      );
+    } finally {
+      setExportandoMesa(false);
+    }
+  }
 
   if (api.loading && !api.data) return <LoadingState />;
   if (api.error) return <ErrorState message={api.error} onRetry={api.reload} />;
@@ -337,9 +403,41 @@ export default function Mesas() {
                 )) : <Alert severity="info">Esta mesa todavía no tiene caminantes asignados.</Alert>}
               </Stack>
 
-              <ProtectedButton permiso="MESAS_ASIGNAR_CAMINANTE" fullWidth variant="contained" startIcon={<PersonAddAltRounded />} sx={{ mt: 2.5 }} disabled={selected.cuposDisponibles <= 0} onClick={() => setMesaAsignar(selected)}>
-                Asignar caminantes
-              </ProtectedButton>
+              <Stack spacing={1.2} sx={{ mt: 2.5 }}>
+                {puedeExportarMesa && (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<DownloadRounded />}
+                    disabled={
+                      exportandoMesa ||
+                      !(selected.caminantes?.length)
+                    }
+                    onClick={() =>
+                      exportarMesa(selected)
+                    }
+                    sx={{
+                      fontWeight: 850,
+                      borderWidth: 1.5,
+                    }}
+                  >
+                    {exportandoMesa
+                      ? 'Generando archivo...'
+                      : 'Exportar listado de caminantes'}
+                  </Button>
+                )}
+
+                <ProtectedButton
+                  permiso="MESAS_ASIGNAR_CAMINANTE"
+                  fullWidth
+                  variant="contained"
+                  startIcon={<PersonAddAltRounded />}
+                  disabled={selected.cuposDisponibles <= 0}
+                  onClick={() => setMesaAsignar(selected)}
+                >
+                  Asignar caminantes
+                </ProtectedButton>
+              </Stack>
             </Box>
           </Box>
         )}
@@ -347,6 +445,12 @@ export default function Mesas() {
 
       <AsignarCaminantesMesaDialog open={Boolean(mesaAsignar)} mesa={mesaAsignar} token={token} onClose={() => setMesaAsignar(null)} onSaved={async () => { setMesaAsignar(null); await api.reload(); }} />
       <LiberarMesaDialog open={Boolean(mesaLiberar)} mesa={mesaLiberar} token={token} onClose={() => setMesaLiberar(null)} onSaved={async () => { setMesaLiberar(null); await api.reload(); }} />
+      <Snackbar
+        open={Boolean(avisoExportacion)}
+        autoHideDuration={4500}
+        onClose={() => setAvisoExportacion('')}
+        message={avisoExportacion}
+      />
     </>
   );
 }

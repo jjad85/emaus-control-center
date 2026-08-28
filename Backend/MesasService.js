@@ -513,6 +513,176 @@ function obtenerEstadoSincronizacionMesas() {
 /**
  * Retorna los caminantes que todavía no tienen mesa.
  */
+
+/**
+ * Obtiene el listado completo de caminantes de una mesa para exportación.
+ * La consulta está protegida por un permiso específico porque contiene
+ * información personal, de salud, alimentación y contactos de emergencia.
+ */
+function obtenerExportacionCaminantesMesa(
+  token,
+  numeroMesa
+) {
+  validarPermiso(
+    token,
+    'MESAS_EXPORTAR_CAMINANTES'
+  );
+
+  const mesa =
+    obtenerMesaPorNumero(
+      numeroMesa
+    );
+
+  const caminantes =
+    obtenerCaminantes({
+      mesa: String(numeroMesa)
+    })
+      .map(function(caminante) {
+        return {
+          id: caminante.id || '',
+          numeroInscripcion:
+            caminante.numeroInscripcion || '',
+
+          primerNombre:
+            caminante.primerNombre || '',
+          segundoNombre:
+            caminante.segundoNombre || '',
+          primerApellido:
+            caminante.primerApellido || '',
+          segundoApellido:
+            caminante.segundoApellido || '',
+          nombre:
+            caminante.nombre || '',
+
+          documentoIdentidad:
+            caminante.documentoIdentidad || '',
+          fechaNacimiento:
+            caminante.fechaNacimiento || '',
+          edad:
+            caminante.edad ||
+            calcularEdadAspirante(
+              caminante.fechaNacimiento
+            ) ||
+            '',
+          direccionResidencia:
+            caminante.direccionResidencia || '',
+          barrio:
+            caminante.barrio || '',
+          telefonoFijo:
+            caminante.telefonoFijo || '',
+          celular:
+            caminante.telefono ||
+            caminante.celular ||
+            '',
+          correo:
+            caminante.correo || '',
+          estadoCivil:
+            caminante.estadoCivil || '',
+          parroquia:
+            caminante.parroquia || '',
+          profesionOcupacion:
+            caminante.profesionOcupacion || '',
+          eps:
+            caminante.eps || '',
+          tallaCamiseta:
+            caminante.tallaCamiseta || '',
+          habitacion:
+            caminante.habitacion || '',
+
+          sufreEnfermedad:
+            caminante.sufreEnfermedad || '',
+          enfermedadCual:
+            caminante.enfermedadCual || '',
+          tomaMedicamento:
+            caminante.tomaMedicamento || '',
+          medicamentoCual:
+            caminante.medicamentoCual || '',
+          horariosMedicamentos:
+            caminante.horariosMedicamentos || '',
+          tieneLimitacionFisica:
+            caminante.tieneLimitacionFisica || '',
+          limitacionCual:
+            caminante.limitacionCual || '',
+
+          tieneCondicionAlimentaria:
+            caminante.tieneCondicionAlimentaria || '',
+          alergiasAlimentarias:
+            caminante.alergiasAlimentarias ||
+            caminante.alergias ||
+            '',
+          restriccionesAlimentarias:
+            caminante.restriccionesAlimentarias || '',
+          preferenciasAlimentarias:
+            caminante.preferenciasAlimentarias || '',
+          dietaEspecial:
+            caminante.dietaEspecial || '',
+
+          contacto1Nombre:
+            caminante.contacto &&
+            caminante.contacto.nombre
+              ? caminante.contacto.nombre
+              : '',
+          contacto1Parentesco:
+            caminante.contacto &&
+            caminante.contacto.parentesco
+              ? caminante.contacto.parentesco
+              : '',
+          contacto1Celular:
+            caminante.contacto &&
+            caminante.contacto.telefono
+              ? caminante.contacto.telefono
+              : '',
+
+          contacto2Nombre:
+            caminante.contactoAlterno &&
+            caminante.contactoAlterno.nombre
+              ? caminante.contactoAlterno.nombre
+              : '',
+          contacto2Parentesco:
+            caminante.contactoAlterno &&
+            caminante.contactoAlterno.parentesco
+              ? caminante.contactoAlterno.parentesco
+              : '',
+          contacto2Celular:
+            caminante.contactoAlterno &&
+            caminante.contactoAlterno.telefono
+              ? caminante.contactoAlterno.telefono
+              : '',
+
+          sacramentosRecibidos:
+            caminante.sacramentosRecibidos || '',
+          comoSeEntero:
+            caminante.comoSeEntero || '',
+          nombrePersonaInvito:
+            caminante.nombrePersonaInvito || '',
+          celularPersonaInvito:
+            caminante.celularPersonaInvito || '',
+          personaConocidaAsistira:
+            caminante.personaConocidaAsistira || '',
+          nombrePersonaConocida:
+            caminante.nombrePersonaConocida || ''
+        };
+      })
+      .sort(function(a, b) {
+        return String(
+          a.nombre || ''
+        ).localeCompare(
+          String(b.nombre || ''),
+          'es'
+        );
+      });
+
+  return {
+    numeroMesa: mesa.numero,
+    lider: mesa.lider || null,
+    colider: mesa.colider || null,
+    cantidadCaminantes:
+      caminantes.length,
+    caminantes: caminantes
+  };
+}
+
+
 function obtenerCandidatosMesaCaminantes(
   token,
   numeroMesa
