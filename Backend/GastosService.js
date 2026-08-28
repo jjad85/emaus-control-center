@@ -422,7 +422,8 @@ function obtenerDistribucionEfectivoGastos_(token) {
       celular: String(s.celular || ''),
       recibido: 0,
       gastos: 0,
-      disponible: 0
+      disponible: 0,
+      movimientosGastos: []
     };
   });
 
@@ -450,7 +451,17 @@ function obtenerDistribucionEfectivoGastos_(token) {
     })
     .forEach(function(g) {
       const item = porId[String(g.personaEfectivoId || '')];
-      if (item) item.gastos += Number(g.valor || 0);
+      if (item) {
+        item.gastos += Number(g.valor || 0);
+        item.movimientosGastos.push({
+          id: String(g.id || ''),
+          fechaGasto: g.fechaGasto || '',
+          concepto: String(g.concepto || ''),
+          categoria: String(g.categoria || ''),
+          valor: Number(g.valor || 0),
+          comprobanteUrl: String(g.comprobanteUrl || '')
+        });
+      }
     });
 
   return Object.keys(porId).map(function(id) {

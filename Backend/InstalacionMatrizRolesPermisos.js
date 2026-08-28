@@ -104,9 +104,11 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['HABITACIONES_VER_DETALLE','Logística','Habitaciones','Ver detalle'],
     ['HABITACIONES_EDITAR','Logística','Habitaciones','Editar'],
     ['HABITACIONES_ASIGNAR_PERSONA','Logística','Habitaciones','Asignar persona'],
+    ['HABITACIONES_DESASIGNAR_CAMINANTE','Logística','Habitaciones','Desasignar caminante'],
     ['MESAS_VER_DETALLE','Logística','Mesas','Ver detalle'],
     ['MESAS_EXPORTAR_CAMINANTES','Logística','Mesas','Exportar caminantes de la mesa'],
     ['MESAS_ASIGNAR_CAMINANTE','Logística','Mesas','Asignar caminante'],
+    ['MESAS_DESASIGNAR_CAMINANTE','Logística','Mesas','Desasignar caminante'],
     ['MESAS_ELIMINAR','Logística','Mesas','Eliminar mesa'],
     ['PRESENTACIONES_TODO','Logística','Presentaciones','Acceso completo'],
     ['PAGOS_VER_ESTADOS_CUENTA','Tesorería','Estados de cuenta','Ver estados de cuenta'],
@@ -115,11 +117,6 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['PAGOS_VALIDAR_COMPROBANTE','Tesorería','Estados de cuenta','Validar comprobante'],
     ['PAGOS_VER_COMPROBANTE','Tesorería','Estados de cuenta','Ver comprobante'],
     ['REPORTAR_PAGO_REGISTRAR','Tesorería','Reportar pagos','Reportar pago'],
-    ['GASTOS_VER','Tesorería','Gastos','Ver gastos'],
-    ['GASTOS_REPORTAR','Tesorería','Gastos','Reportar gastos'],
-    ['GASTOS_APROBAR','Tesorería','Gastos','Aprobar gastos'],
-    ['GASTOS_RECHAZAR','Tesorería','Gastos','Rechazar gastos'],
-    ['GASTOS_REVERSAR','Tesorería','Gastos','Reversar gastos'],
     ['REPORTAR_PAGO_TODO','Tesorería','Reportar pagos','Acceso completo'],
     ['TEMAS_VER_DETALLE','Operación del retiro','Temas','Ver detalle'],
     ['TEMAS_EDITAR','Operación del retiro','Temas','Editar'],
@@ -200,9 +197,11 @@ function obtenerMatrizInicialRolesPermisos_() {
   dar('HABITACIONES_VER_DETALLE',todosConsulta);
   dar('HABITACIONES_EDITAR',['LIDER_RETIRO']);
   dar('HABITACIONES_ASIGNAR_PERSONA',['LIDER_RETIRO']);
+  dar('HABITACIONES_DESASIGNAR_CAMINANTE',['ADMIN','LIDER_RETIRO']);
   dar('MESAS_VER_DETALLE',todosConsulta);
   dar('MESAS_EXPORTAR_CAMINANTES',['LIDER_RETIRO','LIDER_MESA']);
   dar('MESAS_ASIGNAR_CAMINANTE',['LIDER_RETIRO']);
+  dar('MESAS_DESASIGNAR_CAMINANTE',['ADMIN','LIDER_RETIRO']);
   dar('MESAS_ELIMINAR',['LIDER_RETIRO']);
   dar('PRESENTACIONES_TODO',['AUDIOVISUAL','LIDER_RETIRO']);
   dar('PAGOS_VER_ESTADOS_CUENTA',todosConsulta);
@@ -211,9 +210,6 @@ function obtenerMatrizInicialRolesPermisos_() {
   dar('PAGOS_VALIDAR_COMPROBANTE',['LIDER_RETIRO','TESORERIA']);
   dar('PAGOS_VER_COMPROBANTE',['LIDER_RETIRO','TESORERIA']);
   dar('REPORTAR_PAGO_REGISTRAR',['LIDER_RETIRO','TESORERIA']);
-  ['GASTOS_VER','GASTOS_REPORTAR','GASTOS_APROBAR','GASTOS_RECHAZAR','GASTOS_REVERSAR'].forEach(function(p){
-    dar(p,['LIDER_RETIRO','TESORERIA']);
-  });
   dar('REPORTAR_PAGO_TODO',['LIDER_RETIRO','TESORERIA']);
   dar('TEMAS_VER_DETALLE',todosConsulta);
   dar('TEMAS_EDITAR',['LIDER_RETIRO']);

@@ -129,3 +129,27 @@ function asegurarPermisosGastos_(libro) {
     });
   });
 }
+
+function repararPermisosModuloGastos() {
+  const libro = obtenerLibro();
+  asegurarPermisosGastos_(libro);
+  limpiarCachePermisos();
+  SpreadsheetApp.flush();
+
+  const roles = ['ADMIN','LIDER_RETIRO','TESORERIA'];
+  const permisos = ['GASTOS_VER','GASTOS_REPORTAR','GASTOS_APROBAR','GASTOS_RECHAZAR','GASTOS_REVERSAR'];
+  const registros = leerHojaComoObjetos(HOJAS.PERMISOS_ROL);
+  const resultado = {};
+
+  roles.forEach(function(rol) {
+    resultado[rol] = {};
+    permisos.forEach(function(permiso) {
+      resultado[rol][permiso] = registros.some(function(x) {
+        return normalizarCodigoRol_(x.rol) === normalizarCodigoRol_(rol) &&
+          normalizarPermiso(x.permiso) === permiso &&
+          convertirBooleano(x.activo);
+      });
+    });
+  });
+  return resultado;
+}

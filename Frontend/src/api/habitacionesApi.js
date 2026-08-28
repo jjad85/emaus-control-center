@@ -70,3 +70,24 @@ export async function asignarPersonasHabitacion(
 
   return response.datos;
 }
+
+
+export async function desasignarPersonaHabitacion(
+  token,
+  habitacionId,
+  tipoPersona,
+  personaId
+) {
+  const response =
+    await postAction(
+      'desasignarpersonahabitacion',
+      {
+        token,
+        habitacionId,
+        tipoPersona,
+        personaId,
+      }
+    );
+
+  return response.datos;
+}

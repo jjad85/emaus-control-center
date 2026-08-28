@@ -1042,3 +1042,120 @@ function liberarMesaFueraDeRango(
     }
   );
 }
+
+
+/**
+ * Desasigna un caminante de una mesa.
+ *
+ * No modifica habitación, estado de pago, entregables
+ * ni ningún otro dato del caminante.
+ */
+function desasignarCaminanteMesa(
+  token,
+  numeroMesa,
+  caminanteId
+) {
+  const sesion =
+    validarPermiso(
+      token,
+      'MESAS_DESASIGNAR_CAMINANTE'
+    );
+
+  const id =
+    String(caminanteId || '').trim();
+
+  if (!id) {
+    throw crearErrorAplicacion(
+      'CAMINANTE_REQUERIDO',
+      'Debe indicar el caminante que desea desasignar.'
+    );
+  }
+
+  return ejecutarCrudConBloqueo(
+    function() {
+      const caminante =
+        leerRegistroPorIdSheet(
+          HOJAS.CAMINANTES,
+          id,
+          {
+            usuario:
+              sesion.usuario || ''
+          }
+        );
+
+      if (!caminante) {
+        throw crearErrorAplicacion(
+          'CAMINANTE_NO_ENCONTRADO',
+          'No se encontró el caminante seleccionado.'
+        );
+      }
+
+      const mesaActual =
+        String(
+          caminante.mesa || ''
+        ).trim();
+
+      if (!mesaActual) {
+        throw crearErrorAplicacion(
+          'CAMINANTE_SIN_MESA',
+          'El caminante ya se encuentra sin mesa asignada.'
+        );
+      }
+
+      if (
+        String(mesaActual) !==
+        String(numeroMesa)
+      ) {
+        throw crearErrorAplicacion(
+          'MESA_CAMINANTE_CAMBIO',
+          'La asignación cambió. Actualice la mesa e intente nuevamente.'
+        );
+      }
+
+      actualizarRegistroSheet(
+        HOJAS.CAMINANTES,
+        id,
+        {
+          mesa: '',
+          fechaActualizacion:
+            new Date(),
+          actualizadoPor:
+            sesion.usuario || ''
+        },
+        opcionesCrudCaminante(
+          sesion.usuario
+        )
+      );
+
+      if (
+        typeof registrarAuditoria ===
+        'function'
+      ) {
+        registrarAuditoria({
+          usuario:
+            sesion.usuario || '',
+          nombre:
+            sesion.nombre || '',
+          accion:
+            'DESASIGNAR_CAMINANTE_MESA',
+          entidad:
+            'Mesas',
+          idRegistro:
+            String(numeroMesa),
+          detalle:
+            JSON.stringify({
+              caminanteId: id,
+              caminante:
+                caminante.nombre || '',
+              mesaAnterior:
+                mesaActual
+            })
+        });
+      }
+
+      return obtenerMesaPorNumero(
+        numeroMesa
+      );
+    }
+  );
+}

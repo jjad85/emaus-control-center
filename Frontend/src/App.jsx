@@ -19,6 +19,7 @@ import ReportarPago from './pages/ReportarPago';
 import RegistroAngelito from './pages/RegistroAngelito';
 import RegistroApoyoAudiovisual from './pages/RegistroApoyoAudiovisual';
 import Pagos from './pages/Pagos';
+import Gastos from './pages/Gastos';
 import Dashboard from './pages/Dashboard';
 import Aspirantes from './pages/Aspirantes';
 import Equipos from './pages/Equipos';
@@ -124,6 +125,10 @@ export default function App() {
 
           <Route path="/caminantes" element={<PrivateRoute permiso="CAMINANTES_VER_DETALLE"><Caminantes /></PrivateRoute>} />
           <Route path="/pagos" element={<PrivateRoute permiso="PAGOS_VER_ESTADOS_CUENTA"><Pagos /></PrivateRoute>} />
+          <Route
+            path="/tesoreria/gastos"
+            element={<PrivateRoute permiso="GASTOS_VER"><Gastos /></PrivateRoute>}
+          />
           <Route
             path="/tesoreria/reportar-pago"
             element={<PrivateRoute permiso="REPORTAR_PAGO_REGISTRAR"><ReportarPago /></PrivateRoute>}

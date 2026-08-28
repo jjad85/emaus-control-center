@@ -80,3 +80,22 @@ export async function exportarCaminantesMesaApi(
 
   return response.datos;
 }
+
+
+export async function desasignarCaminanteMesa(
+  token,
+  numeroMesa,
+  caminanteId
+) {
+  const response =
+    await postAction(
+      'desasignarcaminantemesa',
+      {
+        token,
+        numeroMesa,
+        caminanteId,
+      }
+    );
+
+  return response.datos;
+}

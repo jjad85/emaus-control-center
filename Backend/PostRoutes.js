@@ -335,24 +335,6 @@ function routePost(contenido) {
 
 
 
-    case 'reportargasto':
-      return {
-        datos: reportarGasto(contenido.token, contenido.datos),
-        mensaje: 'Gasto reportado correctamente'
-      };
-
-    case 'validargasto':
-      return {
-        datos: validarGasto(contenido.token, contenido.id, contenido.decision),
-        mensaje: 'Gasto validado correctamente'
-      };
-
-    case 'revertirgasto':
-      return {
-        datos: revertirGasto(contenido.token, contenido.id, contenido.motivo),
-        mensaje: 'Gasto reversado correctamente'
-      };
-
     case 'reportarpagopublico':
       return { datos: reportarPagoPublico(contenido.datos), mensaje: 'Pago reportado correctamente' };
     case 'editarvalorpagopendiente':
@@ -914,6 +896,29 @@ function routePost(contenido) {
           'Personas disponibles consultadas correctamente'
       };
 
+    case 'desasignarpersonahabitacion':
+      return {
+        datos: desasignarPersonaHabitacion(
+          contenido.token,
+          contenido.habitacionId,
+          contenido.tipoPersona,
+          contenido.personaId
+        ),
+        mensaje:
+          'Persona desasignada de la habitación correctamente'
+      };
+
+    case 'desasignarcaminantehabitacion':
+      return {
+        datos: desasignarCaminanteHabitacion(
+          contenido.token,
+          contenido.habitacionId,
+          contenido.caminanteId
+        ),
+        mensaje:
+          'Caminante desasignado de la habitación correctamente'
+      };
+
     case 'asignarpersonashabitacion':
       return {
         datos: asignarPersonasHabitacion(
@@ -948,6 +953,18 @@ function routePost(contenido) {
           ),
         mensaje:
           'Caminantes disponibles consultados correctamente'
+      };
+
+    case 'desasignarcaminantemesa':
+      return {
+        datos:
+          desasignarCaminanteMesa(
+            contenido.token,
+            contenido.numeroMesa,
+            contenido.caminanteId
+          ),
+        mensaje:
+          'Caminante desasignado de la mesa correctamente'
       };
 
     case 'asignarcaminantesmesa':

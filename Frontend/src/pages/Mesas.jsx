@@ -7,6 +7,10 @@ import {
   Chip,
   Divider,
   Drawer,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   IconButton,
   LinearProgress,
@@ -18,13 +22,16 @@ import {
 import { useState } from 'react';
 import PersonAddAltRounded from '@mui/icons-material/PersonAddAltRounded';
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded';
+import PersonRemoveRounded from '@mui/icons-material/PersonRemoveRounded';
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import Groups2Rounded from '@mui/icons-material/Groups2Rounded';
 import EventSeatRounded from '@mui/icons-material/EventSeatRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
 import AssignmentTurnedInRounded from '@mui/icons-material/AssignmentTurnedInRounded';
 import DownloadRounded from '@mui/icons-material/DownloadRounded';
-import { obtenerMesas, exportarCaminantesMesaApi } from '../api/mesasApi';
+import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
+import { obtenerMesas, exportarCaminantesMesaApi, desasignarCaminanteMesa } from '../api/mesasApi';
 import { useAuth } from '../auth/AuthContext';
 import ProtectedButton from '../components/ProtectedButton';
 import AsignarCaminantesMesaDialog from '../components/mesas/AsignarCaminantesMesaDialog';
@@ -35,6 +42,7 @@ import ErrorState from '../components/ErrorState';
 import PageHeader from '../components/PageHeader';
 import StatusChip from '../components/StatusChip';
 import AvatarServidor from '../components/servidores/AvatarServidor';
+import CaminanteDetalleDialog from '../components/caminantes/CaminanteDetalleDialog';
 import { descargarCaminantesMesaExcel } from '../utils/excelMesas';
 
 function ServidorMesa({ etiqueta, servidor, compact = false }) {
@@ -232,6 +240,12 @@ function MesaVisual({ mesa, onOpen, onAssign }) {
 }
 
 export default function Mesas() {
+  const [desasignar, setDesasignar] = useState(null);
+  const [desasignando, setDesasignando] = useState(false);
+  const [errorDesasignar, setErrorDesasignar] = useState('');
+  const [desasignacionExitosa, setDesasignacionExitosa] = useState(null);
+  const [detalleCaminante, setDetalleCaminante] = useState(null);
+
   const {
     token,
     tienePermiso,
@@ -316,6 +330,39 @@ export default function Mesas() {
     sinLider: items.filter((mesa) => !mesa.lider || !mesa.colider).length,
   };
 
+  async function confirmarDesasignacionMesa() {
+    if (!desasignar?.caminante?.id || !desasignar?.mesa?.numero) return;
+
+    setDesasignando(true);
+    setErrorDesasignar('');
+
+    try {
+      const nombreCaminante = desasignar.caminante.nombre;
+      const numeroMesa = desasignar.mesa.numero;
+
+      const mesaActualizada = await desasignarCaminanteMesa(
+        token,
+        numeroMesa,
+        desasignar.caminante.id
+      );
+
+      setDesasignar(null);
+      setSelected(mesaActualizada);
+      await api.reload();
+
+      setDesasignacionExitosa({
+        nombre: nombreCaminante,
+        mesa: numeroMesa,
+      });
+    } catch (err) {
+      setErrorDesasignar(
+        err?.message || 'No fue posible desasignar el caminante de la mesa.'
+      );
+    } finally {
+      setDesasignando(false);
+    }
+  }
+
   return (
     <>
       <PageHeader eyebrow="Distribución del salón" title="Mesas" subtitle="Vista espacial de ocupación, liderazgo y entregables" onRefresh={api.reload} loading={api.loading} />
@@ -386,19 +433,143 @@ export default function Mesas() {
               <Typography fontWeight={900} mb={1.5}>Caminantes asignados</Typography>
               <Stack spacing={1}>
                 {selected.caminantes?.length ? selected.caminantes.map((caminante, index) => (
-                  <Box key={caminante.id || index} sx={{ p: 1.4, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Box
+                    key={caminante.id || index}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetalleCaminante(caminante)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setDetalleCaminante(caminante);
+                      }
+                    }}
+                    sx={{
+                      p: 1.4,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1.5,
+                      cursor: 'pointer',
+                      transition: '150ms ease',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        bgcolor: 'action.hover',
+                        boxShadow: 1,
+                      },
+                      '&:focus-visible': {
+                        outline: '3px solid',
+                        outlineColor: 'primary.light',
+                      },
+                    }}
+                  >
                     <Stack direction="row" spacing={1.2} alignItems="center" mb={1}>
                       <Avatar src={caminante.fotoPerfilUrl || caminante.fotoUrl || undefined} sx={{ width: 38, height: 38 }}>{caminante.nombre?.[0]}</Avatar>
                       <Box flex={1} minWidth={0}>
                         <Typography fontWeight={850} noWrap>{caminante.nombre}</Typography>
                         <Typography variant="caption" color="text.secondary">Habitación: {caminante.habitacion || 'Sin asignar'}</Typography>
                       </Box>
-                      <StatusChip value={caminante.estadoPago} />
+                      <Stack direction="row" spacing={.5} alignItems="center">
+                        <Tooltip title="Ver inscripción completa" arrow>
+                          <VisibilityRounded
+                            color="action"
+                            sx={{ fontSize: 19 }}
+                          />
+                        </Tooltip>
+                        <StatusChip value={caminante.estadoPago} />
+                      </Stack>
                     </Stack>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      <StatusChip value={caminante.entregables?.carta} />
-                      <StatusChip value={caminante.entregables?.foto} />
-                    </Stack>
+
+                    <Typography
+                      variant="caption"
+                      color="primary.main"
+                      fontWeight={800}
+                    >
+                      Toca el caminante para ver la inscripción completa
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        mt: .8,
+                        mb: 1.2,
+                        p: 1.1,
+                        borderRadius: 2.5,
+                        bgcolor: 'rgba(17,48,41,.025)',
+                        border: '1px solid',
+                        borderColor: 'rgba(20,75,62,.08)',
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        fontWeight={900}
+                        sx={{
+                          display: 'block',
+                          mb: .8,
+                          letterSpacing: '.04em',
+                        }}
+                      >
+                        ENTREGABLES
+                      </Typography>
+
+                      <Stack
+                        direction="row"
+                        spacing={1.3}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={.6}
+                          alignItems="center"
+                        >
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={800}
+                          >
+                            Carta:
+                          </Typography>
+                          <StatusChip value={caminante.entregables?.carta} />
+                        </Stack>
+
+                        <Stack
+                          direction="row"
+                          spacing={.6}
+                          alignItems="center"
+                        >
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={800}
+                          >
+                            Foto:
+                          </Typography>
+                          <StatusChip value={caminante.entregables?.foto} />
+                        </Stack>
+                      </Stack>
+                    </Box>
+
+                    <ProtectedButton
+                      permiso="MESAS_DESASIGNAR_CAMINANTE"
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      startIcon={<PersonRemoveRounded />}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setErrorDesasignar('');
+                        setDesasignar({
+                          mesa: selected,
+                          caminante,
+                        });
+                      }}
+                      sx={{
+                        fontWeight: 850,
+                        mt: .2,
+                      }}
+                    >
+                      Desasignar de la mesa
+                    </ProtectedButton>
                   </Box>
                 )) : <Alert severity="info">Esta mesa todavía no tiene caminantes asignados.</Alert>}
               </Stack>
@@ -442,6 +613,129 @@ export default function Mesas() {
           </Box>
         )}
       </Drawer>
+
+      <CaminanteDetalleDialog
+        open={Boolean(detalleCaminante)}
+        caminante={detalleCaminante}
+        token={token}
+        onClose={() => setDetalleCaminante(null)}
+      />
+
+      <Dialog
+        open={Boolean(desasignar)}
+        onClose={desasignando ? undefined : () => setDesasignar(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Desasignar caminante</DialogTitle>
+
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {errorDesasignar && (
+              <Alert severity="error">{errorDesasignar}</Alert>
+            )}
+
+            <Alert severity="warning">
+              Esta acción únicamente libera la asignación de mesa.
+              La habitación y los demás datos del caminante no se modifican.
+            </Alert>
+
+            <Typography>
+              ¿Deseas desasignar a{' '}
+              <strong>{desasignar?.caminante?.nombre}</strong>{' '}
+              de la <strong>Mesa {desasignar?.mesa?.numero}</strong>?
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              El caminante volverá inmediatamente al listado de personas
+              disponibles para asignar a otra mesa.
+            </Typography>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => setDesasignar(null)}
+            disabled={desasignando}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            color="error"
+            variant="contained"
+            startIcon={<PersonRemoveRounded />}
+            disabled={desasignando}
+            onClick={confirmarDesasignacionMesa}
+          >
+            {desasignando ? 'Desasignando...' : 'Sí, desasignar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(desasignacionExitosa)}
+        onClose={() => setDesasignacionExitosa(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogContent>
+          <Stack
+            spacing={2}
+            alignItems="center"
+            textAlign="center"
+            sx={{ py: 2 }}
+          >
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                bgcolor: '#edf8f3',
+                color: '#176b58',
+                display: 'grid',
+                placeItems: 'center',
+              }}
+            >
+              <CheckCircleRounded sx={{ fontSize: 38 }} />
+            </Box>
+
+            <Box>
+              <Typography variant="h6" fontWeight={950}>
+                Caminante desasignado
+              </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: .6 }}
+              >
+                <strong>{desasignacionExitosa?.nombre}</strong>{' '}
+                fue desasignado correctamente de la{' '}
+                <strong>Mesa {desasignacionExitosa?.mesa}</strong>.
+              </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: .8 }}
+              >
+                El cupo quedó disponible y el caminante puede asignarse a otra mesa.
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button
+            variant="contained"
+            onClick={() => setDesasignacionExitosa(null)}
+            sx={{ minWidth: 120, fontWeight: 900 }}
+          >
+            Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <AsignarCaminantesMesaDialog open={Boolean(mesaAsignar)} mesa={mesaAsignar} token={token} onClose={() => setMesaAsignar(null)} onSaved={async () => { setMesaAsignar(null); await api.reload(); }} />
       <LiberarMesaDialog open={Boolean(mesaLiberar)} mesa={mesaLiberar} token={token} onClose={() => setMesaLiberar(null)} onSaved={async () => { setMesaLiberar(null); await api.reload(); }} />

@@ -45,6 +45,7 @@ import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
 import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
 import CheckroomRounded from '@mui/icons-material/CheckroomRounded';
 import FactCheckRounded from '@mui/icons-material/FactCheckRounded';
+import ReceiptLongRounded from '@mui/icons-material/ReceiptLongRounded';
 import TopicRounded from '@mui/icons-material/TopicRounded';
 import EventNoteRounded from '@mui/icons-material/EventNoteRounded';
 import FolderRounded from '@mui/icons-material/FolderRounded';
@@ -181,6 +182,7 @@ const menuGroups = [
     items: [
       { label: 'Estados de cuenta', path: '/pagos', icon: <PaymentsRounded />, permiso: 'PAGOS_VER_ESTADOS_CUENTA' },
       { label: 'Reportar pagos', path: '/tesoreria/reportar-pago', icon: <FactCheckRounded />, permiso: 'REPORTAR_PAGO_REGISTRAR' },
+      { label: 'Gastos', path: '/tesoreria/gastos', icon: <ReceiptLongRounded />, permiso: 'GASTOS_VER' },
     ],
   },
   {

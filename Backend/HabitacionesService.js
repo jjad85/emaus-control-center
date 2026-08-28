@@ -960,3 +960,154 @@ function auditarHabitacion_(
       JSON.stringify(detalle)
   });
 }
+
+
+/**
+ * Desasigna una persona (Caminante o Servidor) de una habitación.
+ *
+ * Usa el mismo permiso existente:
+ * HABITACIONES_DESASIGNAR_CAMINANTE
+ *
+ * No modifica mesa, equipo, pagos ni otros datos.
+ */
+function desasignarPersonaHabitacion(
+  token,
+  habitacionId,
+  tipoPersona,
+  personaId
+) {
+  var sesion =
+    validarPermiso(
+      token,
+      'HABITACIONES_DESASIGNAR_CAMINANTE'
+    );
+
+  var habitacion =
+    obtenerHabitacionPorId(
+      habitacionId
+    );
+
+  var tipo =
+    normalizarTipoPersonaHabitacion_(
+      tipoPersona
+    );
+
+  var id =
+    String(
+      personaId || ''
+    ).trim();
+
+  if (!id) {
+    throw crearErrorAplicacion(
+      'PERSONA_REQUERIDA',
+      'Debe indicar la persona que desea desasignar.'
+    );
+  }
+
+  var hoja =
+    tipo === 'Servidor'
+      ? HOJAS.SERVIDORES
+      : HOJAS.CAMINANTES;
+
+  var opcionesCrud =
+    tipo === 'Servidor'
+      ? opcionesCrudServidores_
+      : opcionesCrudCaminante;
+
+  return ejecutarCrudConBloqueo(
+    function() {
+      var persona =
+        leerRegistroPorIdSheet(
+          hoja,
+          id,
+          {
+            usuario:
+              sesion.usuario || ''
+          }
+        );
+
+      if (!persona) {
+        throw crearErrorAplicacion(
+          'PERSONA_NO_ENCONTRADA',
+          'No se encontró la persona seleccionada.'
+        );
+      }
+
+      var habitacionActual =
+        String(
+          persona.habitacion || ''
+        ).trim();
+
+      if (!habitacionActual) {
+        throw crearErrorAplicacion(
+          'PERSONA_SIN_HABITACION',
+          'La persona ya se encuentra sin habitación asignada.'
+        );
+      }
+
+      if (
+        habitacionActual !==
+        String(
+          habitacion.habitacion
+        ).trim()
+      ) {
+        throw crearErrorAplicacion(
+          'HABITACION_PERSONA_CAMBIO',
+          'La asignación cambió. Actualice la habitación e intente nuevamente.'
+        );
+      }
+
+      actualizarRegistroSheet(
+        hoja,
+        id,
+        {
+          habitacion: '',
+          fechaActualizacion:
+            new Date(),
+          actualizadoPor:
+            sesion.usuario || ''
+        },
+        opcionesCrud(
+          sesion.usuario
+        )
+      );
+
+      auditarHabitacion_(
+        sesion,
+        'DESASIGNAR_PERSONA_HABITACION',
+        String(
+          habitacion.id ||
+          habitacion.habitacion
+        ),
+        {
+          tipoPersona: tipo,
+          personaId: id,
+          persona:
+            persona.nombre || '',
+          habitacionAnterior:
+            habitacionActual
+        }
+      );
+
+      return obtenerHabitacionPorId(
+        habitacionId
+      );
+    }
+  );
+}
+
+/**
+ * Alias temporal para compatibilidad con clientes anteriores.
+ */
+function desasignarCaminanteHabitacion(
+  token,
+  habitacionId,
+  caminanteId
+) {
+  return desasignarPersonaHabitacion(
+    token,
+    habitacionId,
+    'Caminante',
+    caminanteId
+  );
+}

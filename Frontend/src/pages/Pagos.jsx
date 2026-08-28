@@ -18,7 +18,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AccountBalanceWalletRounded from '@mui/icons-material/AccountBalanceWalletRounded';
 import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
@@ -45,6 +45,7 @@ import {
 } from '../api/pagosApi';
 import LoadingState from '../components/LoadingState';
 import StatusChip from '../components/StatusChip';
+import { obtenerDistribucionEfectivoGastos } from '../api/gastosApi';
 import PageHeader from '../components/PageHeader';
 import AvatarServidor from '../components/servidores/AvatarServidor';
 
@@ -312,6 +313,19 @@ function descargarComprobantesTesoreriaExcel(pagos) {
 
 export default function Pagos() {
   const { token } = useAuth();
+  const [cajaConGastos, setCajaConGastos] = useState([]);
+
+  useEffect(() => {
+    let activo = true;
+    obtenerDistribucionEfectivoGastos(token)
+      .then(datos => {
+        if (activo) setCajaConGastos(Array.isArray(datos) ? datos : []);
+      })
+      .catch(() => {
+        if (activo) setCajaConGastos([]);
+      });
+    return () => { activo = false; };
+  }, [token]);
 
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -462,16 +476,35 @@ export default function Pagos() {
       });
 
     return Array.from(mapa.values())
-      .map(item => ({
-        ...item,
-        pagos: item.pagos.sort((a, b) => {
-          const fechaA = new Date(a.fechaPago || 0).getTime();
-          const fechaB = new Date(b.fechaPago || 0).getTime();
-          return fechaB - fechaA;
-        })
-      }))
+      .map(item => {
+        const caja = cajaConGastos.find(x => {
+          const mismoTelefono =
+            item.telefono && String(x.celular || '').trim() === item.telefono;
+          const mismoNombre =
+            String(x.nombre || '').trim().toLowerCase() === item.nombre.toLowerCase();
+          return mismoTelefono || mismoNombre;
+        });
+
+        const gastos = Number(caja?.gastos || 0);
+        const disponible = caja
+          ? Number(caja.disponible || 0)
+          : Math.max(item.total - gastos, 0);
+
+        return {
+          ...item,
+          totalRecibido: item.total,
+          gastos,
+          total: disponible,
+          movimientosGastos: caja?.movimientosGastos || [],
+          pagos: item.pagos.sort((a, b) => {
+            const fechaA = new Date(a.fechaPago || 0).getTime();
+            const fechaB = new Date(b.fechaPago || 0).getTime();
+            return fechaB - fechaA;
+          })
+        };
+      })
       .sort((a, b) => b.total - a.total);
-  }, [pagosAprobados]);
+  }, [pagosAprobados, cajaConGastos]);
 
   const valorPendienteValidacion = useMemo(
     () =>
@@ -2226,7 +2259,7 @@ export default function Pagos() {
                     variant="caption"
                     color="text.secondary"
                   >
-                    TOTAL EN EFECTIVO APROBADO
+                    EFECTIVO REAL EN PODER
                   </Typography>
                   <Typography
                     variant="h4"
@@ -2234,7 +2267,10 @@ export default function Pagos() {
                     color="#8a5b12"
                   >
                     {formatearMoneda(
-                      composicionRecaudo.efectivo
+                      distribucionEfectivo.reduce(
+                        (total, responsable) => total + Number(responsable.total || 0),
+                        0
+                      )
                     )}
                   </Typography>
                 </Box>
@@ -2409,6 +2445,46 @@ export default function Pagos() {
                             )
                           )}
                         </Stack>
+
+                        {Number(responsable.gastos || 0) > 0 && (
+                          <>
+                            <Divider />
+                            <Stack spacing={0.8}>
+                              <Typography variant="caption" color="text.secondary" fontWeight={900}>
+                                SALIDAS DE EFECTIVO · GASTOS APROBADOS
+                              </Typography>
+                              {(responsable.movimientosGastos || []).map(gasto => (
+                                <Box
+                                  key={gasto.id}
+                                  sx={{
+                                    display: 'grid',
+                                    gridTemplateColumns: { xs: '1fr', sm: '1fr auto' },
+                                    gap: 1,
+                                    p: 1.1,
+                                    borderRadius: 2.5,
+                                    bgcolor: 'rgba(211,47,47,.045)'
+                                  }}
+                                >
+                                  <Box>
+                                    <Typography variant="body2" fontWeight={850}>
+                                      {gasto.id} · {gasto.concepto}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {gasto.categoria || 'Gasto'} · {gasto.fechaGasto || ''}
+                                    </Typography>
+                                  </Box>
+                                  <Typography
+                                    fontWeight={950}
+                                    color="error.main"
+                                    sx={{ alignSelf: 'center' }}
+                                  >
+                                    -{formatearMoneda(gasto.valor)}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Stack>
+                          </>
+                        )}
                       </Stack>
                     </Paper>
                   )

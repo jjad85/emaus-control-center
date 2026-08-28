@@ -1,9 +1,14 @@
 import {
   Alert,
   Box,
+  Button,
   Chip,
   Divider,
   Drawer,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   IconButton,
   LinearProgress,
@@ -20,12 +25,13 @@ import {
   HotelRounded,
   MeetingRoomRounded,
   PersonAddAltRounded,
+  PersonRemoveRounded,
   PersonRounded,
   WarningAmberRounded,
 } from '@mui/icons-material';
 import { useMemo, useState } from 'react';
 
-import { obtenerHabitaciones } from '../api/habitacionesApi';
+import { obtenerHabitaciones, desasignarPersonaHabitacion } from '../api/habitacionesApi';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../auth/AuthContext';
 
@@ -176,6 +182,10 @@ function CuposHabitacion({ habitacion }) {
 }
 
 export default function Habitaciones() {
+  const [desasignar, setDesasignar] = useState(null);
+  const [desasignando, setDesasignando] = useState(false);
+  const [errorDesasignar, setErrorDesasignar] = useState('');
+
   const { token } = useAuth();
   const api = useApi(() => obtenerHabitaciones(), []);
 
@@ -243,6 +253,38 @@ export default function Habitaciones() {
 
   if (api.error) {
     return <ErrorState message={api.error} onRetry={api.reload} />;
+  }
+
+  async function confirmarDesasignacionHabitacion() {
+    if (
+      !desasignar?.persona?.id ||
+      !desasignar?.persona?.tipoPersona ||
+      !desasignar?.habitacion?.id
+    ) {
+      return;
+    }
+
+    setDesasignando(true);
+    setErrorDesasignar('');
+
+    try {
+      const habitacionActualizada = await desasignarPersonaHabitacion(
+        token,
+        desasignar.habitacion.id,
+        desasignar.persona.tipoPersona,
+        desasignar.persona.id
+      );
+
+      setDesasignar(null);
+      setSelected(habitacionActualizada);
+      await api.reload();
+    } catch (err) {
+      setErrorDesasignar(
+        err?.message || 'No fue posible desasignar la persona de la habitación.'
+      );
+    } finally {
+      setDesasignando(false);
+    }
   }
 
   return (
@@ -511,7 +553,7 @@ export default function Habitaciones() {
                       fotoPerfilUrl={persona.fotoPerfilUrl}
                       size={48}
                     />
-                    <Box sx={{ minWidth: 0 }}>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
                       <Typography fontWeight={850} noWrap>
                         {persona.nombre}
                       </Typography>
@@ -520,6 +562,27 @@ export default function Habitaciones() {
                         {detallePersona(persona) ? ` · ${detallePersona(persona)}` : ''}
                       </Typography>
                     </Box>
+
+                    {['Caminante', 'Servidor'].includes(
+                      String(persona.tipoPersona || '').trim()
+                    ) && (
+                      <ProtectedButton
+                        permiso="HABITACIONES_DESASIGNAR_CAMINANTE"
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        startIcon={<PersonRemoveRounded />}
+                        onClick={() => {
+                          setErrorDesasignar('');
+                          setDesasignar({
+                            habitacion: selected,
+                            persona,
+                          });
+                        }}
+                      >
+                        Desasignar
+                      </ProtectedButton>
+                    )}
                   </Stack>
                 ))
               ) : (
@@ -567,6 +630,59 @@ export default function Habitaciones() {
         </Stack>
       </Drawer>
 
+
+      <Dialog
+        open={Boolean(desasignar)}
+        onClose={desasignando ? undefined : () => setDesasignar(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Desasignar persona</DialogTitle>
+
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {errorDesasignar && (
+              <Alert severity="error">{errorDesasignar}</Alert>
+            )}
+
+            <Alert severity="warning">
+              Esta acción únicamente libera la habitación.
+              Los demás datos de la persona se conservan.
+            </Alert>
+
+            <Typography>
+              ¿Deseas desasignar a{' '}
+              <strong>{desasignar?.persona?.nombre}</strong>{' '}
+              ({desasignar?.persona?.tipoPersona}) de la habitación{' '}
+              <strong>{desasignar?.habitacion?.habitacion}</strong>?
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              El cupo quedará disponible inmediatamente y la persona
+              podrá seleccionarse para otra habitación.
+            </Typography>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => setDesasignar(null)}
+            disabled={desasignando}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            color="error"
+            variant="contained"
+            startIcon={<PersonRemoveRounded />}
+            disabled={desasignando}
+            onClick={confirmarDesasignacionHabitacion}
+          >
+            {desasignando ? 'Desasignando...' : 'Sí, desasignar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <EditarHabitacionDialog
         open={Boolean(editar)}
