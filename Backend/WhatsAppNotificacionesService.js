@@ -15,6 +15,7 @@ const TIPOS_NOTIFICACION_WHATSAPP = {
   APROBACION: 'APROBACION',
   CANCELACION: 'CANCELACION',
   PAGO_RECHAZADO: 'PAGO_RECHAZADO',
+  RECORDATORIO_PAGO: 'RECORDATORIO_PAGO',
   AUTORIZACIONES: 'AUTORIZACIONES'
 };
 
@@ -83,6 +84,68 @@ function crearNotificacionWhatsappPendiente(datos) {
 
   return registro;
 }
+
+function crearNotificacionWhatsappRecordatorioPago(
+  datos
+) {
+  const entrada =
+    datos || {};
+
+  const entidadId =
+    String(
+      entrada.entidadId || ''
+    ).trim();
+
+  if (!entidadId) {
+    throw crearErrorAplicacion(
+      'PERSONA_RECORDATORIO_REQUERIDA',
+      'No se indicó la persona a quien se enviará el recordatorio.'
+    );
+  }
+
+  const registro = {
+    id: Utilities.getUuid(),
+    tipo:
+      TIPOS_NOTIFICACION_WHATSAPP
+        .RECORDATORIO_PAGO,
+    entidad:
+      String(
+        entrada.entidad || ''
+      ).trim(),
+    entidadId: entidadId,
+    nombre:
+      String(
+        entrada.nombre || ''
+      ).trim(),
+    telefono:
+      String(
+        entrada.telefono || ''
+      ).trim(),
+    motivo:
+      JSON.stringify(
+        entrada.detalle || {}
+      ),
+    estado:
+      ESTADOS_NOTIFICACION_WHATSAPP
+        .PENDIENTE,
+    fechaCreacion: new Date(),
+    fechaApertura: '',
+    fechaConfirmacion: '',
+    fechaOmitision: '',
+    abiertoPor: '',
+    confirmadoPor: '',
+    omitidoPor: '',
+    motivoOmitision: '',
+    activo: 'Sí'
+  };
+
+  agregarNotificacionWhatsapp_(
+    registro
+  );
+
+  return registro;
+}
+
 
 function obtenerNotificacionesWhatsapp(token, filtros) {
   sincronizarNotificacionesWhatsappPendientes_();
@@ -209,7 +272,11 @@ function prepararNotificacionWhatsapp(token, id) {
     minutos: detalleMotivo.minutos || '',
     tipoRetiro: configuracion.tipoRetiro || '',
     anioRetiro: configuracion.anioRetiro || '',
-    numeroInscripcion: obtenerNumeroInscripcionWhatsapp_(notificacion)
+    numeroInscripcion: obtenerNumeroInscripcionWhatsapp_(notificacion),
+    saldoPendiente: detalleMotivo.saldoPendiente || '',
+    valorRetiro: detalleMotivo.valorRetiro || '',
+    totalAprobado: detalleMotivo.totalAprobado || '',
+    tipoPersona: detalleMotivo.tipoPersona || ''
   });
 
   const telefono = normalizarTelefonoWhatsapp_(
@@ -499,6 +566,15 @@ function puedeGestionarTipoWhatsapp_(permisos, tipo) {
     );
   }
 
+  if (
+    tipoNormalizado ===
+      TIPOS_NOTIFICACION_WHATSAPP.RECORDATORIO_PAGO
+  ) {
+    return permisos.includes(
+      'PAGOS_RECORDAR_PAGO'
+    );
+  }
+
   if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.AUTORIZACIONES) {
     return permisos.includes('ENVIAR_AUTORIZACIONES_CAMINANTE');
   }
@@ -527,6 +603,10 @@ function obtenerPlantillaWhatsapp_(tipo, configuracion) {
   plantillas[TIPOS_NOTIFICACION_WHATSAPP.PAGO_RECHAZADO] =
     configuracion.whatsappMensajePagoRechazado ||
     'Hola {{nombre}}. El comprobante de pago fue rechazado. Motivo: {{motivo}}. Por favor ingresa nuevamente a Reportar pago y carga un nuevo comprobante.';
+  plantillas[TIPOS_NOTIFICACION_WHATSAPP.RECORDATORIO_PAGO] =
+    configuracion.whatsappMensajeRecordatorioPago ||
+    'Hola {{nombre}} 👋\n\nEstamos realizando la conciliación de cuentas del Retiro de Emaús y vemos que tienes un saldo pendiente de {{saldoPendiente}}.\n\nTe agradecemos mucho si puedes ayudarnos realizando este pago. Si ya lo realizaste recientemente, por favor ignora este mensaje o compártenos el soporte para actualizar nuestros registros.\n\n¡Muchas gracias por tu apoyo! 🙏';
+
   plantillas[TIPOS_NOTIFICACION_WHATSAPP.AUTORIZACIONES] =
     configuracion.whatsappMensajeAutorizaciones ||
     'Hola {{nombre}}. Para finalizar tu inscripción, responde las autorizaciones aquí: {{link}}. El enlace estará disponible durante {{minutos}} minutos.';

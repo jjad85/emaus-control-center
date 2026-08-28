@@ -180,6 +180,47 @@ function completarResumenPagosCaminante(caminante) {
   return completarResumenPagosPersona_(caminante, 'Caminante');
 }
 
+function calcularEstadoPagoEstandar_(
+  totalAprobado,
+  valorRetiro,
+  esExento
+) {
+  if (esExento) {
+    return 'Exento';
+  }
+
+  const aprobado =
+    Number(
+      totalAprobado || 0
+    );
+
+  const esperado =
+    Number(
+      valorRetiro || 0
+    );
+
+  if (aprobado <= 0) {
+    return 'Pendiente';
+  }
+
+  if (
+    esperado > 0 &&
+    aprobado < esperado
+  ) {
+    return 'Pago Parcial';
+  }
+
+  if (
+    esperado > 0 &&
+    aprobado > esperado
+  ) {
+    return 'Pago Excedido';
+  }
+
+  return 'Pago Total';
+}
+
+
 function completarResumenPagosPersona_(persona, tipo) {
   const tipoPersona = normalizarTipoPersonaPago_(tipo);
   const pagos = leerHojaComoObjetos(HOJAS.PAGOS).filter(function(p) {
@@ -206,7 +247,12 @@ function completarResumenPagosPersona_(persona, tipo) {
     celular: persona.celular || persona.telefono || '',
     exentoPago: esExento,
     motivoExencionPago: persona.motivoExencionPago || '',
-    estadoPago: esExento ? 'Exento' : (totalAprobado <= 0 ? 'Pendiente' : totalAprobado < valorRetiro ? 'Pago Parcial' : 'Pago Total'),
+    estadoPago:
+      calcularEstadoPagoEstandar_(
+        totalAprobado,
+        valorRetiro,
+        esExento
+      ),
     valorRetiro: valorRetiro,
     totalAprobado: totalAprobado,
     totalPendienteValidacion: totalPendienteValidacion,
@@ -787,6 +833,153 @@ function recalcularEstadoPagoServidor_(servidorId, usuario) {
 
 function obtenerPagosCaminante(token,caminanteId){ validarPermiso(token,'CAMINANTES_VER_DETALLE'); return completarResumenPagosPersona_(leerRegistroPorIdSheet(HOJAS.CAMINANTES,caminanteId,{usuario:'CONSULTA'}), 'Caminante'); }
 
+function formatearMonedaRecordatorioPago_(
+  valor
+) {
+  return '$ ' +
+    Number(
+      valor || 0
+    ).toLocaleString(
+      'es-CO'
+    );
+}
+
+function crearRecordatorioPagoWhatsapp(
+  token,
+  tipo,
+  personaId
+) {
+  const sesion =
+    validarPermiso(
+      token,
+      'PAGOS_RECORDAR_PAGO'
+    );
+
+  const tipoPersona =
+    normalizarTipoPersonaPago_(
+      tipo
+    );
+
+  const persona =
+    tipoPersona === 'Servidor'
+      ? obtenerServidorPorId(
+          personaId
+        )
+      : leerRegistroPorIdSheet(
+          HOJAS.CAMINANTES,
+          personaId,
+          {
+            usuario:
+              sesion.usuario
+          }
+        );
+
+  if (!persona) {
+    throw crearErrorAplicacion(
+      'PERSONA_PAGO_NO_ENCONTRADA',
+      'No encontramos la persona solicitada.'
+    );
+  }
+
+  const resumen =
+    completarResumenPagosPersona_(
+      persona,
+      tipoPersona
+    );
+
+  if (resumen.exentoPago) {
+    throw crearErrorAplicacion(
+      'PERSONA_EXENTA_PAGO',
+      'La persona está exenta de pago y no requiere recordatorio.'
+    );
+  }
+
+  if (
+    Number(
+      resumen.saldoPendiente || 0
+    ) <= 0
+  ) {
+    throw crearErrorAplicacion(
+      'PAGO_SIN_SALDO_PENDIENTE',
+      'La persona ya no tiene saldo pendiente.'
+    );
+  }
+
+  const telefono =
+    String(
+      resumen.celular || ''
+    ).trim();
+
+  if (!telefono) {
+    throw crearErrorAplicacion(
+      'CELULAR_RECORDATORIO_REQUERIDO',
+      'La persona no tiene un celular registrado para enviar el recordatorio.'
+    );
+  }
+
+  const notificacion =
+    crearNotificacionWhatsappRecordatorioPago({
+      entidad:
+        tipoPersona === 'Servidor'
+          ? 'Servidores'
+          : 'Caminantes',
+      entidadId:
+        resumen.id,
+      nombre:
+        resumen.nombre || '',
+      telefono:
+        telefono,
+      detalle: {
+        saldoPendiente:
+          formatearMonedaRecordatorioPago_(
+            resumen.saldoPendiente
+          ),
+        valorRetiro:
+          formatearMonedaRecordatorioPago_(
+            resumen.valorRetiro
+          ),
+        totalAprobado:
+          formatearMonedaRecordatorioPago_(
+            resumen.totalAprobado
+          ),
+        tipoPersona:
+          tipoPersona,
+        numeroInscripcion:
+          resumen.numeroInscripcion || ''
+      }
+    });
+
+  registrarAuditoria({
+    usuario:
+      sesion.usuario,
+    nombre:
+      sesion.nombre || '',
+    accion:
+      'CREAR_RECORDATORIO_PAGO_WHATSAPP',
+    entidad:
+      tipoPersona,
+    idRegistro:
+      resumen.id,
+    detalle:
+      JSON.stringify({
+        saldoPendiente:
+          resumen.saldoPendiente,
+        numeroInscripcion:
+          resumen.numeroInscripcion || ''
+      })
+  });
+
+  return {
+    id:
+      notificacion.id,
+    tipo:
+      notificacion.tipo,
+    estado:
+      notificacion.estado
+  };
+}
+
+
 function obtenerEstadoCuentaPersona(token, tipo, personaId) {
   const tipoPersona = normalizarTipoPersonaPago_(tipo);
   if (tipoPersona === 'Servidor') {
@@ -892,7 +1085,12 @@ function construirGrupoReportePagos_(tipo, filtros) {
       valorRecaudado: recaudado,
       valorPendiente: Math.max(esperadoPersona - recaudado, 0),
       excedente: Math.max(recaudado - esperadoPersona, 0),
-      estadoPago: esExento ? 'Exento' : (recaudado <= 0 ? 'Pendiente' : recaudado < valorIndividual ? 'Pago Parcial' : 'Pago Total')
+      estadoPago:
+        calcularEstadoPagoEstandar_(
+          recaudado,
+          esperadoPersona,
+          esExento
+        )
     };
   });
   const valorRecaudado = detalle.reduce(function(suma, item) { return suma + item.valorRecaudado; }, 0);

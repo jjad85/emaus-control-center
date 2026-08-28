@@ -44,6 +44,7 @@ import {
   validarPago
 } from '../api/pagosApi';
 import LoadingState from '../components/LoadingState';
+import StatusChip from '../components/StatusChip';
 import PageHeader from '../components/PageHeader';
 import AvatarServidor from '../components/servidores/AvatarServidor';
 
@@ -586,21 +587,25 @@ export default function Pagos() {
 
       if (!coincideBusqueda) return false;
 
-      if (condicionEstado === 'Todos') return true;
-      if (condicionEstado === 'Al día') {
-        return (
-          Number(persona.valorPendiente || 0) <= 0 &&
-          !persona.exentoPago
-        );
-      }
-      if (condicionEstado === 'Con saldo') {
-        return Number(persona.valorPendiente || 0) > 0;
-      }
-      if (condicionEstado === 'Exentos') {
-        return Boolean(persona.exentoPago);
+      if (
+        condicionEstado === 'Todos'
+      ) {
+        return true;
       }
 
-      return true;
+      if (
+        condicionEstado === 'Exento'
+      ) {
+        return Boolean(
+          persona.exentoPago
+        );
+      }
+
+      return (
+        String(
+          persona.estadoPago || ''
+        ) === condicionEstado
+      );
     });
   }, [grupoActivo, busquedaEstado, condicionEstado]);
 
@@ -3225,9 +3230,13 @@ function EstadoCuentaPanel({
             >
               {[
                 'Todos',
-                'Con saldo',
-                'Al día',
-                'Exentos'
+                'Pendiente',
+                'Pago Parcial',
+                'Pago Total',
+                'Pago Excedido',
+                ...(tipo === 'Servidor'
+                  ? ['Exento']
+                  : [])
               ].map(opcion => (
                 <MenuItem
                   key={opcion}
@@ -3309,21 +3318,23 @@ function EstadoCuentaPanel({
 
               const porcentaje =
                 esperado > 0
-                  ? Math.min(
-                      100,
-                      Math.max(
-                        0,
-                        (recaudado /
-                          esperado) *
-                          100
-                      )
+                  ? Math.max(
+                      0,
+                      (
+                        recaudado /
+                        esperado
+                      ) * 100
                     )
                   : 100;
 
-              const alDia =
-                Number(
-                  persona.valorPendiente || 0
-                ) <= 0;
+              const porcentajeVisual =
+                Math.min(
+                  100,
+                  porcentaje
+                );
+
+              const sobrePago =
+                porcentaje > 100;
 
               return (
                 <Paper
@@ -3378,30 +3389,15 @@ function EstadoCuentaPanel({
                         </Box>
                       </Stack>
 
-                      <Chip
-                        size="small"
-                        label={
-                          persona.exentoPago
-                            ? 'Exento'
-                            : alDia
-                              ? 'Al día'
-                              : 'Con saldo'
+                      <StatusChip
+                        value={
+                          persona.estadoPago ||
+                          (
+                            persona.exentoPago
+                              ? 'Exento'
+                              : 'Pendiente'
+                          )
                         }
-                        sx={{
-                          fontWeight: 900,
-                          bgcolor:
-                            persona.exentoPago
-                              ? '#eef6fa'
-                              : alDia
-                                ? '#edf8f3'
-                                : '#fff8e8',
-                          color:
-                            persona.exentoPago
-                              ? '#315f78'
-                              : alDia
-                                ? '#176b58'
-                                : '#9a6a08'
-                        }}
                       />
                     </Stack>
 
@@ -3421,6 +3417,14 @@ function EstadoCuentaPanel({
                         <Typography
                           variant="caption"
                           fontWeight={900}
+                          sx={{
+                            color:
+                              sobrePago
+                                ? '#c62828'
+                                : porcentaje >= 100
+                                  ? '#176b58'
+                                  : 'text.primary'
+                          }}
                         >
                           {Math.round(
                             porcentaje
@@ -3430,7 +3434,7 @@ function EstadoCuentaPanel({
 
                       <LinearProgress
                         variant="determinate"
-                        value={porcentaje}
+                        value={porcentajeVisual}
                         sx={{
                           height: 8,
                           borderRadius: 999,
@@ -3439,7 +3443,12 @@ function EstadoCuentaPanel({
                           '& .MuiLinearProgress-bar':
                             {
                               borderRadius: 999,
-                              bgcolor: color
+                              background:
+                                sobrePago
+                                  ? '#c62828'
+                                  : porcentaje >= 100
+                                    ? '#176b58'
+                                    : 'linear-gradient(90deg, #e0a11a 0%, #a5bf45 50%, #176b58 100%)'
                             }
                         }}
                       />

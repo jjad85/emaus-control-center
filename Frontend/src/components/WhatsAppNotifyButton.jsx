@@ -50,6 +50,7 @@ export default function WhatsAppNotifyButton({
   size = 'small',
   fullWidth = false,
   label,
+  crearNotificacion,
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -65,7 +66,7 @@ export default function WhatsAppNotifyButton({
     id: '',
   });
 
-  if (!notificacion?.id) {
+  if (!notificacion?.id && !crearNotificacion) {
     return null;
   }
 
@@ -140,10 +141,27 @@ export default function WhatsAppNotifyButton({
     setLoading(true);
 
     try {
+      let notificacionActual =
+        notificacion;
+
+      if (
+        !notificacionActual?.id &&
+        crearNotificacion
+      ) {
+        notificacionActual =
+          await crearNotificacion();
+      }
+
+      if (!notificacionActual?.id) {
+        throw new Error(
+          'No fue posible crear la notificación de WhatsApp.'
+        );
+      }
+
       const preparada =
         await prepararNotificacionWhatsapp(
           token,
-          notificacion.id
+          notificacionActual.id
         );
 
       /*
@@ -156,7 +174,7 @@ export default function WhatsAppNotifyButton({
 
       setConfirmDialog({
         open: true,
-        id: notificacion.id,
+        id: notificacionActual.id,
       });
     } catch (error) {
       try {
@@ -230,7 +248,7 @@ export default function WhatsAppNotifyButton({
         fullWidth={fullWidth}
       >
         {label || (
-          notificacion.estado === 'Abierta'
+          notificacion?.estado === 'Abierta'
             ? 'Confirmar / reenviar'
             : 'Notificar'
         )}

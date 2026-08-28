@@ -335,6 +335,24 @@ function routePost(contenido) {
 
 
 
+    case 'reportargasto':
+      return {
+        datos: reportarGasto(contenido.token, contenido.datos),
+        mensaje: 'Gasto reportado correctamente'
+      };
+
+    case 'validargasto':
+      return {
+        datos: validarGasto(contenido.token, contenido.id, contenido.decision),
+        mensaje: 'Gasto validado correctamente'
+      };
+
+    case 'revertirgasto':
+      return {
+        datos: revertirGasto(contenido.token, contenido.id, contenido.motivo),
+        mensaje: 'Gasto reversado correctamente'
+      };
+
     case 'reportarpagopublico':
       return { datos: reportarPagoPublico(contenido.datos), mensaje: 'Pago reportado correctamente' };
     case 'editarvalorpagopendiente':

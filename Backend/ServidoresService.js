@@ -210,7 +210,12 @@ function obtenerOpcionesGestionServidor(token, servidorId) {
   const servidor = servidorId ? obtenerServidorPorId(servidorId) : null;
 
   return {
-    estadosPago: ['Pendiente', 'Pago Parcial', 'Pago Total'],
+    estadosPago: [
+      'Pendiente',
+      'Pago Parcial',
+      'Pago Total',
+      'Pago Excedido'
+    ],
     temas: obtenerTemasDisponiblesServidor_(servidorId),
     mesas: obtenerMesasDisponiblesServidor_(servidor),
     equipos: obtenerEquiposDisponiblesServidor_(servidor),
@@ -275,7 +280,12 @@ function editarServidor(token, id, datos) {
 function actualizarPagoServidor(token, id, estadoPago) {
   const sesion = validarPermiso(token, 'ACTUALIZAR_PAGO_SERVIDOR');
   const estado = String(estadoPago || '').trim();
-  const permitidos = ['Pendiente', 'Pago Parcial', 'Pago Total'];
+  const permitidos = [
+    'Pendiente',
+    'Pago Parcial',
+    'Pago Total',
+    'Pago Excedido'
+  ];
 
   if (!permitidos.some(function(item) { return normalizarTexto(item) === normalizarTexto(estado); })) {
     throw crearErrorAplicacion('ESTADO_PAGO_INVALIDO', 'El estado de pago no es válido.');

@@ -9,8 +9,13 @@ import {
   StorefrontRounded,
 } from '@mui/icons-material';
 import { useEffect, useMemo, useState } from 'react';
-import { obtenerEstadoCuentaPersona, revertirAprobacionPago } from '../../api/pagosApi';
+import {
+  crearRecordatorioPagoWhatsapp,
+  obtenerEstadoCuentaPersona,
+  revertirAprobacionPago,
+} from '../../api/pagosApi';
 import StatusChip from '../StatusChip';
+import WhatsAppNotifyButton from '../WhatsAppNotifyButton';
 import { useAuth } from '../../auth/AuthContext';
 
 const moneda = (v) => Number(v || 0).toLocaleString('es-CO', {style:'currency',currency:'COP',maximumFractionDigits:0});
@@ -22,7 +27,11 @@ function Seccion({titulo,children}){return <Card variant="outlined"><CardContent
 
 export default function EstadoCuentaPersona({token,tipoPersona,personaId}){
   const { permisos = [] } = useAuth();
-  const puedeRevertir = permisos.includes('PAGOS_VALIDAR_COMPROBANTE');
+  const puedeRevertir =
+    permisos.includes('PAGOS_VALIDAR_COMPROBANTE');
+
+  const puedeRecordarPago =
+    permisos.includes('PAGOS_RECORDAR_PAGO');
   const [data,setData]=useState(null),[cargando,setCargando]=useState(false),[error,setError]=useState(''),[filtro,setFiltro]=useState('Todos'),[detalle,setDetalle]=useState(null);
   const [dialogoReversion,setDialogoReversion]=useState(false);
   const [motivoReversion,setMotivoReversion]=useState('');
@@ -91,7 +100,41 @@ export default function EstadoCuentaPersona({token,tipoPersona,personaId}){
     }
   }
   const pagos=useMemo(()=>{const x=data?.pagos||[];return filtro==='Todos'?x:x.filter(p=>String(p.estado||'Pendiente')===filtro)},[data,filtro]);
-  const avance=data?.exentoPago?100:(Number(data?.valorRetiro)>0?Math.min(100,(Number(data?.totalAprobado||0)/Number(data.valorRetiro))*100):0);
+  const avance =
+    data?.exentoPago
+      ? 100
+      : (
+          Number(data?.valorRetiro) > 0
+            ? Math.max(
+                0,
+                (
+                  Number(data?.totalAprobado || 0) /
+                  Number(data.valorRetiro)
+                ) * 100
+              )
+            : 0
+        );
+
+  const avanceVisual =
+    Math.min(
+      100,
+      avance
+    );
+
+  const progresoSobrePago =
+    avance > 100;
+
+  const colorProgreso =
+    progresoSobrePago
+      ? '#c62828'
+      : avance >= 100
+        ? '#176b58'
+        : undefined;
+
+  const fondoProgreso =
+    progresoSobrePago
+      ? 'rgba(198,40,40,.10)'
+      : 'rgba(224,161,26,.12)';
   if(cargando)return <Alert severity="info">Consultando estado de cuenta…</Alert>;
   if(error)return <Alert severity="error">{error}</Alert>;
   if(!data)return null;
@@ -104,7 +147,74 @@ export default function EstadoCuentaPersona({token,tipoPersona,personaId}){
         <Grid size={{xs:6,md:3}}><Resumen titulo="Pendiente validar" valor={moneda(data.totalPendienteValidacion)}/></Grid>
         <Grid size={{xs:6,md:3}}><Resumen titulo="Saldo" valor={moneda(data.saldoPendiente)}/></Grid>
       </Grid>
-      {!data.exentoPago&&<Box><Stack direction="row" justifyContent="space-between"><Typography variant="caption">Avance de pago</Typography><Typography variant="caption" fontWeight={900}>{Math.round(avance)}%</Typography></Stack><LinearProgress variant="determinate" value={avance} sx={{mt:.6,height:8,borderRadius:99,'& .MuiLinearProgress-bar':{borderRadius:99}}}/></Box>}
+      {!data.exentoPago && (
+        <Stack spacing={1.4}>
+          <Box>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+            >
+              <Typography variant="caption">
+                Avance de pago
+              </Typography>
+
+              <Typography
+                variant="caption"
+                fontWeight={900}
+                sx={{
+                  color:
+                    progresoSobrePago
+                      ? '#c62828'
+                      : avance >= 100
+                        ? '#176b58'
+                        : 'text.primary'
+                }}
+              >
+                {Math.round(avance)}%
+              </Typography>
+            </Stack>
+
+            <LinearProgress
+              variant="determinate"
+              value={avanceVisual}
+              sx={{
+                mt: .6,
+                height: 8,
+                borderRadius: 99,
+                bgcolor: fondoProgreso,
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 99,
+                  background:
+                    progresoSobrePago
+                      ? '#c62828'
+                      : avance >= 100
+                        ? '#176b58'
+                        : 'linear-gradient(90deg, #e0a11a 0%, #a5bf45 50%, #176b58 100%)'
+                }
+              }}
+            />
+          </Box>
+
+          {puedeRecordarPago &&
+            Number(data.saldoPendiente || 0) > 0 && (
+              <Box>
+                <WhatsAppNotifyButton
+                  token={token}
+                  label="Recordar pago"
+                  crearNotificacion={() =>
+                    crearRecordatorioPagoWhatsapp(
+                      token,
+                      tipoPersona,
+                      personaId
+                    )
+                  }
+                  onCompleted={cargarEstadoCuenta}
+                />
+              </Box>
+            )}
+        </Stack>
+      )}
+
       <Divider/>
       <Stack direction={{xs:'column',sm:'row'}} justifyContent="space-between" gap={1}>
         <Box><Typography fontWeight={900}>Historial de abonos</Typography><Typography variant="body2" color="text.secondary">{data.cantidadPagos||0} movimientos registrados</Typography></Box>

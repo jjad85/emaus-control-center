@@ -82,3 +82,21 @@ export async function revertirAprobacionPago(token, id, motivo) {
   });
   return r.datos;
 }
+
+
+export async function crearRecordatorioPagoWhatsapp(
+  token,
+  tipoPersona,
+  personaId
+) {
+  const r = await postAction(
+    'crearrecordatoriopagowhatsapp',
+    {
+      token,
+      tipoPersona,
+      personaId,
+    }
+  );
+
+  return r.datos;
+}

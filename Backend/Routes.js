@@ -86,6 +86,18 @@ function routeRequest(parametros) {
     case 'buscarpersonapago':
       return { datos: buscarPersonaPago(parametros.tipo, parametros.criterio, parametros.id), mensaje: 'Persona consultada correctamente' };
 
+    case 'gastos':
+      return {
+        datos: obtenerGastos(parametros.token, parametros),
+        mensaje: 'Gastos consultados correctamente'
+      };
+
+    case 'distribucionefectivogastos':
+      return {
+        datos: obtenerDistribucionEfectivoGastos(parametros.token),
+        mensaje: 'Distribución de efectivo consultada correctamente'
+      };
+
     case 'pagos':
       return { datos: obtenerPagos(parametros.token, parametros), mensaje: 'Pagos consultados correctamente' };
 

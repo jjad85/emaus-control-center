@@ -8,10 +8,24 @@ export function normalize(value) {
 
 export function statusStyle(value) {
   const key = normalize(value);
+  if (['pago excedido'].includes(key)) {
+    return {
+      backgroundColor: '#FDEBEC',
+      color: '#B4232A',
+      border: '1px solid rgba(180,35,42,.18)'
+    };
+  }
   if (['completado', 'aprobado', 'pago total', 'exento', 'entregado', 'entregada', 'recibido', 'recibida'].includes(key)) {
     return { backgroundColor: '#0B7D4F', color: '#fff' };
   }
-  if (['en proceso', 'en revision', 'pago parcial', 'solicitada', 'solicitado'].includes(key)) {
+  if (['pago parcial'].includes(key)) {
+    return {
+      backgroundColor: '#EAF3FC',
+      color: '#0B5CAD',
+      border: '1px solid rgba(11,92,173,.16)'
+    };
+  }
+  if (['en proceso', 'en revision', 'solicitada', 'solicitado'].includes(key)) {
     return { backgroundColor: '#0B5CAD', color: '#fff' };
   }
   if (['requiere cambios'].includes(key)) {

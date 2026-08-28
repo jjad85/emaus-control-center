@@ -60,7 +60,12 @@ import CaminanteFormDialog from "../components/caminantes/CaminanteFormDialog";
 import CaminanteActionDialog from "../components/caminantes/CaminanteActionDialog";
 import EstadoCuentaPersona from "../components/pagos/EstadoCuentaPersona";
 
-const ESTADOS_PAGO = ["Pendiente", "Pago Parcial", "Pago Total"];
+const ESTADOS_PAGO = [
+  "Pendiente",
+  "Pago Parcial",
+  "Pago Total",
+  "Pago Excedido",
+];
 
 const ESTADOS_ENTREGABLES = ["Pendiente", "Solicitada", "Entregada", "Empaquetada", "Entregada a Logística"];
 

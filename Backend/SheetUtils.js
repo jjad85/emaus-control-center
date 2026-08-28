@@ -114,6 +114,7 @@ const HOJAS = {
   RECUPERACIONES_CLAVE: 'RecuperacionesClave',
   TEMAS: 'Temas',
   PAGOS: 'Pagos',
+  GASTOS: 'Gastos',
   FECHAS_IMPORTANTES: 'FechasImportantes',
   DOCUMENTOS: 'Documentos',
   ANGELITOS: 'Angelitos',
