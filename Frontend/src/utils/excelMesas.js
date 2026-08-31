@@ -1,10 +1,10 @@
-const URL_XLSX =
-  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+const URL_EXCELJS =
+  'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
 
-function cargarXlsx() {
-  if (window.XLSX) {
+function cargarExcelJs() {
+  if (window.ExcelJS) {
     return Promise.resolve(
-      window.XLSX
+      window.ExcelJS
     );
   }
 
@@ -12,15 +12,16 @@ function cargarXlsx() {
     (resolve, reject) => {
       const existente =
         document.querySelector(
-          `script[src="${URL_XLSX}"]`
+          `script[src="${URL_EXCELJS}"]`
         );
 
       if (existente) {
         existente.addEventListener(
           'load',
-          () => resolve(window.XLSX),
+          () => resolve(window.ExcelJS),
           { once: true }
         );
+
         existente.addEventListener(
           'error',
           () =>
@@ -31,6 +32,7 @@ function cargarXlsx() {
             ),
           { once: true }
         );
+
         return;
       }
 
@@ -39,9 +41,11 @@ function cargarXlsx() {
           'script'
         );
 
-      script.src = URL_XLSX;
+      script.src = URL_EXCELJS;
+
       script.onload =
-        () => resolve(window.XLSX);
+        () => resolve(window.ExcelJS);
+
       script.onerror =
         () =>
           reject(
@@ -93,107 +97,420 @@ function fechaLegible(valorOriginal) {
 }
 
 function filaCaminante(c) {
-  return {
-    'ID caminante':
-      valor(c.id),
-    'Número de inscripción':
-      valor(c.numeroInscripcion),
+  return [
+    valor(c.numeroInscripcion),
+    valor(c.nombre),
+    valor(c.documentoIdentidad),
+    fechaLegible(c.fechaNacimiento),
+    valor(c.edad),
+    valor(c.direccionResidencia),
+    valor(c.barrio),
+    valor(c.telefonoFijo),
+    valor(c.celular),
+    valor(c.estadoCivil),
+    valor(c.parroquia),
+    valor(c.profesionOcupacion),
 
-    'Información general - Primer nombre':
-      valor(c.primerNombre),
-    'Información general - Segundo nombre':
-      valor(c.segundoNombre),
-    'Información general - Primer apellido':
-      valor(c.primerApellido),
-    'Información general - Segundo apellido':
-      valor(c.segundoApellido),
-    'Información general - Nombre completo':
-      valor(c.nombre),
-    'Información general - Documento':
-      valor(c.documentoIdentidad),
-    'Información general - Fecha de nacimiento':
-      fechaLegible(c.fechaNacimiento),
-    'Información general - Edad':
-      valor(c.edad),
-    'Información general - Dirección':
-      valor(c.direccionResidencia),
-    'Información general - Barrio':
-      valor(c.barrio),
-    'Información general - Teléfono':
-      valor(c.telefonoFijo),
-    'Información general - Celular':
-      valor(c.celular),
-    'Información general - Correo':
-      valor(c.correo),
-    'Información general - Estado civil':
-      valor(c.estadoCivil),
-    'Información general - Parroquia':
-      valor(c.parroquia),
-    'Información general - Profesión / ocupación':
-      valor(c.profesionOcupacion),
-    'Información general - EPS':
-      valor(c.eps),
-    'Información general - Talla camiseta':
-      valor(c.tallaCamiseta),
-    'Información general - Habitación':
-      valor(c.habitacion),
+    valor(c.contacto1Nombre),
+    valor(c.contacto1Parentesco),
+    valor(c.contacto1Celular),
+    valor(c.contacto2Nombre),
+    valor(c.contacto2Parentesco),
+    valor(c.contacto2Celular),
 
-    'Salud - ¿Sufre enfermedad?':
-      valor(c.sufreEnfermedad),
-    'Salud - Enfermedad':
-      valor(c.enfermedadCual),
-    'Salud - ¿Toma medicamento?':
-      valor(c.tomaMedicamento),
-    'Salud - Medicamento':
-      valor(c.medicamentoCual),
-    'Salud - Horarios medicamentos':
-      valor(c.horariosMedicamentos),
-    'Salud - ¿Tiene limitación física?':
-      valor(c.tieneLimitacionFisica),
-    'Salud - Limitación física':
-      valor(c.limitacionCual),
+    valor(c.tallaCamiseta),
+    valor(c.habitacion),
 
-    'Alimentación - ¿Tiene condición alimentaria?':
-      valor(c.tieneCondicionAlimentaria),
-    'Alimentación - Alergias':
-      valor(c.alergiasAlimentarias),
-    'Alimentación - Restricciones':
-      valor(c.restriccionesAlimentarias),
-    'Alimentación - Preferencias':
-      valor(c.preferenciasAlimentarias),
-    'Alimentación - Dieta especial':
-      valor(c.dietaEspecial),
+    valor(c.eps),
+    valor(c.sufreEnfermedad),
+    valor(c.enfermedadCual),
+    valor(c.tomaMedicamento),
+    valor(c.medicamentoCual),
+    valor(c.horariosMedicamentos),
+    valor(c.tieneLimitacionFisica),
+    valor(c.limitacionCual),
 
-    'Contacto 1 - Nombre':
-      valor(c.contacto1Nombre),
-    'Contacto 1 - Parentesco':
-      valor(c.contacto1Parentesco),
-    'Contacto 1 - Celular':
-      valor(c.contacto1Celular),
+    valor(c.tieneCondicionAlimentaria),
+    valor(c.alergiasAlimentarias),
+    valor(c.restriccionesAlimentarias),
+    valor(c.preferenciasAlimentarias),
+    valor(c.dietaEspecial),
 
-    'Contacto 2 - Nombre':
-      valor(c.contacto2Nombre),
-    'Contacto 2 - Parentesco':
-      valor(c.contacto2Parentesco),
-    'Contacto 2 - Celular':
-      valor(c.contacto2Celular),
+    valor(c.sacramentosRecibidos),
+    valor(c.comoSeEntero),
+    valor(c.nombrePersonaInvito),
+    valor(c.celularPersonaInvito),
+    valor(c.personaConocidaAsistira),
+    valor(c.nombrePersonaConocida),
+  ];
+}
 
-    'Retiro - Sacramentos recibidos':
-      valor(c.sacramentosRecibidos),
-    'Retiro - Cómo se enteró':
-      valor(c.comoSeEntero),
-    'Retiro - Persona que invitó':
-      valor(c.nombrePersonaInvito),
-    'Retiro - Celular persona que invitó':
-      valor(c.celularPersonaInvito),
-    'Retiro - ¿Asistirá persona conocida?':
-      valor(c.personaConocidaAsistira),
-    'Retiro - Nombre persona conocida':
-      valor(c.nombrePersonaConocida)
+const BORDE_CELDA = {
+  top: {
+    style: 'thin',
+    color: { argb: 'FF000000' },
+  },
+  left: {
+    style: 'thin',
+    color: { argb: 'FF000000' },
+  },
+  bottom: {
+    style: 'thin',
+    color: { argb: 'FF000000' },
+  },
+  right: {
+    style: 'thin',
+    color: { argb: 'FF000000' },
+  },
+};
+
+const GRUPOS = [
+  {
+    titulo: 'Información General',
+    inicio: 2,
+    fin: 13,
+    colorOscuro: 'FF265663',
+    colorClaro: 'FF388195',
+  },
+  {
+    titulo: 'Información Contactos',
+    inicio: 14,
+    fin: 19,
+    colorOscuro: 'FF403251',
+    colorClaro: 'FF604B7A',
+  },
+  {
+    titulo: 'Logistica',
+    inicio: 20,
+    fin: 21,
+    colorOscuro: 'FF7C4B23',
+    colorClaro: 'FFB97035',
+  },
+  {
+    titulo: 'Salud',
+    inicio: 22,
+    fin: 29,
+    colorOscuro: 'FF4E5E2D',
+    colorClaro: 'FF748C43',
+  },
+  {
+    titulo: 'Alimentación',
+    inicio: 30,
+    fin: 34,
+    colorOscuro: 'FF602827',
+    colorClaro: 'FF903C3A',
+  },
+  {
+    titulo: 'Información del Retiro',
+    inicio: 35,
+    fin: 40,
+    colorOscuro: 'FF000000',
+    colorClaro: 'FF000000',
+  },
+];
+
+const ENCABEZADOS = [
+  'Número de inscripción',
+  'Nombre completo',
+  'Numero Documento',
+  'Fecha de nacimiento',
+  'Edad',
+  'Dirección',
+  'Barrio',
+  'Teléfono',
+  'Celular',
+  'Estado civil',
+  'Parroquia',
+  'Profesión / ocupación',
+
+  'Contacto 1 - Nombre',
+  'Contacto 1 - Parentesco',
+  'Contacto 1 - Celular',
+  'Contacto 2 - Nombre',
+  'Contacto 2 - Parentesco',
+  'Contacto 2 - Celular',
+
+  'Talla camiseta',
+  'N° Habitación',
+
+  'EPS',
+  '¿Sufre enfermedad?',
+  'Enfermedad',
+  '¿Toma medicamento?',
+  'Medicamento',
+  'Horarios medicamentos',
+  '¿Tiene limitación física?',
+  'Limitación física',
+
+  '¿Tiene condición alimentaria?',
+  'Alergias',
+  'Restricciones',
+  'Preferencias',
+  'Dieta especial',
+
+  'Sacramentos recibidos',
+  'Cómo se enteró',
+  'Persona que invitó',
+  'Celular persona que invitó',
+  '¿Asistirá persona conocida?',
+  'Nombre persona conocida',
+];
+
+const ANCHOS_COLUMNAS = [
+  5.125,
+  20.75,
+  29.5,
+  19,
+  19,
+  5.375,
+  26,
+  24.375,
+  11.25,
+  11.25,
+  10.75,
+  33.75,
+  25,
+  22.125,
+  21.875,
+  17.875,
+  19.125,
+  21.875,
+  17.875,
+  12.875,
+  12.5,
+  9.625,
+  17.75,
+  11.125,
+  19.5,
+  12.625,
+  20.875,
+  20.625,
+  14.125,
+  25.875,
+  19.125,
+  19.125,
+  48.125,
+  12.625,
+  47.125,
+  25.375,
+  23.125,
+  29.375,
+  30.75,
+  29.625,
+];
+
+function aplicarFuenteBase(celda) {
+  celda.font = {
+    name: 'Calibri',
+    size: 12,
+    color: {
+      argb: 'FF000000',
+    },
   };
 }
 
-export async function descargarCaminantesMesaExcel(
+function aplicarEncabezadoGrupo(
+  hoja,
+  grupo
+) {
+  hoja.mergeCells(
+    2,
+    grupo.inicio,
+    2,
+    grupo.fin
+  );
+
+  for (
+    let columna = grupo.inicio;
+    columna <= grupo.fin;
+    columna += 1
+  ) {
+    const celda =
+      hoja.getCell(
+        2,
+        columna
+      );
+
+    celda.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: {
+        argb:
+          grupo.colorOscuro,
+      },
+    };
+
+    celda.border =
+      BORDE_CELDA;
+
+    celda.alignment = {
+      horizontal: 'center',
+      vertical: 'middle',
+    };
+
+    celda.font = {
+      name: 'Calibri',
+      size: 12,
+      bold: true,
+      color: {
+        argb: 'FFFFFFFF',
+      },
+    };
+  }
+
+  hoja.getCell(
+    2,
+    grupo.inicio
+  ).value = grupo.titulo;
+}
+
+function aplicarEncabezados(
+  hoja
+) {
+  ENCABEZADOS.forEach(
+    (encabezado, indice) => {
+      const columna =
+        indice + 2;
+
+      const grupo =
+        GRUPOS.find(
+          (item) =>
+            columna >= item.inicio &&
+            columna <= item.fin
+        );
+
+      const celda =
+        hoja.getCell(
+          3,
+          columna
+        );
+
+      celda.value =
+        encabezado;
+
+      celda.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: {
+          argb:
+            grupo.colorClaro,
+        },
+      };
+
+      celda.border =
+        BORDE_CELDA;
+
+      celda.alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
+
+      celda.font = {
+        name: 'Calibri',
+        size: 12,
+        bold:
+          grupo.titulo !==
+          'Logistica',
+        color: {
+          argb: 'FFFFFFFF',
+        },
+      };
+    }
+  );
+}
+
+function aplicarDatos(
+  hoja,
+  caminantes
+) {
+  caminantes.forEach(
+    (caminante, indice) => {
+      const fila =
+        indice + 4;
+
+      const valores =
+        filaCaminante(
+          caminante
+        );
+
+      valores.forEach(
+        (dato, indiceColumna) => {
+          const celda =
+            hoja.getCell(
+              fila,
+              indiceColumna + 2
+            );
+
+          celda.value = dato;
+
+          aplicarFuenteBase(
+            celda
+          );
+
+          celda.border =
+            BORDE_CELDA;
+        }
+      );
+    }
+  );
+}
+
+function aplicarDimensiones(
+  hoja
+) {
+  ANCHOS_COLUMNAS.forEach(
+    (ancho, indice) => {
+      hoja.getColumn(
+        indice + 1
+      ).width = ancho;
+    }
+  );
+}
+
+function descargarBuffer(
+  buffer,
+  nombreArchivo
+) {
+  const blob =
+    new Blob(
+      [buffer],
+      {
+        type:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+  const enlace =
+    document.createElement(
+      'a'
+    );
+
+  enlace.href = url;
+  enlace.download =
+    nombreArchivo;
+
+  document.body.appendChild(
+    enlace
+  );
+
+  enlace.click();
+  enlace.remove();
+
+  setTimeout(
+    () =>
+      URL.revokeObjectURL(
+        url
+      ),
+    1000
+  );
+}
+
+async function descargarCaminantesMesaExcel(
   datos
 ) {
   const caminantes =
@@ -205,44 +522,53 @@ export async function descargarCaminantesMesaExcel(
     );
   }
 
-  const XLSX =
-    await cargarXlsx();
-
-  const filas =
-    caminantes.map(
-      filaCaminante
-    );
-
-  const hoja =
-    XLSX.utils.json_to_sheet(
-      filas
-    );
-
-  hoja['!cols'] =
-    Object.keys(
-      filas[0] || {}
-    ).map(function(campo) {
-      return {
-        wch: Math.min(
-          Math.max(
-            16,
-            campo.length + 2
-          ),
-          42
-        )
-      };
-    });
+  const ExcelJS =
+    await cargarExcelJs();
 
   const libro =
-    XLSX.utils.book_new();
+    new ExcelJS.Workbook();
 
-  XLSX.utils.book_append_sheet(
-    libro,
+  libro.creator =
+    'Centro de Control Emaús';
+
+  const hoja =
+    libro.addWorksheet(
+      `Mesa ${datos.numeroMesa}`.slice(
+        0,
+        31
+      ),
+      {
+        views: [
+          {
+            state: 'frozen',
+            xSplit: 3,
+            ySplit: 3,
+            topLeftCell: 'Q4',
+            activeCell: 'Q4',
+          },
+        ],
+      }
+    );
+
+  aplicarDimensiones(
+    hoja
+  );
+
+  GRUPOS.forEach(
+    (grupo) =>
+      aplicarEncabezadoGrupo(
+        hoja,
+        grupo
+      )
+  );
+
+  aplicarEncabezados(
+    hoja
+  );
+
+  aplicarDatos(
     hoja,
-    `Mesa ${datos.numeroMesa}`.slice(
-      0,
-      31
-    )
+    caminantes
   );
 
   const numero =
@@ -253,8 +579,13 @@ export async function descargarCaminantesMesaExcel(
       ''
     );
 
-  XLSX.writeFile(
-    libro,
+  const buffer =
+    await libro.xlsx.writeBuffer();
+
+  descargarBuffer(
+    buffer,
     `Mesa_${numero}_Caminantes.xlsx`
   );
 }
+
+export { descargarCaminantesMesaExcel };

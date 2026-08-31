@@ -190,6 +190,16 @@ function routeRequest(parametros) {
         mensaje: 'Centro logístico consultado correctamente'
       };
 
+    case 'resumenmenu':
+      return {
+        datos:
+          obtenerResumenMenu(
+            parametros.token
+          ),
+        mensaje:
+          'Conteos del menú consultados correctamente'
+      };
+
     case 'dashboard':
       return {
         datos:

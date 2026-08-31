@@ -75,6 +75,7 @@ import FooterSistema from '../components/FooterSistema';
 
 import { obtenerConfiguraciones } from '../api/configuracionesApi';
 import { obtenerMiFotoPerfilServidor } from '../api/fotoPerfilServidorApi';
+import { obtenerResumenMenu } from '../api/menuResumenApi';
 import { useApi } from '../hooks/useApi';
 
 import AvatarServidor from '../components/servidores/AvatarServidor';
@@ -96,18 +97,21 @@ const menuGroups = [
       {
         label: 'Aspirantes',
         path: '/aspirantes',
+        conteoKey: 'aspirantes',
         icon: <AssignmentIndRounded />,
         permiso: 'ASPIRANTES_VER_DETALLE',
       },
       {
         label: 'Caminantes',
         path: '/caminantes',
+        conteoKey: 'caminantes',
         icon: <GroupsRounded />,
         permiso: 'CAMINANTES_VER_DETALLE',
       },
       {
         label: 'Servidores',
         path: '/servidores',
+        conteoKey: 'servidores',
         icon: <PersonRounded />,
         permiso: 'SERVIDORES_VER_DETALLE',
       },
@@ -121,12 +125,14 @@ const menuGroups = [
       {
         label: 'Angelitos',
         path: '/servicio/angelitos',
+        conteoKey: 'angelitos',
         icon: <VolunteerActivismRounded />,
         permiso: 'SERVICIO_ANGELITOS_VER',
       },
       {
         label: 'Serenata',
         path: '/servicio/serenata',
+        conteoKey: 'serenata',
         icon: <MusicNoteRounded />,
         permiso: 'SERVICIO_SERENATA_VER',
       },
@@ -152,12 +158,14 @@ const menuGroups = [
       {
         label: 'Habitaciones',
         path: '/habitaciones',
+        conteoKey: 'habitaciones',
         icon: <HotelRounded />,
         permiso: 'HABITACIONES_VER_DETALLE',
       },
       {
         label: 'Mesas',
         path: '/mesas',
+        conteoKey: 'mesas',
         icon: <TableRestaurantRounded />,
         permiso: 'MESAS_VER_DETALLE',
       },
@@ -170,6 +178,7 @@ const menuGroups = [
       {
         label: 'Documentos',
         path: '/documentos',
+        conteoKey: 'documentos',
         icon: <FolderRounded />,
         permiso: 'DOCUMENTOS_CONSULTAR',
       },
@@ -330,6 +339,7 @@ function MenuLateral({
   cerrarMenuMovil,
   mostrarCerrar = false,
   tienePermiso,
+  conteosMenu = {},
 }) {
   const gruposVisibles =
     useMemo(
@@ -628,13 +638,63 @@ function MenuLateral({
                         </ListItemIcon>
 
                         <ListItemText
-                          primary={item.label}
+                          primary={
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              justifyContent="space-between"
+                              spacing={1}
+                              sx={{ width: '100%' }}
+                            >
+                              <Typography
+                                component="span"
+                                sx={{
+                                  fontSize: 13.75,
+                                  letterSpacing: 0.1,
+                                  fontWeight: seleccionado ? 800 : 500,
+                                }}
+                              >
+                                {item.label}
+                              </Typography>
+
+                              {item.conteoKey &&
+                                Number.isFinite(
+                                  Number(conteosMenu?.[item.conteoKey])
+                                ) && (
+                                  <Box
+                                    component="span"
+                                    sx={{
+                                      minWidth: 27,
+                                      height: 22,
+                                      px: .7,
+                                      borderRadius: 999,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0,
+                                      bgcolor: seleccionado
+                                        ? 'rgba(159,208,195,.24)'
+                                        : 'rgba(255,255,255,.10)',
+                                      border: '1px solid',
+                                      borderColor: seleccionado
+                                        ? 'rgba(159,208,195,.48)'
+                                        : 'rgba(255,255,255,.12)',
+                                      color: seleccionado
+                                        ? '#d9f5ed'
+                                        : 'rgba(255,255,255,.84)',
+                                      fontSize: 11.5,
+                                      fontWeight: 850,
+                                      lineHeight: 1,
+                                      fontVariantNumeric: 'tabular-nums',
+                                    }}
+                                  >
+                                    {Number(conteosMenu[item.conteoKey])}
+                                  </Box>
+                                )}
+                            </Stack>
+                          }
                           primaryTypographyProps={{
-                            fontSize: 13.75,
-                            letterSpacing: 0.1,
-                            fontWeight: seleccionado
-                              ? 800
-                              : 500,
+                            component: 'div',
                           }}
                         />
                       </ListItemButton>
@@ -719,6 +779,9 @@ export default function MainLayout() {
   const [fotoPerfilMenu, setFotoPerfilMenu] =
     useState(fotoPerfilUrl || '');
 
+  const [conteosMenu, setConteosMenu] =
+    useState({});
+
   useEffect(() => {
     let activo = true;
 
@@ -764,6 +827,39 @@ export default function MainLayout() {
       );
     };
   }, [autenticado, token]);
+
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarConteosMenu() {
+      if (!autenticado || !token) {
+        if (activo) {
+          setConteosMenu({});
+        }
+        return;
+      }
+
+      try {
+        const datos = await obtenerResumenMenu(token);
+
+        if (activo) {
+          setConteosMenu(datos || {});
+        }
+      } catch {
+        // Los conteos son informativos; si fallan, el menú
+        // continúa funcionando normalmente sin badges.
+        if (activo) {
+          setConteosMenu({});
+        }
+      }
+    }
+
+    cargarConteosMenu();
+
+    return () => {
+      activo = false;
+    };
+  }, [autenticado, token, location.pathname]);
 
   const configuracionApi = useApi(
     () => obtenerConfiguraciones(),
@@ -854,6 +950,7 @@ export default function MainLayout() {
     tituloRetiro,
     cerrarMenuMovil,
     tienePermiso,
+    conteosMenu,
   };
 
   return (
