@@ -18,17 +18,24 @@
  * El tipo se calcula automáticamente con las personas asignadas.
  */
 
-function obtenerHabitaciones() {
+function obtenerHabitaciones(
+  caminantesFuente,
+  servidoresFuente
+) {
   var habitaciones =
     leerHojaComoObjetos(
       HOJAS.HABITACIONES
     );
 
   var caminantes =
-    obtenerCaminantes({});
+    Array.isArray(caminantesFuente)
+      ? caminantesFuente
+      : obtenerCaminantes({});
 
   var servidores =
-    obtenerServidores({});
+    Array.isArray(servidoresFuente)
+      ? servidoresFuente
+      : obtenerServidores({});
 
   return habitaciones
     .map(function(registro) {

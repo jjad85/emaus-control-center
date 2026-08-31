@@ -14,17 +14,30 @@ function obtenerDashboard() {
   const servidores =
     obtenerServidores({});
 
+  /*
+   * Reutiliza las colecciones ya cargadas.
+   * Antes Mesas, Equipos y Habitaciones volvían a leer Caminantes
+   * y Servidores varias veces durante una sola carga del Dashboard.
+   */
   const mesas =
-    obtenerMesas();
+    obtenerMesas(
+      caminantes,
+      servidores
+    );
 
   const equipos =
-    obtenerEquipos();
+    obtenerEquipos(
+      servidores
+    );
 
   const presentaciones =
     obtenerPresentaciones({});
 
   const habitaciones =
-    obtenerHabitaciones();
+    obtenerHabitaciones(
+      caminantes,
+      servidores
+    );
 
   const indicadoresCaminantes =
     obtenerIndicadoresCaminantes(

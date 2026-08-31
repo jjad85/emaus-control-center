@@ -15,7 +15,10 @@
 /**
  * Obtiene todas las mesas del retiro.
  */
-function obtenerMesas() {
+function obtenerMesas(
+  caminantesFuente,
+  servidoresFuente
+) {
   const configuracion =
     obtenerConfiguraciones();
 
@@ -32,14 +35,20 @@ function obtenerMesas() {
     );
 
   const servidores =
-    obtenerServidores({}).filter(
+    (
+      Array.isArray(servidoresFuente)
+        ? servidoresFuente
+        : obtenerServidores({})
+    ).filter(
       function(servidor) {
         return String(servidor.mesa || '').trim() !== '';
       }
     );
 
   const caminantes =
-    obtenerCaminantes({});
+    Array.isArray(caminantesFuente)
+      ? caminantesFuente
+      : obtenerCaminantes({});
 
   const mesas = [];
 

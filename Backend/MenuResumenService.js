@@ -15,7 +15,8 @@ function obtenerResumenMenu(token) {
         'ASPIRANTES_VER_DETALLE',
         function() {
           var respuesta = atenderAspirantes({
-            token: token
+            token: token,
+            estado: 'Pendiente'
           });
 
           return obtenerCantidadItemsMenu_(respuesta);
@@ -31,7 +32,16 @@ function obtenerResumenMenu(token) {
             token: token
           });
 
-          return obtenerCantidadItemsMenu_(respuesta);
+          var items =
+            respuesta &&
+            respuesta.datos &&
+            Array.isArray(respuesta.datos.items)
+              ? respuesta.datos.items
+              : [];
+
+          return items.filter(function(item) {
+            return convertirBooleano(item.activo);
+          }).length;
         }
       ),
 
@@ -44,7 +54,16 @@ function obtenerResumenMenu(token) {
             token: token
           });
 
-          return obtenerCantidadItemsMenu_(respuesta);
+          var items =
+            respuesta &&
+            respuesta.datos &&
+            Array.isArray(respuesta.datos.items)
+              ? respuesta.datos.items
+              : [];
+
+          return items.filter(function(item) {
+            return convertirBooleano(item.activo);
+          }).length;
         }
       ),
 

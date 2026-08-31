@@ -10,8 +10,13 @@
 /**
  * Obtiene todos los equipos.
  */
-function obtenerEquipos() {
-  const servidores = obtenerServidores({});
+function obtenerEquipos(
+  servidoresFuente
+) {
+  const servidores =
+    Array.isArray(servidoresFuente)
+      ? servidoresFuente
+      : obtenerServidores({});
   const grupos = {};
 
   servidores.forEach(function(servidor) {
