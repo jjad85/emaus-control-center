@@ -1,4 +1,7 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -18,6 +21,8 @@ import {
 } from '@mui/material';
 
 import EditRounded from '@mui/icons-material/EditRounded';
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import TuneRounded from '@mui/icons-material/TuneRounded';
 import SearchRounded from '@mui/icons-material/SearchRounded';
 import SaveRounded from '@mui/icons-material/SaveRounded';
 
@@ -177,6 +182,7 @@ export default function Configuracion() {
               item.valor,
               item.tipo,
               item.descripcion,
+              item.agrupacion,
             ].some(
               (campo) =>
                 normalizar(
@@ -191,6 +197,58 @@ export default function Configuracion() {
         items,
         busqueda,
       ]
+    );
+
+  const grupos =
+    useMemo(
+      () => {
+        const mapa =
+          new Map();
+
+        filtrados.forEach(
+          (item) => {
+            const nombre =
+              String(
+                item.agrupacion ||
+                'Sin agrupar'
+              ).trim() ||
+              'Sin agrupar';
+
+            if (
+              !mapa.has(
+                nombre
+              )
+            ) {
+              mapa.set(
+                nombre,
+                []
+              );
+            }
+
+            mapa
+              .get(nombre)
+              .push(item);
+          }
+        );
+
+        return Array.from(
+          mapa.entries()
+        )
+          .map(
+            ([nombre, elementos]) => ({
+              nombre,
+              elementos,
+            })
+          )
+          .sort(
+            (a, b) =>
+              a.nombre.localeCompare(
+                b.nombre,
+                'es'
+              )
+          );
+      },
+      [filtrados]
     );
 
   if (
@@ -458,131 +516,267 @@ export default function Configuracion() {
         />
 
         <Stack spacing={1.5}>
-          {filtrados.map(
-            (item) => (
-              <Paper
-                key={item.clave}
-                variant="outlined"
+          {grupos.map(
+            (
+              grupo,
+              indiceGrupo
+            ) => (
+              <Accordion
+                key={grupo.nombre}
+                defaultExpanded={
+                  Boolean(
+                    busqueda
+                  ) ||
+                  indiceGrupo === 0
+                }
+                disableGutters
                 sx={{
-                  p: 2,
-                  borderRadius: 3,
+                  border:
+                    '1px solid',
+                  borderColor:
+                    'divider',
+                  borderRadius:
+                    '16px !important',
+                  overflow:
+                    'hidden',
+                  boxShadow:
+                    '0 8px 28px rgba(15,42,37,.06)',
+                  '&:before': {
+                    display:
+                      'none',
+                  },
                 }}
               >
-                <Stack
-                  direction={{
-                    xs: 'column',
-                    md: 'row',
+                <AccordionSummary
+                  expandIcon={
+                    <ExpandMoreRounded />
+                  }
+                  sx={{
+                    px: {
+                      xs: 2,
+                      md: 2.5,
+                    },
+                    minHeight: 68,
+                    bgcolor:
+                      'rgba(23,59,52,.035)',
+                    '& .MuiAccordionSummary-content':
+                      {
+                        my: 1.4,
+                      },
                   }}
-                  justifyContent="space-between"
-                  alignItems={{
-                    xs: 'stretch',
-                    md: 'center',
-                  }}
-                  gap={2}
                 >
-                  <Box
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    gap={1.2}
                     sx={{
+                      width: '100%',
                       minWidth: 0,
-                      flex: 1,
                     }}
                   >
-                    <Stack
-                      direction="row"
-                      gap={1}
-                      flexWrap="wrap"
-                      alignItems="center"
-                    >
-                      <Box>
-                        <Typography
-                          fontWeight={900}
-                          sx={{
-                            overflowWrap:
-                              'anywhere',
-                          }}
-                        >
-                          {item.nombreVisible ||
-                            item.clave}
-                        </Typography>
-
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            overflowWrap:
-                              'anywhere',
-                          }}
-                        >
-                          Clave técnica: {item.clave}
-                        </Typography>
-                      </Box>
-
-                      <Chip
-                        size="small"
-                        label={item.tipo}
-                        variant="outlined"
-                      />
-
-                      <Chip
-                        size="small"
-                        color={
-                          item.activo
-                            ? 'success'
-                            : 'default'
-                        }
-                        label={
-                          item.activo
-                            ? 'Activo'
-                            : 'Inactivo'
-                        }
-                      />
-                    </Stack>
-
-                    {item.descripcion && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        mt={0.75}
-                      >
-                        {item.descripcion}
-                      </Typography>
-                    )}
-
-                    <Typography
-                      variant="body2"
-                      mt={1}
+                    <Box
                       sx={{
-                        whiteSpace:
-                          'pre-wrap',
-                        overflowWrap:
-                          'anywhere',
-                        maxHeight: 100,
-                        overflow: 'hidden',
+                        width: 38,
+                        height: 38,
+                        borderRadius: 2.2,
+                        display: 'grid',
+                        placeItems:
+                          'center',
+                        bgcolor:
+                          'primary.main',
+                        color:
+                          'primary.contrastText',
+                        flexShrink: 0,
                       }}
                     >
-                      {String(
-                        item.valor ?? ''
-                      ) || '—'}
-                    </Typography>
-                  </Box>
+                      <TuneRounded
+                        fontSize="small"
+                      />
+                    </Box>
 
-                  <Button
-                    variant="outlined"
-                    startIcon={
-                      <EditRounded />
-                    }
-                    onClick={() =>
-                      abrirEdicion(
-                        item
+                    <Box
+                      sx={{
+                        minWidth: 0,
+                        flex: 1,
+                      }}
+                    >
+                      <Typography
+                        fontWeight={950}
+                      >
+                        {grupo.nombre}
+                      </Typography>
+
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        {grupo.elementos.length}{' '}
+                        {grupo.elementos.length ===
+                        1
+                          ? 'parámetro'
+                          : 'parámetros'}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </AccordionSummary>
+
+                <AccordionDetails
+                  sx={{
+                    p: {
+                      xs: 1.5,
+                      md: 2,
+                    },
+                    bgcolor:
+                      'background.paper',
+                  }}
+                >
+                  <Stack spacing={1.25}>
+                    {grupo.elementos.map(
+                      (item) => (
+                        <Paper
+                          key={
+                            item.clave
+                          }
+                          variant="outlined"
+                          sx={{
+                            p: 2,
+                            borderRadius:
+                              3,
+                          }}
+                        >
+                          <Stack
+                            direction={{
+                              xs: 'column',
+                              md: 'row',
+                            }}
+                            justifyContent="space-between"
+                            alignItems={{
+                              xs: 'stretch',
+                              md: 'center',
+                            }}
+                            gap={2}
+                          >
+                            <Box
+                              sx={{
+                                minWidth:
+                                  0,
+                                flex: 1,
+                              }}
+                            >
+                              <Stack
+                                direction="row"
+                                gap={1}
+                                flexWrap="wrap"
+                                alignItems="center"
+                              >
+                                <Box>
+                                  <Typography
+                                    fontWeight={
+                                      900
+                                    }
+                                    sx={{
+                                      overflowWrap:
+                                        'anywhere',
+                                    }}
+                                  >
+                                    {item.nombreVisible ||
+                                      item.clave}
+                                  </Typography>
+
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      overflowWrap:
+                                        'anywhere',
+                                    }}
+                                  >
+                                    Clave técnica:{' '}
+                                    {item.clave}
+                                  </Typography>
+                                </Box>
+
+                                <Chip
+                                  size="small"
+                                  label={
+                                    item.tipo
+                                  }
+                                  variant="outlined"
+                                />
+
+                                <Chip
+                                  size="small"
+                                  color={
+                                    item.activo
+                                      ? 'success'
+                                      : 'default'
+                                  }
+                                  label={
+                                    item.activo
+                                      ? 'Activo'
+                                      : 'Inactivo'
+                                  }
+                                />
+                              </Stack>
+
+                              {item.descripcion && (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  mt={0.75}
+                                >
+                                  {
+                                    item.descripcion
+                                  }
+                                </Typography>
+                              )}
+
+                              <Typography
+                                variant="body2"
+                                mt={1}
+                                sx={{
+                                  whiteSpace:
+                                    'pre-wrap',
+                                  overflowWrap:
+                                    'anywhere',
+                                  maxHeight:
+                                    100,
+                                  overflow:
+                                    'hidden',
+                                }}
+                              >
+                                {String(
+                                  item.valor ??
+                                    ''
+                                ) ||
+                                  '—'}
+                              </Typography>
+                            </Box>
+
+                            <Button
+                              variant="outlined"
+                              startIcon={
+                                <EditRounded />
+                              }
+                              onClick={() =>
+                                abrirEdicion(
+                                  item
+                                )
+                              }
+                              sx={{
+                                flexShrink:
+                                  0,
+                              }}
+                            >
+                              Editar
+                            </Button>
+                          </Stack>
+                        </Paper>
                       )
-                    }
-                    sx={{
-                      flexShrink: 0,
-                    }}
-                  >
-                    Editar
-                  </Button>
-                </Stack>
-              </Paper>
+                    )}
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
             )
           )}
 

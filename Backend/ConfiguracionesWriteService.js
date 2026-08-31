@@ -53,6 +53,11 @@ function obtenerConfiguracionesAdministracion(
       'nombrevisible'
     );
 
+  const indiceAgrupacion =
+    encabezados.indexOf(
+      'agrupacion'
+    );
+
   const indiceValor =
     encabezados.indexOf(
       'valor'
@@ -122,6 +127,16 @@ function obtenerConfiguracionesAdministracion(
                 : humanizarClaveConfiguracion_(
                     clave
                   ),
+
+            agrupacion:
+              indiceAgrupacion >= 0
+                ? String(
+                    fila[
+                      indiceAgrupacion
+                    ] || ''
+                  ).trim() ||
+                  'Sin agrupar'
+                : 'Sin agrupar',
 
             valor:
               convertirValorEditableConfiguracion_(
@@ -505,6 +520,15 @@ function obtenerEncabezadosConfiguracionEdicion_(
 
         etiqueta:
           'nombrevisible',
+
+        agrupacion:
+          'agrupacion',
+
+        grupo:
+          'agrupacion',
+
+        categoria:
+          'agrupacion',
 
         valor:
           'valor',

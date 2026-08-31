@@ -1,3 +1,5 @@
+var ULTIMO_CAMBIO_CRUD_AUDITORIA_ = null;
+
 /**
  * ============================================================
  * CRUD SHEETS
@@ -363,11 +365,25 @@ function actualizarRegistroSheet(
 
   invalidarCacheHojaSolicitud_(nombreHoja);
 
-  return leerRegistroPorIdSheet(
-    nombreHoja,
-    id,
-    configuracion
-  );
+  const actualizado =
+    leerRegistroPorIdSheet(
+      nombreHoja,
+      id,
+      configuracion
+    );
+
+  ULTIMO_CAMBIO_CRUD_AUDITORIA_ = {
+    entidad:
+      String(nombreHoja || ''),
+    idRegistro:
+      String(id || ''),
+    datosAntes:
+      actual,
+    datosDespues:
+      actualizado
+  };
+
+  return actualizado;
 }
 
 /**

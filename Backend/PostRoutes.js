@@ -736,6 +736,7 @@ function routePost(contenido) {
           actualizarConfiguracionExistente(
             contenido.token,
             contenido.clave,
+            contenido.nombreVisible,
             contenido.valor,
             contenido.activo
           ),
