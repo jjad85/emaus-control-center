@@ -500,8 +500,17 @@ function actualizarEntregableCaminanteConAprobacion_(
 
 /**
  * Cancela la participación de un caminante sin eliminar su historial.
+ *
+ * Efectos de la cancelación:
+ * - estadoParticipacion = Cancelado
+ * - activo = No
+ * - libera mesa
+ * - libera habitación
+ * - revierte todos los pagos aprobados a Pendiente
+ * - recalcula el dinero recibido / estado de pago
+ * - conserva toda la trazabilidad
  */
-function desactivarCaminante(
+function cancelarCaminante(
   token,
   id,
   motivoCancelacion
@@ -509,89 +518,285 @@ function desactivarCaminante(
   const sesion =
     validarPermiso(
       token,
-      'DESACTIVAR_CAMINANTE'
+      'CAMINANTES_CANCELAR'
     );
 
-  const motivo = String(
-    motivoCancelacion || ''
-  ).trim();
+  const motivo =
+    String(
+      motivoCancelacion ||
+      ''
+    ).trim();
 
-  if (!motivo) {
+  if (
+    motivo.length < 5
+  ) {
     throw crearErrorAplicacion(
       'MOTIVO_CANCELACION_REQUERIDO',
-      'Debe indicar el motivo de la cancelación.'
+      'Debe indicar el motivo de la cancelación con al menos 5 caracteres.'
     );
   }
 
   return ejecutarCrudConBloqueo(
     function() {
-      const actual = leerRegistroPorIdSheet(
-        HOJAS.CAMINANTES,
-        id,
-        opcionesCrudCaminante(
-          sesion.usuario
-        )
-      );
+      const actual =
+        leerRegistroPorIdSheet(
+          HOJAS.CAMINANTES,
+          id,
+          opcionesCrudCaminante(
+            sesion.usuario
+          )
+        );
 
-      if (!convertirBooleano(actual.activo)) {
+      if (
+        !actual
+      ) {
+        throw crearErrorAplicacion(
+          'CAMINANTE_NO_ENCONTRADO',
+          'No se encontró el caminante solicitado.'
+        );
+      }
+
+      if (
+        !convertirBooleano(
+          actual.activo
+        ) ||
+        normalizarTexto(
+          actual.estadoParticipacion
+        ) === 'cancelado'
+      ) {
         throw crearErrorAplicacion(
           'CAMINANTE_YA_CANCELADO',
           'El caminante ya se encuentra cancelado.'
         );
       }
 
-      const momento = new Date();
+      /*
+       * Primero se revierte lo financiero.
+       * Si ocurre un error, no se marca el caminante como cancelado.
+       */
+      const resumenPagos =
+        typeof revertirPagosAprobadosPorCancelacionCaminante_ ===
+          'function'
+          ? revertirPagosAprobadosPorCancelacionCaminante_(
+              id,
+              motivo,
+              sesion
+            )
+          : {
+              cantidadPagos: 0,
+              cantidadAprobadosRevertidos: 0,
+              valorRevertido: 0,
+              pagosRevertidos: []
+            };
 
-      const actualizado = actualizarRegistroSheet(
-        HOJAS.CAMINANTES,
-        id,
-        {
-          activo: 'No',
-          mesa: '',
-          habitacion: '',
-          fechaCancelacion: momento,
-          motivoCancelacion: motivo
-        },
-        opcionesCrudCaminante(
-          sesion.usuario
-        )
-      );
+      const momento =
+        new Date();
 
-      auditarCaminanteCrud(
-        sesion,
-        'DESACTIVAR_CAMINANTE',
-        id,
-        {
-          nombre: actual.nombre || '',
-          mesaAnterior: actual.mesa || '',
-          habitacionAnterior:
-            actual.habitacion || '',
-          fechaCancelacion: momento,
-          motivoCancelacion: motivo
-        }
-      );
+      const actualizado =
+        actualizarRegistroSheet(
+          HOJAS.CAMINANTES,
+          id,
+          {
+            activo:
+              'No',
+
+            estadoParticipacion:
+              'Cancelado',
+
+            mesa:
+              '',
+
+            habitacion:
+              '',
+
+            fechaCancelacion:
+              momento,
+
+            motivoCancelacion:
+              motivo
+          },
+          opcionesCrudCaminante(
+            sesion.usuario
+          )
+        );
+
+      if (
+        typeof registrarAuditoria ===
+        'function'
+      ) {
+        registrarAuditoria({
+          usuario:
+            sesion.usuario ||
+            '',
+          nombre:
+            sesion.nombre ||
+            '',
+          rol:
+            sesion.rol ||
+            sesion.codigoRol ||
+            '',
+          accion:
+            'CANCELAR_CAMINANTE',
+          entidad:
+            'Caminantes',
+          idRegistro:
+            id,
+          resultado:
+            'EXITOSO',
+          detalle:
+            JSON.stringify({
+              nombre:
+                actual.nombre ||
+                '',
+              motivoCancelacion:
+                motivo,
+              mesaLiberada:
+                actual.mesa ||
+                '',
+              habitacionLiberada:
+                actual.habitacion ||
+                '',
+              pagosAprobadosRevertidos:
+                resumenPagos
+                  .cantidadAprobadosRevertidos ||
+                0,
+              valorRevertido:
+                resumenPagos
+                  .valorRevertido ||
+                0,
+              cartaEstado:
+                actual.carta ||
+                'Pendiente',
+              cartaAprobadaLogisticaPor:
+                actual.cartaAprobadaLogisticaPor ||
+                '',
+              fotoEstado:
+                actual.foto ||
+                'Pendiente',
+              fotoAprobadaLogisticaPor:
+                actual.fotoAprobadaLogisticaPor ||
+                '',
+              entregablesConservados:
+                true
+            }),
+          datosAntes:
+            actual,
+          datosDespues:
+            actualizado
+        });
+      } else {
+        auditarCaminanteCrud(
+          sesion,
+          'CANCELAR_CAMINANTE',
+          id,
+          {
+            motivoCancelacion:
+              motivo
+          }
+        );
+      }
 
       crearNotificacionWhatsappPendiente({
         tipo:
-          TIPOS_NOTIFICACION_WHATSAPP.CANCELACION,
+          TIPOS_NOTIFICACION_WHATSAPP
+            .CANCELACION,
         entidad:
           'Caminantes',
         entidadId:
           id,
         nombre:
-          actual.nombre || '',
+          actual.nombre ||
+          '',
         telefono:
-          actual.telefono || '',
+          actual.telefono ||
+          '',
         motivo:
           motivo
       });
 
-      return convertirRegistroCaminanteRespuesta(
-        actualizado
-      );
+      return {
+        caminante:
+          convertirRegistroCaminanteRespuesta(
+            actualizado
+          ),
+
+        cancelacion: {
+          motivo:
+            motivo,
+
+          mesaLiberada:
+            actual.mesa ||
+            '',
+
+          habitacionLiberada:
+            actual.habitacion ||
+            '',
+
+          cantidadPagos:
+            resumenPagos
+              .cantidadPagos ||
+            0,
+
+          pagosAprobadosRevertidos:
+            resumenPagos
+              .cantidadAprobadosRevertidos ||
+            0,
+
+          valorRevertido:
+            resumenPagos
+              .valorRevertido ||
+            0,
+
+          estadoPagoFinal:
+            resumenPagos
+              .estadoPagoFinal ||
+            'Pendiente',
+
+          totalAbonadoFinal:
+            Number(
+              resumenPagos
+                .totalAbonadoFinal ||
+              0
+            ),
+
+          entregables: {
+            carta:
+              actual.carta ||
+              'Pendiente',
+            cartaAprobadaLogisticaPor:
+              actual.cartaAprobadaLogisticaPor ||
+              '',
+            foto:
+              actual.foto ||
+              'Pendiente',
+            fotoAprobadaLogisticaPor:
+              actual.fotoAprobadaLogisticaPor ||
+              '',
+            conservados:
+              true
+          }
+        }
+      };
     }
   );
 }
+
+
+/**
+ * Alias conservado para compatibilidad con versiones anteriores.
+ */
+function desactivarCaminante(
+  token,
+  id,
+  motivoCancelacion
+) {
+  return cancelarCaminante(
+    token,
+    id,
+    motivoCancelacion
+  );
+}
+
 
 /**
  * Configuración del CRUD para Caminantes.
@@ -1415,3 +1620,189 @@ function pruebaExisteFuncion() {
     typeof obtenerOpcionesRegistroCaminante
   );
 }
+
+/**
+ * Actualiza uno de los dos seguimientos telefónicos del caminante.
+ * Los permisos son independientes para permitir control granular.
+ */
+function actualizarSeguimientoTelefonicoCaminante_(
+  token,
+  id,
+  campo,
+  estado,
+  permiso,
+  accionAuditoria
+) {
+  const sesion =
+    validarPermiso(
+      token,
+      permiso
+    );
+
+  const estadoNormalizado =
+    String(
+      estado ||
+      ''
+    ).trim();
+
+  const estadosPermitidos = [
+    'Pendiente',
+    'En Proceso',
+    'Realizado'
+  ];
+
+  if (
+    estadosPermitidos.indexOf(
+      estadoNormalizado
+    ) === -1
+  ) {
+    throw crearErrorAplicacion(
+      'ESTADO_SEGUIMIENTO_INVALIDO',
+      'El estado debe ser Pendiente, En Proceso o Realizado.'
+    );
+  }
+
+  return ejecutarCrudConBloqueo(
+    function() {
+      const actual =
+        leerRegistroPorIdSheet(
+          HOJAS.CAMINANTES,
+          id,
+          opcionesCrudCaminante(
+            sesion.usuario
+          )
+        );
+
+      if (!actual) {
+        throw crearErrorAplicacion(
+          'CAMINANTE_NO_ENCONTRADO',
+          'No se encontró el caminante solicitado.'
+        );
+      }
+
+      if (
+        !convertirBooleano(
+          actual.activo
+        )
+      ) {
+        throw crearErrorAplicacion(
+          'CAMINANTE_INACTIVO',
+          'No se puede actualizar el seguimiento de un caminante cancelado.'
+        );
+      }
+
+      const cambios = {};
+      cambios[campo] =
+        estadoNormalizado;
+
+      const actualizado =
+        actualizarRegistroSheet(
+          HOJAS.CAMINANTES,
+          id,
+          cambios,
+          opcionesCrudCaminante(
+            sesion.usuario
+          )
+        );
+
+      if (
+        typeof registrarAuditoria ===
+        'function'
+      ) {
+        registrarAuditoria({
+          usuario:
+            sesion.usuario ||
+            '',
+          nombre:
+            sesion.nombre ||
+            '',
+          rol:
+            sesion.rol ||
+            sesion.codigoRol ||
+            '',
+          accion:
+            accionAuditoria,
+          entidad:
+            'Caminantes',
+          idRegistro:
+            id,
+          resultado:
+            'EXITOSO',
+          detalle:
+            JSON.stringify({
+              nombre:
+                actual.nombre ||
+                '',
+              campo:
+                campo,
+              estadoAnterior:
+                actual[campo] ||
+                'Pendiente',
+              estadoNuevo:
+                estadoNormalizado
+            }),
+          datosAntes:
+            actual,
+          datosDespues:
+            actualizado
+        });
+      } else {
+        auditarCaminanteCrud(
+          sesion,
+          accionAuditoria,
+          id,
+          {
+            campo:
+              campo,
+            estado:
+              estadoNormalizado
+          }
+        );
+      }
+
+      return {
+        caminante:
+          convertirRegistroCaminanteRespuesta(
+            actualizado
+          ),
+        seguimiento: {
+          campo:
+            campo,
+          estado:
+            estadoNormalizado
+        }
+      };
+    }
+  );
+}
+
+function actualizarLlamadaCaminante(
+  token,
+  id,
+  estado
+) {
+  return actualizarSeguimientoTelefonicoCaminante_(
+    token,
+    id,
+    'llamadaCaminante',
+    estado,
+    'CAMINANTES_REPORTAR_LLAMADA_CAMINANTE',
+    'ACTUALIZAR_LLAMADA_CAMINANTE'
+  );
+}
+
+function actualizarLlamadaContactosCaminante(
+  token,
+  id,
+  estado
+) {
+  return actualizarSeguimientoTelefonicoCaminante_(
+    token,
+    id,
+    'llamadaContactos',
+    estado,
+    'CAMINANTES_REPORTAR_LLAMADA_CONTACTOS',
+    'ACTUALIZAR_LLAMADA_CONTACTOS_CAMINANTE'
+  );
+}
+

@@ -203,6 +203,42 @@ function routePost(contenido) {
       };
 
 
+    case 'actualizarllamadacaminante':
+      return {
+        datos:
+          actualizarLlamadaCaminante(
+            contenido.token,
+            contenido.id,
+            contenido.estado
+          ),
+        mensaje:
+          'Llamada al caminante actualizada correctamente'
+      };
+
+    case 'actualizarllamadacontactoscaminante':
+      return {
+        datos:
+          actualizarLlamadaContactosCaminante(
+            contenido.token,
+            contenido.id,
+            contenido.estado
+          ),
+        mensaje:
+          'Llamada a contactos actualizada correctamente'
+      };
+
+    case 'cancelarcaminante':
+      return {
+        datos:
+          cancelarCaminante(
+            contenido.token,
+            contenido.id,
+            contenido.motivoCancelacion
+          ),
+        mensaje:
+          'Caminante cancelado correctamente'
+      };
+
     case 'desactivarcaminante':
       return {
         datos:

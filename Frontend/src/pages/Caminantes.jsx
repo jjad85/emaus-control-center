@@ -18,6 +18,7 @@ import {
   Stack,
   TextField,
   Typography,
+  Paper,
 } from "@mui/material";
 
 import {
@@ -30,6 +31,9 @@ import {
   SearchRounded,
   FilterAltRounded,
   RestartAltRounded,
+  PersonOffRounded,
+  PhoneInTalkRounded,
+  GroupsRounded,
   TableRestaurantRounded,
 } from "@mui/icons-material";
 
@@ -40,7 +44,10 @@ import {
   asignarMesaCaminanteApi,
   actualizarCartaCaminanteApi,
   actualizarFotoCaminanteApi,
+  actualizarLlamadaCaminanteApi,
+  actualizarLlamadaContactosCaminanteApi,
   actualizarPagoCaminanteApi,
+  cancelarCaminanteApi,
   editarCaminanteApi,
   obtenerCaminantes,
   obtenerOpcionesRegistroCaminante,
@@ -68,6 +75,39 @@ const ESTADOS_PAGO = [
 ];
 
 const ESTADOS_ENTREGABLES = ["Pendiente", "Solicitada", "Entregada", "Empaquetada", "Entregada a Logística"];
+const ESTADOS_LLAMADAS = ["Pendiente", "En Proceso", "Realizado"];
+
+
+function estiloEstadoEntregable(estado) {
+  const colores = {
+    "Pendiente": "#d32f2f",
+    "Solicitada": "#b23a48",
+    "Entregada": "#1976d2",
+    "Empaquetada": "#168c91",
+    "Entregada a Logística": "#2e7d32",
+  };
+
+  const color = colores[estado] || "#6b7280";
+
+  return {
+    variant: "outlined",
+    sx: {
+      color,
+      borderColor: color,
+      bgcolor: "transparent",
+      fontWeight: 700,
+      "& .MuiChip-icon": {
+        color,
+      },
+    },
+  };
+}
+
+function colorEstadoLlamada(estado) {
+  if (estado === "Realizado") return "success";
+  if (estado === "En Proceso") return "info";
+  return "warning";
+}
 
 const CRITERIOS_FILTRO = [
   {
@@ -89,6 +129,14 @@ const CRITERIOS_FILTRO = [
   {
     valor: "foto",
     etiqueta: "Estado de foto",
+  },
+  {
+    valor: "llamadaCaminante",
+    etiqueta: "Llamada al caminante",
+  },
+  {
+    valor: "llamadaContactos",
+    etiqueta: "Llamada a contactos",
   },
   {
     valor: "nombre",
@@ -200,6 +248,10 @@ export default function Caminantes() {
 
   const [mensaje, setMensaje] = useState("");
 
+  const [cancelando, setCancelando] = useState(null);
+  const [motivoCancelacion, setMotivoCancelacion] = useState("");
+  const [errorCancelacion, setErrorCancelacion] = useState("");
+
   const [detalleCaminante, setDetalleCaminante] = useState(null);
 
   const items = api.data?.items || [];
@@ -285,6 +337,20 @@ export default function Caminantes() {
       );
     }
 
+    if (criterioFiltro === "llamadaCaminante") {
+      return ESTADOS_LLAMADAS.map((estado) => ({
+        valor: estado,
+        etiqueta: estado,
+      }));
+    }
+
+    if (criterioFiltro === "llamadaContactos") {
+      return ESTADOS_LLAMADAS.map((estado) => ({
+        valor: estado,
+        etiqueta: estado,
+      }));
+    }
+
     return [];
   }, [items, criterioFiltro]);
 
@@ -300,6 +366,8 @@ export default function Caminantes() {
     habitacion: "Seleccione una habitación",
     carta: "Seleccione un estado",
     foto: "Seleccione un estado",
+    llamadaCaminante: "Seleccione un estado",
+    llamadaContactos: "Seleccione un estado",
     nombre: "Escriba el nombre",
     numeroInscripcion: "Escriba el número de inscripción",
     documento: "Escriba el documento",
@@ -343,6 +411,10 @@ export default function Caminantes() {
           valorItem = item.entregables?.carta;
         } else if (criterioFiltro === "foto") {
           valorItem = item.entregables?.foto;
+        } else if (criterioFiltro === "llamadaCaminante") {
+          valorItem = item.seguimiento?.llamadaCaminante || "Pendiente";
+        } else if (criterioFiltro === "llamadaContactos") {
+          valorItem = item.seguimiento?.llamadaContactos || "Pendiente";
         } else if (criterioFiltro === "nombre") {
           valorItem = item.nombre;
         } else if (criterioFiltro === "numeroInscripcion") {
@@ -523,6 +595,14 @@ export default function Caminantes() {
         await actualizarFotoCaminanteApi(token, selected.id, valor);
       }
 
+      if (actionDialog === "llamadaCaminante") {
+        await actualizarLlamadaCaminanteApi(token, selected.id, valor);
+      }
+
+      if (actionDialog === "llamadaContactos") {
+        await actualizarLlamadaContactosCaminanteApi(token, selected.id, valor);
+      }
+
       setActionDialog(null);
       setMensaje(
         valor === "Entregada a Logística"
@@ -531,6 +611,99 @@ export default function Caminantes() {
       );
 
       await api.reload();
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  function actualizarDetalleDesdeLista(id, datos) {
+    const actualizado = datos?.items?.find((item) => item.id === id);
+    if (actualizado) {
+      setDetalleCaminante(actualizado);
+    }
+  }
+
+  function abrirCancelacion(caminante) {
+    setCancelando(caminante);
+    setMotivoCancelacion("");
+    setErrorCancelacion("");
+  }
+
+  function cerrarCancelacion() {
+    if (guardando) return;
+
+    setCancelando(null);
+    setMotivoCancelacion("");
+    setErrorCancelacion("");
+  }
+
+  async function confirmarCancelacion() {
+    if (!cancelando) return;
+
+    const motivo =
+      String(
+        motivoCancelacion ||
+        ""
+      ).trim();
+
+    if (motivo.length < 5) {
+      setErrorCancelacion(
+        "Escribe el motivo de la cancelación con al menos 5 caracteres.",
+      );
+      return;
+    }
+
+    setGuardando(true);
+    setErrorCancelacion("");
+
+    try {
+      const resultado =
+        await cancelarCaminanteApi(
+          token,
+          cancelando.id,
+          motivo,
+        );
+
+      const pagosRevertidos =
+        Number(
+          resultado?.cancelacion
+            ?.pagosAprobadosRevertidos ||
+            0,
+        );
+
+      const valorRevertido =
+        Number(
+          resultado?.cancelacion
+            ?.valorRevertido ||
+            0,
+        );
+
+      const detallePagos =
+        pagosRevertidos > 0
+          ? ` Se revirtieron ${pagosRevertidos} pago(s) aprobado(s) por ${new Intl.NumberFormat(
+              "es-CO",
+              {
+                style: "currency",
+                currency: "COP",
+                maximumFractionDigits: 0,
+              },
+            ).format(valorRevertido)}.`
+          : "";
+
+      setMensaje(
+        `Caminante cancelado correctamente.${detallePagos}`,
+      );
+
+      setCancelando(null);
+      setMotivoCancelacion("");
+      setDetalleCaminante(null);
+
+      await api.reload();
+    } catch (err) {
+      setErrorCancelacion(
+        err?.message ||
+          "No fue posible cancelar el caminante.",
+      );
     } finally {
       setGuardando(false);
     }
@@ -860,6 +1033,10 @@ export default function Caminantes() {
                         label={`Carta: ${
                           caminante.entregables?.carta || "Pendiente"
                         }`}
+                        variant="outlined"
+                        sx={estiloEstadoEntregable(
+                          caminante.entregables?.carta || "Pendiente",
+                        ).sx}
                       />
 
                       <Chip
@@ -868,6 +1045,34 @@ export default function Caminantes() {
                         label={`Foto: ${
                           caminante.entregables?.foto || "Pendiente"
                         }`}
+                        variant="outlined"
+                        sx={estiloEstadoEntregable(
+                          caminante.entregables?.foto || "Pendiente",
+                        ).sx}
+                      />
+
+                      <Chip
+                        size="small"
+                        icon={<PhoneInTalkRounded />}
+                        label={`Llamada caminante: ${
+                          caminante.seguimiento?.llamadaCaminante || "Pendiente"
+                        }`}
+                        color={colorEstadoLlamada(
+                          caminante.seguimiento?.llamadaCaminante || "Pendiente",
+                        )}
+                        variant="outlined"
+                      />
+
+                      <Chip
+                        size="small"
+                        icon={<GroupsRounded />}
+                        label={`Llamada contactos: ${
+                          caminante.seguimiento?.llamadaContactos || "Pendiente"
+                        }`}
+                        color={colorEstadoLlamada(
+                          caminante.seguimiento?.llamadaContactos || "Pendiente",
+                        )}
+                        variant="outlined"
                       />
                     </Stack>
 
@@ -902,6 +1107,22 @@ export default function Caminantes() {
                       onClick={() => abrirEdicion(caminante)}
                     >
                       Editar
+                    </Button>
+                  )}
+
+                  {puede("CAMINANTES_CANCELAR") && (
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="contained"
+                      startIcon={<PersonOffRounded />}
+                      onClick={() => abrirCancelacion(caminante)}
+                      sx={{
+                        fontWeight: 900,
+                        boxShadow: 2,
+                      }}
+                    >
+                      Cancelar
                     </Button>
                   )}
 
@@ -942,6 +1163,26 @@ export default function Caminantes() {
                       onClick={() => abrirAccion("foto", caminante)}
                     >
                       Foto
+                    </Button>
+                  )}
+
+                  {puede("CAMINANTES_REPORTAR_LLAMADA_CAMINANTE") && (
+                    <Button
+                      size="small"
+                      startIcon={<PhoneInTalkRounded />}
+                      onClick={() => abrirAccion("llamadaCaminante", caminante)}
+                    >
+                      Llamada caminante
+                    </Button>
+                  )}
+
+                  {puede("CAMINANTES_REPORTAR_LLAMADA_CONTACTOS") && (
+                    <Button
+                      size="small"
+                      startIcon={<GroupsRounded />}
+                      onClick={() => abrirAccion("llamadaContactos", caminante)}
+                    >
+                      Llamada contactos
                     </Button>
                   )}
                 </CardActions>
@@ -1177,10 +1418,34 @@ export default function Caminantes() {
                     <Chip
                       icon={<MailRounded />}
                       label={`Carta: ${detalleCaminante?.entregables?.carta || "Pendiente"}`}
+                      variant="outlined"
+                        sx={estiloEstadoEntregable(
+                        detalleCaminante?.entregables?.carta || "Pendiente",
+                      ).sx}
                     />
                     <Chip
                       icon={<PhotoRounded />}
                       label={`Foto: ${detalleCaminante?.entregables?.foto || "Pendiente"}`}
+                      variant="outlined"
+                        sx={estiloEstadoEntregable(
+                        detalleCaminante?.entregables?.foto || "Pendiente",
+                      ).sx}
+                    />
+                    <Chip
+                      icon={<PhoneInTalkRounded />}
+                      label={`Llamada al caminante: ${detalleCaminante?.seguimiento?.llamadaCaminante || "Pendiente"}`}
+                      color={colorEstadoLlamada(
+                        detalleCaminante?.seguimiento?.llamadaCaminante || "Pendiente",
+                      )}
+                      variant="outlined"
+                    />
+                    <Chip
+                      icon={<GroupsRounded />}
+                      label={`Llamada a contactos: ${detalleCaminante?.seguimiento?.llamadaContactos || "Pendiente"}`}
+                      color={colorEstadoLlamada(
+                        detalleCaminante?.seguimiento?.llamadaContactos || "Pendiente",
+                      )}
+                      variant="outlined"
                     />
                   </Stack>
 
@@ -1355,6 +1620,149 @@ export default function Caminantes() {
       />
 
       <Dialog
+        open={Boolean(cancelando)}
+        onClose={cerrarCancelacion}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Cancelar participación
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Alert severity="error">
+              <Typography fontWeight={900} sx={{ mb: .5 }}>
+                ¿Cancelar la participación de este caminante?
+              </Typography>
+
+              <Typography variant="body2">
+                Antes de continuar verifica el motivo. La cancelación conserva
+                el historial, pero libera los cupos y revierte el dinero aprobado.
+              </Typography>
+            </Alert>
+
+            <Box>
+              <Typography fontWeight={900}>
+                {cancelando?.nombre}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {cancelando?.numeroInscripcion
+                  ? `Inscripción ${cancelando.numeroInscripcion}`
+                  : "Caminante seleccionado"}
+              </Typography>
+            </Box>
+
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, borderRadius: 2.5 }}
+            >
+              <Typography fontWeight={850} sx={{ mb: 1 }}>
+                Al confirmar:
+              </Typography>
+
+              <Stack spacing={.8}>
+                <Typography variant="body2">
+                  ✓ Estado de participación → <strong>Cancelado</strong>
+                </Typography>
+
+                <Typography variant="body2">
+                  ✓ Mesa actual →{" "}
+                  <strong>
+                    {cancelando?.mesa
+                      ? `Mesa ${cancelando.mesa} quedará disponible`
+                      : "No tiene mesa asignada"}
+                  </strong>
+                </Typography>
+
+                <Typography variant="body2">
+                  ✓ Habitación actual →{" "}
+                  <strong>
+                    {cancelando?.habitacion
+                      ? `Habitación ${cancelando.habitacion} quedará disponible`
+                      : "No tiene habitación asignada"}
+                  </strong>
+                </Typography>
+
+                <Typography variant="body2">
+                  ✓ Los pagos aprobados, si existen, se revertirán y dejarán de
+                  sumar como dinero recibido.
+                </Typography>
+
+                <Typography variant="body2">
+                  ✓ Se conservarán los pagos y su historial para auditoría.
+                </Typography>
+
+                <Typography variant="body2">
+                  ✓ Las cartas y fotografías reportadas <strong>no se eliminan ni se retroceden</strong>;
+                  conservan su estado y aprobaciones como historial del caminante.
+                </Typography>
+
+                <Typography variant="body2">
+                  ✓ Al quedar cancelado, el caminante deja de contar en las bandejas e indicadores
+                  logísticos activos.
+                </Typography>
+              </Stack>
+            </Paper>
+
+            {errorCancelacion && (
+              <Alert severity="error">
+                {errorCancelacion}
+              </Alert>
+            )}
+
+            <TextField
+              label="Motivo de cancelación"
+              value={motivoCancelacion}
+              onChange={(event) =>
+                setMotivoCancelacion(event.target.value)
+              }
+              multiline
+              minRows={3}
+              required
+              autoFocus
+              placeholder="Ej.: No podrá asistir por un compromiso personal..."
+              helperText={`${motivoCancelacion.trim().length} caracteres · mínimo 5`}
+              error={
+                Boolean(errorCancelacion) &&
+                motivoCancelacion.trim().length < 5
+              }
+              fullWidth
+            />
+
+            <Alert severity="warning">
+              La cancelación de la participación queda registrada en auditoría con el usuario,
+              el motivo, la mesa/habitación liberadas y los pagos revertidos.
+            </Alert>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={cerrarCancelacion}
+            disabled={guardando}
+          >
+            Volver
+          </Button>
+
+          <Button
+            color="error"
+            variant="contained"
+            startIcon={<PersonOffRounded />}
+            onClick={confirmarCancelacion}
+            disabled={
+              guardando ||
+              motivoCancelacion.trim().length < 5
+            }
+          >
+            {guardando
+              ? "Cancelando..."
+              : "Confirmar cancelación"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
         open={
           actionDialog === "mesaExistente" ||
           actionDialog === "habitacionExistente"
@@ -1431,7 +1839,11 @@ export default function Caminantes() {
                 ? "Asignar habitación"
                 : actionDialog === "carta"
                   ? "Actualizar carta"
-                  : "Actualizar foto"
+                  : actionDialog === "foto"
+                    ? "Actualizar foto"
+                    : actionDialog === "llamadaCaminante"
+                      ? "Llamada al caminante"
+                      : "Llamada a contactos"
         }
         descripcion={selected ? selected.nombre : ""}
         label={
@@ -1443,7 +1855,9 @@ export default function Caminantes() {
                 ? "Habitación"
                 : actionDialog === "carta"
                   ? "Estado de la carta"
-                  : "Estado de la foto"
+                  : actionDialog === "foto"
+                    ? "Estado de la foto"
+                    : "Estado de la llamada"
         }
         valorInicial={
           actionDialog === "pago"
@@ -1454,7 +1868,11 @@ export default function Caminantes() {
                 ? selected?.habitacion
                 : actionDialog === "carta"
                   ? selected?.entregables?.carta
-                  : selected?.entregables?.foto
+                  : actionDialog === "foto"
+                    ? selected?.entregables?.foto
+                    : actionDialog === "llamadaCaminante"
+                      ? selected?.seguimiento?.llamadaCaminante
+                      : selected?.seguimiento?.llamadaContactos
         }
         opciones={
           actionDialog === "pago"
@@ -1463,10 +1881,12 @@ export default function Caminantes() {
               ? mesasOpciones
               : actionDialog === "habitacion"
                 ? habitacionesOpciones
-                : ESTADOS_ENTREGABLES.filter((estado) =>
-                    estado !== "Entregada a Logística" ||
-                    puede("CAMINANTES_APROBAR_ENTREGA_LOGISTICA"),
-                  )
+                : actionDialog === "carta" || actionDialog === "foto"
+                  ? ESTADOS_ENTREGABLES.filter((estado) =>
+                      estado !== "Entregada a Logística" ||
+                      puede("CAMINANTES_APROBAR_ENTREGA_LOGISTICA"),
+                    )
+                  : ESTADOS_LLAMADAS
         }
       />
 

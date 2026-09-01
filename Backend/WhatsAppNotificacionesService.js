@@ -582,7 +582,8 @@ function puedeGestionarTipoWhatsapp_(permisos, tipo) {
   if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.CANCELACION || tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.PAGO_RECHAZADO) {
     return (
       permisos.includes('NOTIFICAR_CAMINANTE') ||
-      permisos.includes('DESACTIVAR_CAMINANTE')
+      permisos.includes('DESACTIVAR_CAMINANTE') ||
+      permisos.includes('CAMINANTES_CANCELAR')
     );
   }
 

@@ -239,6 +239,49 @@ function MesaVisual({ mesa, onOpen, onAssign }) {
   );
 }
 
+
+function estiloEstadoEntregableMesa(estado) {
+  const colores = {
+    "Pendiente": "#d32f2f",
+    "Solicitada": "#b23a48",
+    "Entregada": "#1976d2",
+    "Empaquetada": "#168c91",
+    "Entregada a Logística": "#2e7d32",
+  };
+
+  const color = colores[estado] || "#6b7280";
+
+  return {
+    color,
+    borderColor: color,
+    bgcolor: "transparent",
+    fontWeight: 700,
+    "& .MuiChip-icon": {
+      color,
+    },
+  };
+}
+
+function estiloEstadoLlamadaMesa(estado) {
+  const colores = {
+    "Pendiente": "#ed6c02",
+    "En Proceso": "#0288d1",
+    "Realizado": "#2e7d32",
+  };
+
+  const color = colores[estado] || "#6b7280";
+
+  return {
+    color,
+    borderColor: color,
+    bgcolor: "transparent",
+    fontWeight: 700,
+    "& .MuiChip-icon": {
+      color,
+    },
+  };
+}
+
 export default function Mesas() {
   const [desasignar, setDesasignar] = useState(null);
   const [desasignando, setDesasignando] = useState(false);
@@ -487,67 +530,103 @@ export default function Mesas() {
                       Toca el caminante para ver la inscripción completa
                     </Typography>
 
-                    <Box
-                      sx={{
-                        mt: .8,
-                        mb: 1.2,
-                        p: 1.1,
-                        borderRadius: 2.5,
-                        bgcolor: 'rgba(17,48,41,.025)',
-                        border: '1px solid',
-                        borderColor: 'rgba(20,75,62,.08)',
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        fontWeight={900}
+                    <Stack spacing={1} sx={{ mt: .8, mb: 1.2 }}>
+                      <Box
                         sx={{
-                          display: 'block',
-                          mb: .8,
-                          letterSpacing: '.04em',
+                          p: 1.1,
+                          borderRadius: 2.5,
+                          bgcolor: 'rgba(17,48,41,.025)',
+                          border: '1px solid',
+                          borderColor: 'rgba(20,75,62,.08)',
                         }}
                       >
-                        ENTREGABLES
-                      </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          fontWeight={900}
+                          sx={{
+                            display: 'block',
+                            mb: .8,
+                            letterSpacing: '.04em',
+                          }}
+                        >
+                          ENTREGABLES
+                        </Typography>
 
-                      <Stack
-                        direction="row"
-                        spacing={1.3}
-                        flexWrap="wrap"
-                        useFlexGap
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          flexWrap="wrap"
+                          useFlexGap
+                        >
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`Carta: ${caminante.entregables?.carta || 'Pendiente'}`}
+                            sx={estiloEstadoEntregableMesa(
+                              caminante.entregables?.carta || 'Pendiente'
+                            )}
+                          />
+
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`Foto: ${caminante.entregables?.foto || 'Pendiente'}`}
+                            sx={estiloEstadoEntregableMesa(
+                              caminante.entregables?.foto || 'Pendiente'
+                            )}
+                          />
+                        </Stack>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          p: 1.1,
+                          borderRadius: 2.5,
+                          bgcolor: 'rgba(17,48,41,.025)',
+                          border: '1px solid',
+                          borderColor: 'rgba(20,75,62,.08)',
+                        }}
                       >
-                        <Stack
-                          direction="row"
-                          spacing={.6}
-                          alignItems="center"
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          fontWeight={900}
+                          sx={{
+                            display: 'block',
+                            mb: .8,
+                            letterSpacing: '.04em',
+                          }}
                         >
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            fontWeight={800}
-                          >
-                            Carta:
-                          </Typography>
-                          <StatusChip value={caminante.entregables?.carta} />
-                        </Stack>
+                          LLAMADAS
+                        </Typography>
 
                         <Stack
                           direction="row"
-                          spacing={.6}
-                          alignItems="center"
+                          spacing={1}
+                          flexWrap="wrap"
+                          useFlexGap
                         >
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            fontWeight={800}
-                          >
-                            Foto:
-                          </Typography>
-                          <StatusChip value={caminante.entregables?.foto} />
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`Caminante: ${caminante.seguimiento?.llamadaCaminante || 'Pendiente'}`}
+                            sx={estiloEstadoLlamadaMesa(
+                              caminante.seguimiento?.llamadaCaminante || 'Pendiente'
+                            )}
+                          />
+
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`Contactos: ${caminante.seguimiento?.llamadaContactos || 'Pendiente'}`}
+                            sx={estiloEstadoLlamadaMesa(
+                              caminante.seguimiento?.llamadaContactos || 'Pendiente'
+                            )}
+                          />
                         </Stack>
-                      </Stack>
-                    </Box>
+                      </Box>
+                    </Stack>
 
                     <ProtectedButton
                       permiso="MESAS_DESASIGNAR_CAMINANTE"
@@ -618,6 +697,8 @@ export default function Mesas() {
         open={Boolean(detalleCaminante)}
         caminante={detalleCaminante}
         token={token}
+        tienePermiso={tienePermiso}
+        onUpdated={api.reload}
         onClose={() => setDetalleCaminante(null)}
       />
 

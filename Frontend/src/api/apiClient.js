@@ -6,6 +6,7 @@ if (!baseURL) console.warn('Falta configurar VITE_APPS_SCRIPT_URL');
 
 const EVENTO_CARGA_INICIO = 'emaus:api-loading-start';
 const EVENTO_CARGA_FIN = 'emaus:api-loading-end';
+const EVENTO_DATOS_CAMBIARON = 'emaus:data-changed';
 const CODIGOS_SESION_INVALIDA = new Set([
   'SESION_EXPIRADA', 'SESION_REQUERIDA', 'SESION_INVALIDA',
   'SESION_REVOCADA', 'TOKEN_EXPIRADO', 'TOKEN_INVALIDO',
@@ -13,6 +14,66 @@ const CODIGOS_SESION_INVALIDA = new Set([
 
 function emitirCarga(nombreEvento) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(nombreEvento));
+}
+
+const PREFIJOS_ACCIONES_MUTACION = [
+  'actualizar',
+  'aprobar',
+  'asignar',
+  'cambiar',
+  'cancelar',
+  'cerrar',
+  'comentar',
+  'confirmar',
+  'convertir',
+  'crear',
+  'desactivar',
+  'desasignar',
+  'desbloquear',
+  'editar',
+  'eliminar',
+  'enviar',
+  'finalizar',
+  'guardar',
+  'importar',
+  'iniciar',
+  'liberar',
+  'marcar',
+  'omitir',
+  'pausar',
+  'reanudar',
+  'registrar',
+  'reordenar',
+  'reportar',
+  'resolver',
+  'responder',
+  'restablecer',
+  'restaurar',
+  'retirar',
+  'revertir',
+  'revisar',
+  'subir',
+  'validar',
+];
+
+function esAccionMutacion(accion) {
+  const nombre = String(accion || '').trim().toLowerCase();
+  return PREFIJOS_ACCIONES_MUTACION.some((prefijo) =>
+    nombre.startsWith(prefijo)
+  );
+}
+
+function emitirDatosCambiaron(accion) {
+  if (typeof window === 'undefined') return;
+
+  window.dispatchEvent(
+    new CustomEvent(EVENTO_DATOS_CAMBIARON, {
+      detail: {
+        accion: String(accion || ''),
+        fecha: Date.now(),
+      },
+    })
+  );
 }
 
 function obtenerErrorApi(payload) {
@@ -151,7 +212,18 @@ export async function postAction(
       body: JSON.stringify({ accion, ...payload }),
     }, options.timeout ?? 30000);
     const resultado = await leerRespuesta(response);
+
+    // Toda escritura invalida primero la caché. Después notifica a los
+    // useApi montados para que refresquen silenciosamente su información.
     invalidarCacheApi();
+
+    if (
+      options.refrescarDatos !== false &&
+      esAccionMutacion(accion)
+    ) {
+      emitirDatosCambiaron(accion);
+    }
+
     return resultado;
   } finally {
     if (mostrarCarga) {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -13,18 +14,75 @@ import {
   Grid,
   Stack,
   Typography,
-} from '@mui/material';
+  MenuItem,
+  TextField,
+  CircularProgress,} from '@mui/material';
 
 import {
   BedRounded,
   MailRounded,
   PaymentsRounded,
   PhotoRounded,
+  PhoneInTalkRounded,
+  GroupsRounded,
   TableRestaurantRounded,
 } from '@mui/icons-material';
 
+import {
+  actualizarCartaCaminanteApi,
+  actualizarFotoCaminanteApi,
+  actualizarLlamadaCaminanteApi,
+  actualizarLlamadaContactosCaminanteApi,
+} from '../../api/caminantesApi';
+
 import StatusChip from '../StatusChip';
 import EstadoCuentaPersona from '../pagos/EstadoCuentaPersona';
+
+const ESTADOS_ENTREGABLES_MESA = [
+  'Pendiente',
+  'Solicitada',
+  'Entregada',
+  'Empaquetada',
+  'Entregada a Logística',
+];
+
+const ESTADOS_LLAMADAS_MESA = [
+  'Pendiente',
+  'En Proceso',
+  'Realizado',
+];
+
+
+function estiloEstadoEntregable(estado) {
+  const colores = {
+    "Pendiente": "#d32f2f",
+    "Solicitada": "#b23a48",
+    "Entregada": "#1976d2",
+    "Empaquetada": "#168c91",
+    "Entregada a Logística": "#2e7d32",
+  };
+
+  const color = colores[estado] || "#6b7280";
+
+  return {
+    variant: "outlined",
+    sx: {
+      color,
+      borderColor: color,
+      bgcolor: "transparent",
+      fontWeight: 700,
+      "& .MuiChip-icon": {
+        color,
+      },
+    },
+  };
+}
+
+function colorEstadoLlamadaMesa(estado) {
+  if (estado === 'Realizado') return 'success';
+  if (estado === 'En Proceso') return 'info';
+  return 'warning';
+}
 
 function tieneValor(valor) {
   return !(
@@ -109,7 +167,82 @@ export default function CaminanteDetalleDialog({
   caminante,
   token,
   onClose,
+  tienePermiso,
+  onUpdated,
 }) {
+  const [caminanteLocal, setCaminanteLocal] = useState(caminante);
+  const [guardandoSeguimiento, setGuardandoSeguimiento] = useState('');
+  const [errorSeguimiento, setErrorSeguimiento] = useState('');
+
+  useEffect(() => {
+    setCaminanteLocal(caminante);
+  }, [caminante]);
+
+  const actual = caminanteLocal || caminante;
+
+  function puede(permiso) {
+    return typeof tienePermiso === 'function' && tienePermiso(permiso);
+  }
+
+  async function actualizarSeguimiento(tipo, estado) {
+    if (!actual?.id) return;
+
+    setGuardandoSeguimiento(tipo);
+    setErrorSeguimiento('');
+
+    try {
+      let resultado;
+
+      if (tipo === 'carta') {
+        resultado = await actualizarCartaCaminanteApi(token, actual.id, estado);
+      } else if (tipo === 'foto') {
+        resultado = await actualizarFotoCaminanteApi(token, actual.id, estado);
+      } else if (tipo === 'llamadaCaminante') {
+        resultado = await actualizarLlamadaCaminanteApi(token, actual.id, estado);
+      } else if (tipo === 'llamadaContactos') {
+        resultado = await actualizarLlamadaContactosCaminanteApi(token, actual.id, estado);
+      }
+
+      const caminanteActualizado = resultado?.caminante || resultado;
+
+      if (caminanteActualizado?.id) {
+        setCaminanteLocal(caminanteActualizado);
+      } else {
+        setCaminanteLocal((previo) => {
+          const base = previo || actual || {};
+          if (tipo === 'carta' || tipo === 'foto') {
+            return {
+              ...base,
+              entregables: {
+                ...(base.entregables || {}),
+                [tipo]: estado,
+              },
+            };
+          }
+
+          return {
+            ...base,
+            seguimiento: {
+              ...(base.seguimiento || {}),
+              [tipo]: estado,
+            },
+          };
+        });
+      }
+
+      if (typeof onUpdated === 'function') {
+        await onUpdated();
+      }
+    } catch (error) {
+      setErrorSeguimiento(
+        error?.message ||
+        'No fue posible actualizar el seguimiento.'
+      );
+    } finally {
+      setGuardandoSeguimiento('');
+    }
+  }
+
   return (
     <Dialog
       open={Boolean(open && caminante)}
@@ -127,7 +260,7 @@ export default function CaminanteDetalleDialog({
         >
           <Box>
             <Typography variant="h5" fontWeight={900}>
-              {caminante?.nombre || 'Detalle del caminante'}
+              {actual?.nombre || 'Detalle del caminante'}
             </Typography>
 
             <Typography variant="body2" color="text.secondary">
@@ -136,14 +269,14 @@ export default function CaminanteDetalleDialog({
           </Box>
 
           <Stack direction="row" gap={1} flexWrap="wrap">
-            <StatusChip value={caminante?.estadoPago || 'Pendiente'} />
+            <StatusChip value={actual?.estadoPago || 'Pendiente'} />
 
             <Chip
               size="small"
               icon={<TableRestaurantRounded />}
               label={
-                caminante?.mesa
-                  ? `Mesa ${caminante.mesa}`
+                actual?.mesa
+                  ? `Mesa ${actual.mesa}`
                   : 'Sin mesa'
               }
               variant="outlined"
@@ -153,8 +286,8 @@ export default function CaminanteDetalleDialog({
               size="small"
               icon={<BedRounded />}
               label={
-                caminante?.habitacion
-                  ? `Hab. ${caminante.habitacion}`
+                actual?.habitacion
+                  ? `Hab. ${actual.habitacion}`
                   : 'Sin habitación'
               }
               variant="outlined"
@@ -189,64 +322,199 @@ export default function CaminanteDetalleDialog({
               <EstadoCuentaPersona
                 token={token}
                 tipoPersona="Caminante"
-                personaId={caminante?.id}
+                personaId={actual?.id}
               />
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined">
+            <CardContent>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={850}>
+                    Seguimiento y comunicaciones
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Puedes reportar los avances directamente desde la mesa sin salir de este caminante.
+                  </Typography>
+                </Box>
+
+                {errorSeguimiento && (
+                  <Alert severity="error">
+                    {errorSeguimiento}
+                  </Alert>
+                )}
+
+                <Grid container spacing={2}>
+                  {[
+                    {
+                      tipo: 'carta',
+                      titulo: 'Carta',
+                      valor: actual?.entregables?.carta || 'Pendiente',
+                      permiso: 'CAMINANTES_REPORTAR_CARTA',
+                      opciones: ESTADOS_ENTREGABLES_MESA.filter(
+                        (estado) =>
+                          estado !== 'Entregada a Logística' ||
+                          puede('CAMINANTES_APROBAR_ENTREGA_LOGISTICA')
+                      ),
+                      icono: <MailRounded fontSize="small" />,
+                    },
+                    {
+                      tipo: 'foto',
+                      titulo: 'Foto',
+                      valor: actual?.entregables?.foto || 'Pendiente',
+                      permiso: 'CAMINANTES_REPORTAR_FOTO',
+                      opciones: ESTADOS_ENTREGABLES_MESA.filter(
+                        (estado) =>
+                          estado !== 'Entregada a Logística' ||
+                          puede('CAMINANTES_APROBAR_ENTREGA_LOGISTICA')
+                      ),
+                      icono: <PhotoRounded fontSize="small" />,
+                    },
+                    {
+                      tipo: 'llamadaCaminante',
+                      titulo: 'Llamada al caminante',
+                      valor: actual?.seguimiento?.llamadaCaminante || 'Pendiente',
+                      permiso: 'CAMINANTES_REPORTAR_LLAMADA_CAMINANTE',
+                      opciones: ESTADOS_LLAMADAS_MESA,
+                      icono: <PhoneInTalkRounded fontSize="small" />,
+                    },
+                    {
+                      tipo: 'llamadaContactos',
+                      titulo: 'Llamada a contactos',
+                      valor: actual?.seguimiento?.llamadaContactos || 'Pendiente',
+                      permiso: 'CAMINANTES_REPORTAR_LLAMADA_CONTACTOS',
+                      opciones: ESTADOS_LLAMADAS_MESA,
+                      icono: <GroupsRounded fontSize="small" />,
+                    },
+                  ].map((item) => (
+                    <Grid key={item.tipo} size={{ xs: 12, sm: 6 }}>
+                      <Card variant="outlined" sx={{ height: '100%' }}>
+                        <CardContent>
+                          <Stack spacing={1.25}>
+                            <Stack
+                              direction="row"
+                              justifyContent="space-between"
+                              alignItems="center"
+                              gap={1}
+                            >
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                {item.icono}
+                                <Typography fontWeight={800}>
+                                  {item.titulo}
+                                </Typography>
+                              </Stack>
+
+                              {item.tipo.startsWith('llamada') ? (
+                                <Chip
+                                  size="small"
+                                  label={item.valor}
+                                  color={colorEstadoLlamadaMesa(item.valor)}
+                                />
+                              ) : (
+                                <Chip
+                                  size="small"
+                                  label={item.valor}
+                                  variant="outlined"
+                        sx={estiloEstadoEntregable(item.valor).sx}
+                                />
+                              )}
+                            </Stack>
+
+                            {puede(item.permiso) && (
+                              <TextField
+                                select
+                                fullWidth
+                                size="small"
+                                label="Reportar estado"
+                                value={item.valor}
+                                disabled={Boolean(guardandoSeguimiento)}
+                                onChange={(event) =>
+                                  actualizarSeguimiento(
+                                    item.tipo,
+                                    event.target.value
+                                  )
+                                }
+                              >
+                                {item.opciones.map((estado) => (
+                                  <MenuItem key={estado} value={estado}>
+                                    {estado}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            )}
+
+                            {guardandoSeguimiento === item.tipo && (
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <CircularProgress size={16} />
+                                <Typography variant="caption" color="text.secondary">
+                                  Guardando...
+                                </Typography>
+                              </Stack>
+                            )}
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Stack>
             </CardContent>
           </Card>
 
           <SeccionDetalle titulo="Información personal">
             <CampoDetalle
               etiqueta="Número de inscripción"
-              valor={caminante?.numeroInscripcion}
+              valor={actual?.numeroInscripcion}
             />
 
             <CampoDetalle
               etiqueta="Documento de identidad"
               valor={
-                caminante?.documentoIdentidad ||
-                caminante?.documento ||
-                caminante?.numeroDocumento
+                actual?.documentoIdentidad ||
+                actual?.documento ||
+                actual?.numeroDocumento
               }
             />
 
             <CampoDetalle
               etiqueta="Fecha de nacimiento"
-              valor={formatearFechaDetalle(caminante?.fechaNacimiento)}
+              valor={formatearFechaDetalle(actual?.fechaNacimiento)}
             />
 
             <CampoDetalle
               etiqueta="Edad"
-              valor={caminante?.edad}
+              valor={actual?.edad}
             />
 
             <CampoDetalle
               etiqueta="Estado civil"
-              valor={caminante?.estadoCivil}
+              valor={actual?.estadoCivil}
             />
 
             <CampoDetalle
               etiqueta="Profesión u ocupación"
               valor={
-                caminante?.profesionOcupacion ||
-                caminante?.profesion ||
-                caminante?.ocupacion
+                actual?.profesionOcupacion ||
+                actual?.profesion ||
+                actual?.ocupacion
               }
             />
 
             <CampoDetalle
               etiqueta="Talla de camiseta"
               valor={
-                caminante?.tallaCamiseta ||
-                caminante?.tallaCamisa ||
-                caminante?.talla
+                actual?.tallaCamiseta ||
+                actual?.tallaCamisa ||
+                actual?.talla
               }
             />
 
             <CampoDetalle
               etiqueta="Parroquia"
               valor={
-                caminante?.parroquia ||
-                caminante?.iglesia
+                actual?.parroquia ||
+                actual?.iglesia
               }
             />
           </SeccionDetalle>
@@ -255,40 +523,40 @@ export default function CaminanteDetalleDialog({
             <CampoDetalle
               etiqueta="Celular"
               valor={
-                caminante?.telefono ||
-                caminante?.celular
+                actual?.telefono ||
+                actual?.celular
               }
             />
 
             <CampoDetalle
               etiqueta="Teléfono fijo"
-              valor={caminante?.telefonoFijo}
+              valor={actual?.telefonoFijo}
             />
 
             <CampoDetalle
               etiqueta="Correo electrónico"
-              valor={caminante?.correo}
+              valor={actual?.correo}
             />
 
             <CampoDetalle
               etiqueta="Dirección de residencia"
               valor={
-                caminante?.direccionResidencia ||
-                caminante?.direccion
+                actual?.direccionResidencia ||
+                actual?.direccion
               }
               anchoCompleto
             />
 
             <CampoDetalle
               etiqueta="Barrio"
-              valor={caminante?.barrio}
+              valor={actual?.barrio}
             />
 
             <CampoDetalle
               etiqueta="Ciudad o municipio"
               valor={
-                caminante?.ciudad ||
-                caminante?.municipio
+                actual?.ciudad ||
+                actual?.municipio
               }
             />
           </SeccionDetalle>
@@ -309,13 +577,13 @@ export default function CaminanteDetalleDialog({
                   gap={1}
                   flexWrap="wrap"
                 >
-                  <StatusChip value={caminante?.estadoPago || 'Pendiente'} />
+                  <StatusChip value={actual?.estadoPago || 'Pendiente'} />
 
                   <Chip
                     icon={<TableRestaurantRounded />}
                     label={
-                      caminante?.mesa
-                        ? `Mesa ${caminante.mesa}`
+                      actual?.mesa
+                        ? `Mesa ${actual.mesa}`
                         : 'Sin mesa asignada'
                     }
                     variant="outlined"
@@ -324,8 +592,8 @@ export default function CaminanteDetalleDialog({
                   <Chip
                     icon={<BedRounded />}
                     label={
-                      caminante?.habitacion
-                        ? `Habitación ${caminante.habitacion}`
+                      actual?.habitacion
+                        ? `Habitación ${actual.habitacion}`
                         : 'Sin habitación asignada'
                     }
                     variant="outlined"
@@ -337,47 +605,47 @@ export default function CaminanteDetalleDialog({
                 <Grid container spacing={2}>
                   <CampoDetalle
                     etiqueta="Sacramentos recibidos"
-                    valor={caminante?.sacramentosRecibidos}
+                    valor={actual?.sacramentosRecibidos}
                     anchoCompleto
                   />
 
                   <CampoDetalle
                     etiqueta="Cómo se enteró del retiro"
-                    valor={caminante?.comoSeEntero}
+                    valor={actual?.comoSeEntero}
                   />
 
                   <CampoDetalle
                     etiqueta="Persona que lo invitó"
                     valor={
-                      caminante?.nombrePersonaInvito ||
-                      caminante?.personaInvito ||
-                      caminante?.invitadoPor
+                      actual?.nombrePersonaInvito ||
+                      actual?.personaInvito ||
+                      actual?.invitadoPor
                     }
                   />
 
                   <CampoDetalle
                     etiqueta="Celular de quien lo invitó"
-                    valor={caminante?.celularPersonaInvito}
+                    valor={actual?.celularPersonaInvito}
                   />
 
                   <CampoDetalle
                     etiqueta="Asistirá una persona conocida"
-                    valor={caminante?.personaConocidaAsistira}
+                    valor={actual?.personaConocidaAsistira}
                   />
 
                   <CampoDetalle
                     etiqueta="Persona conocida"
-                    valor={caminante?.nombrePersonaConocida}
+                    valor={actual?.nombrePersonaConocida}
                   />
 
                   <CampoDetalle
                     etiqueta="Autoriza tratamiento de datos"
-                    valor={caminante?.autorizaTratamientoDatos}
+                    valor={actual?.autorizaTratamientoDatos}
                   />
 
                   <CampoDetalle
                     etiqueta="Autoriza fotografías"
-                    valor={caminante?.autorizaFotografias}
+                    valor={actual?.autorizaFotografias}
                   />
                 </Grid>
 
@@ -386,35 +654,35 @@ export default function CaminanteDetalleDialog({
                 <Stack direction="row" gap={1} flexWrap="wrap">
                   <Chip
                     icon={<MailRounded />}
-                    label={`Carta: ${caminante?.entregables?.carta || 'Pendiente'}`}
+                    label={`Carta: ${actual?.entregables?.carta || 'Pendiente'}`}
                   />
 
                   <Chip
                     icon={<PhotoRounded />}
-                    label={`Foto: ${caminante?.entregables?.foto || 'Pendiente'}`}
+                    label={`Foto: ${actual?.entregables?.foto || 'Pendiente'}`}
                   />
                 </Stack>
 
-                {caminante?.entregables?.aprobacionCartaLogistica?.aprobadoPor && (
+                {actual?.entregables?.aprobacionCartaLogistica?.aprobadoPor && (
                   <Alert severity="success">
                     Carta aprobada por Logística por{' '}
-                    {caminante.entregables.aprobacionCartaLogistica.aprobadoPor}
-                    {caminante.entregables.aprobacionCartaLogistica.fecha
+                    {actual.entregables.aprobacionCartaLogistica.aprobadoPor}
+                    {actual.entregables.aprobacionCartaLogistica.fecha
                       ? ` el ${formatearFechaDetalle(
-                          caminante.entregables.aprobacionCartaLogistica.fecha
+                          actual.entregables.aprobacionCartaLogistica.fecha
                         )}`
                       : ''}
                     .
                   </Alert>
                 )}
 
-                {caminante?.entregables?.aprobacionFotoLogistica?.aprobadoPor && (
+                {actual?.entregables?.aprobacionFotoLogistica?.aprobadoPor && (
                   <Alert severity="success">
                     Fotografía aprobada por Logística por{' '}
-                    {caminante.entregables.aprobacionFotoLogistica.aprobadoPor}
-                    {caminante.entregables.aprobacionFotoLogistica.fecha
+                    {actual.entregables.aprobacionFotoLogistica.aprobadoPor}
+                    {actual.entregables.aprobacionFotoLogistica.fecha
                       ? ` el ${formatearFechaDetalle(
-                          caminante.entregables.aprobacionFotoLogistica.fecha
+                          actual.entregables.aprobacionFotoLogistica.fecha
                         )}`
                       : ''}
                     .
@@ -428,126 +696,126 @@ export default function CaminanteDetalleDialog({
             <CampoDetalle
               etiqueta="EPS"
               valor={
-                caminante?.eps ||
-                caminante?.nombreEps
+                actual?.eps ||
+                actual?.nombreEps
               }
             />
 
             <CampoDetalle
               etiqueta="Sufre alguna enfermedad"
-              valor={caminante?.sufreEnfermedad}
+              valor={actual?.sufreEnfermedad}
             />
 
             <CampoDetalle
               etiqueta="Enfermedad o condición"
               valor={
-                caminante?.enfermedadCual ||
-                caminante?.condicionMedica
+                actual?.enfermedadCual ||
+                actual?.condicionMedica
               }
               anchoCompleto
             />
 
             <CampoDetalle
               etiqueta="Toma medicamentos"
-              valor={caminante?.tomaMedicamento}
+              valor={actual?.tomaMedicamento}
             />
 
             <CampoDetalle
               etiqueta="Medicamento"
               valor={
-                caminante?.medicamentoCual ||
-                caminante?.medicamentos
+                actual?.medicamentoCual ||
+                actual?.medicamentos
               }
             />
 
             <CampoDetalle
               etiqueta="Horario de medicamentos"
-              valor={caminante?.horariosMedicamentos}
+              valor={actual?.horariosMedicamentos}
               anchoCompleto
             />
 
             <CampoDetalle
               etiqueta="Tiene limitación física"
-              valor={caminante?.tieneLimitacionFisica}
+              valor={actual?.tieneLimitacionFisica}
             />
 
             <CampoDetalle
               etiqueta="Limitación física"
-              valor={caminante?.limitacionCual}
+              valor={actual?.limitacionCual}
             />
 
             <CampoDetalle
               etiqueta="Tiene condición alimentaria"
-              valor={caminante?.tieneCondicionAlimentaria}
+              valor={actual?.tieneCondicionAlimentaria}
             />
 
             <CampoDetalle
               etiqueta="Alergias alimentarias"
               valor={
-                caminante?.alergiasAlimentarias ||
-                caminante?.alergias
+                actual?.alergiasAlimentarias ||
+                actual?.alergias
               }
               anchoCompleto
             />
 
             <CampoDetalle
               etiqueta="Restricciones alimentarias"
-              valor={caminante?.restriccionesAlimentarias}
+              valor={actual?.restriccionesAlimentarias}
               anchoCompleto
             />
 
             <CampoDetalle
               etiqueta="Preferencias alimentarias"
-              valor={caminante?.preferenciasAlimentarias}
+              valor={actual?.preferenciasAlimentarias}
               anchoCompleto
             />
 
             <CampoDetalle
               etiqueta="Dieta especial o indicaciones"
-              valor={caminante?.dietaEspecial}
+              valor={actual?.dietaEspecial}
               anchoCompleto
             />
 
             <CampoDetalle
               etiqueta="Tipo de sangre"
-              valor={caminante?.tipoSangre}
+              valor={actual?.tipoSangre}
             />
           </SeccionDetalle>
 
           <SeccionDetalle titulo="Contactos de emergencia">
             <CampoDetalle
               etiqueta="Contacto principal"
-              valor={caminante?.contacto?.nombre}
+              valor={actual?.contacto?.nombre}
             />
 
             <CampoDetalle
               etiqueta="Parentesco"
-              valor={caminante?.contacto?.parentesco}
+              valor={actual?.contacto?.parentesco}
             />
 
             <CampoDetalle
               etiqueta="Celular principal"
-              valor={caminante?.contacto?.telefono}
+              valor={actual?.contacto?.telefono}
             />
 
             <CampoDetalle
               etiqueta="Contacto alterno"
-              valor={caminante?.contactoAlterno?.nombre}
+              valor={actual?.contactoAlterno?.nombre}
             />
 
             <CampoDetalle
               etiqueta="Parentesco del contacto alterno"
-              valor={caminante?.contactoAlterno?.parentesco}
+              valor={actual?.contactoAlterno?.parentesco}
             />
 
             <CampoDetalle
               etiqueta="Celular alterno"
-              valor={caminante?.contactoAlterno?.telefono}
+              valor={actual?.contactoAlterno?.telefono}
             />
           </SeccionDetalle>
 
-          {(tieneValor(caminante?.observaciones) ||
-            tieneValor(caminante?.observacionesGestion)) && (
+          {(tieneValor(actual?.observaciones) ||
+            tieneValor(actual?.observacionesGestion)) && (
             <Card variant="outlined">
               <CardContent>
                 <Typography
@@ -558,22 +826,22 @@ export default function CaminanteDetalleDialog({
                   Observaciones
                 </Typography>
 
-                {tieneValor(caminante?.observaciones) && (
+                {tieneValor(actual?.observaciones) && (
                   <Typography sx={{ whiteSpace: 'pre-wrap' }}>
-                    {caminante.observaciones}
+                    {actual.observaciones}
                   </Typography>
                 )}
 
-                {tieneValor(caminante?.observacionesGestion) && (
+                {tieneValor(actual?.observacionesGestion) && (
                   <Typography
                     sx={{
                       whiteSpace: 'pre-wrap',
-                      mt: tieneValor(caminante?.observaciones)
+                      mt: tieneValor(actual?.observaciones)
                         ? 1.5
                         : 0,
                     }}
                   >
-                    {caminante.observacionesGestion}
+                    {actual.observacionesGestion}
                   </Typography>
                 )}
               </CardContent>

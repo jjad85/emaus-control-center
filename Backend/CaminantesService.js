@@ -396,6 +396,16 @@ function convertirCaminante(registro) {
     activo:
       registro.activo,
 
+    seguimiento: {
+      llamadaCaminante:
+        registro.llamadaCaminante ||
+        'Pendiente',
+
+      llamadaContactos:
+        registro.llamadaContactos ||
+        'Pendiente'
+    },
+
     entregables: {
       carta:
         registro.carta ||

@@ -80,6 +80,9 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['CAMINANTES_REPORTAR_FOTO','Personas','Caminantes','Reportar estado de foto'],
     ['CAMINANTES_APROBAR_ENTREGA_LOGISTICA','Personas','Caminantes','Aprobar entrega de cartas y fotografías a Logística'],
     ['CAMINANTES_REGISTRAR','Personas','Caminantes','Registrar caminante'],
+    ['CAMINANTES_CANCELAR','Personas','Caminantes','Cancelar caminante'],
+    ['CAMINANTES_REPORTAR_LLAMADA_CAMINANTE','Personas','Caminantes','Reportar llamada al caminante'],
+    ['CAMINANTES_REPORTAR_LLAMADA_CONTACTOS','Personas','Caminantes','Reportar llamada a contactos'],
     ['CAMINANTES_FILTROS','Personas','Caminantes','Usar filtros'],
     ['SERVIDORES_VER_DETALLE','Personas','Servidores','Ver detalle'],
     ['SERVIDORES_EDITAR','Personas','Servidores','Editar'],
@@ -170,6 +173,9 @@ function obtenerMatrizInicialRolesPermisos_() {
   dar('ASPIRANTES_EDITAR',['LIDER_RETIRO','REGISTRO']);
   dar('ASPIRANTES_NOTIFICAR_PREINSCRIPCION',['LIDER_RETIRO','REGISTRO']);
   dar('ASPIRANTES_CAMBIAR_ESTADO',['LIDER_RETIRO','REGISTRO']);
+  dar('CAMINANTES_CANCELAR',['LIDER_RETIRO']);
+  dar('CAMINANTES_REPORTAR_LLAMADA_CAMINANTE',['LIDER_RETIRO','LIDER_MESA']);
+  dar('CAMINANTES_REPORTAR_LLAMADA_CONTACTOS',['LIDER_RETIRO','LIDER_MESA']);
   dar('CAMINANTES_VER_DETALLE',todosConsulta);
   dar('CAMINANTES_EDITAR',['LIDER_RETIRO','REGISTRO']);
   dar('CAMINANTES_ASIGNAR_MESA',['LIDER_RETIRO']);

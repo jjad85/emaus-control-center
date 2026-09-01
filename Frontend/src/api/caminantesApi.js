@@ -9,7 +9,10 @@ export async function obtenerCaminantes(
   const response =
     await getResource(
       'caminantes',
-      params
+      {
+        ...params,
+        _ts: Date.now(),
+      }
     );
 
   return response.datos;
@@ -152,6 +155,25 @@ export async function actualizarFotoCaminanteApi(
 }
 
 
+export async function cancelarCaminanteApi(
+  token,
+  id,
+  motivoCancelacion
+) {
+  const response =
+    await postAction(
+      'cancelarCaminante',
+      {
+        token,
+        id,
+        motivoCancelacion,
+      }
+    );
+
+  return response.datos;
+}
+
+
 export async function desactivarCaminanteApi(
   token,
   id,
@@ -184,3 +206,40 @@ export async function aprobarEntregableLogisticaApi(token, id, tipo) {
   const response = await postAction('aprobarEntregableLogistica', { token, id, tipo });
   return response.datos;
 }
+
+export async function actualizarLlamadaCaminanteApi(
+  token,
+  id,
+  estado
+) {
+  const response =
+    await postAction(
+      'actualizarLlamadaCaminante',
+      {
+        token,
+        id,
+        estado,
+      }
+    );
+
+  return response.datos;
+}
+
+export async function actualizarLlamadaContactosCaminanteApi(
+  token,
+  id,
+  estado
+) {
+  const response =
+    await postAction(
+      'actualizarLlamadaContactosCaminante',
+      {
+        token,
+        id,
+        estado,
+      }
+    );
+
+  return response.datos;
+}
+

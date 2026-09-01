@@ -817,6 +817,226 @@ function revertirAprobacionPago(token, id, motivo) {
   return normalizarPagoRespuesta(actualizado);
 }
 
+
+/**
+ * Revierte automáticamente todos los pagos APROBADOS de un caminante
+ * cuando su participación es cancelada.
+ *
+ * Los pagos no se eliminan: se conservan con trazabilidad de reversión,
+ * vuelven a Pendiente y dejan de sumar como dinero recibido.
+ *
+ * Esta función es interna. La autorización la realiza cancelarCaminante().
+ */
+function revertirPagosAprobadosPorCancelacionCaminante_(
+  caminanteId,
+  motivoCancelacion,
+  sesion
+) {
+  const pagosCaminante =
+    leerHojaComoObjetos(
+      HOJAS.PAGOS
+    ).filter(
+      function(pago) {
+        const tipo =
+          normalizarTipoPersonaPago_(
+            pago.tipoPersona ||
+            (pago.servidorId
+              ? 'Servidor'
+              : 'Caminante')
+          );
+
+        return (
+          tipo === 'Caminante' &&
+          String(
+            pago.caminanteId || ''
+          ) ===
+            String(
+              caminanteId || ''
+            )
+        );
+      }
+    );
+
+  const aprobados =
+    pagosCaminante.filter(
+      function(pago) {
+        return (
+          normalizarTexto(
+            pago.estadoPagoReportado ||
+            pago.estado
+          ) ===
+          'aprobado'
+        );
+      }
+    );
+
+  let valorRevertido = 0;
+  const pagosRevertidos = [];
+  const ahora = new Date();
+
+  aprobados.forEach(
+    function(pago) {
+      const valorAnterior =
+        Number(
+          pago.valorAprobado ||
+          pago.valorReportado ||
+          0
+        );
+
+      const antes =
+        Object.assign(
+          {},
+          pago
+        );
+
+      const actualizado =
+        actualizarRegistroSheet(
+          HOJAS.PAGOS,
+          pago.id,
+          {
+            estadoAnteriorReversion:
+              pago.estadoPagoReportado ||
+              pago.estado ||
+              'Aprobado',
+
+            valorAprobadoAnterior:
+              pago.valorAprobado ||
+              pago.valorReportado ||
+              '',
+
+            validadoPorAnterior:
+              pago.validadoPor ||
+              '',
+
+            fechaValidacionAnterior:
+              pago.fechaValidacion ||
+              '',
+
+            estadoPagoReportado:
+              'Pendiente',
+
+            valorAprobado:
+              '',
+
+            validadoPor:
+              '',
+
+            fechaValidacion:
+              '',
+
+            fechaReversion:
+              ahora,
+
+            revertidoPor:
+              sesion.usuario ||
+              '',
+
+            motivoReversion:
+              'Cancelación del caminante: ' +
+              motivoCancelacion,
+
+            fechaActualizacion:
+              ahora,
+
+            actualizadoPor:
+              sesion.usuario ||
+              ''
+          },
+          {
+            usuario:
+              sesion.usuario ||
+              ''
+          }
+        );
+
+      valorRevertido +=
+        valorAnterior;
+
+      pagosRevertidos.push({
+        id:
+          pago.id,
+        valor:
+          valorAnterior
+      });
+
+      if (
+        typeof registrarAuditoria ===
+        'function'
+      ) {
+        registrarAuditoria({
+          usuario:
+            sesion.usuario ||
+            '',
+          nombre:
+            sesion.nombre ||
+            '',
+          rol:
+            sesion.rol ||
+            sesion.codigoRol ||
+            '',
+          accion:
+            'REVERTIR_PAGO_POR_CANCELACION_CAMINANTE',
+          entidad:
+            'Pagos',
+          idRegistro:
+            pago.id,
+          resultado:
+            'EXITOSO',
+          detalle:
+            JSON.stringify({
+              caminanteId:
+                caminanteId,
+              motivoCancelacion:
+                motivoCancelacion,
+              valorRevertido:
+                valorAnterior
+            }),
+          datosAntes:
+            antes,
+          datosDespues:
+            actualizado
+        });
+      }
+    }
+  );
+
+  /*
+   * Recalcula una sola vez después de revertir todos los pagos.
+   * Así totalAbonado, saldoPendiente, excedentePago y estadoPago
+   * dejan de incluir los pagos revertidos.
+   */
+  const resumen =
+    recalcularEstadoPagoCaminante(
+      caminanteId,
+      sesion.usuario ||
+      ''
+    );
+
+  return {
+    cantidadPagos:
+      pagosCaminante.length,
+
+    cantidadAprobadosRevertidos:
+      aprobados.length,
+
+    valorRevertido:
+      valorRevertido,
+
+    pagosRevertidos:
+      pagosRevertidos,
+
+    estadoPagoFinal:
+      resumen.estadoPago,
+
+    totalAbonadoFinal:
+      resumen.totalAprobado,
+
+    saldoPendienteFinal:
+      resumen.saldoPendiente
+  };
+}
+
+
 function recalcularEstadoPagoCaminante(caminanteId, usuario) {
   const caminante=leerRegistroPorIdSheet(HOJAS.CAMINANTES,caminanteId,{usuario:usuario});
   const resumen=completarResumenPagosPersona_(caminante, 'Caminante');
