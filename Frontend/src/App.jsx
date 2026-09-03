@@ -49,6 +49,7 @@ import Documentos from './pages/Documentos';
 import CentroLogistico from './pages/CentroLogistico';
 import ConfiguracionAlertas from './pages/ConfiguracionAlertas';
 import EstadoAplicacion from './pages/EstadoAplicacion';
+import DatosHotel from './pages/DatosHotel';
 import ServicioRetiro from './pages/ServicioRetiro';
 
 export default function App() {
@@ -221,6 +222,10 @@ export default function App() {
           <Route
             path="/sistema/estado-aplicacion"
             element={<PrivateRoute permiso="SISTEMA_TODO"><EstadoAplicacion /></PrivateRoute>}
+          />
+          <Route
+            path="/sistema/datos-hotel"
+            element={<PrivateRoute permiso="SISTEMA_TODO"><DatosHotel /></PrivateRoute>}
           />
 
           <Route

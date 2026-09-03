@@ -190,6 +190,16 @@ function routeRequest(parametros) {
         mensaje: 'Centro logístico consultado correctamente'
       };
 
+    case 'datoshotel':
+      return {
+        datos:
+          obtenerDatosHotel(
+            parametros.token
+          ),
+        mensaje:
+          'Datos para hotel consultados correctamente'
+      };
+
     case 'resumenmenu':
       return {
         datos:

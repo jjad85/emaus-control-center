@@ -261,6 +261,12 @@ const menuGroups = [
         permiso: 'SISTEMA_TODO',
       },
       {
+        label: 'Datos para hotel',
+        path: '/sistema/datos-hotel',
+        icon: <HotelRounded />,
+        permiso: 'SISTEMA_TODO',
+      },
+      {
         label: 'Auditoría',
         path: '/auditoria',
         icon: <FactCheckRounded />,
