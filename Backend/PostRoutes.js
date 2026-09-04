@@ -772,6 +772,12 @@ function routePost(contenido) {
         mensaje: 'Plantilla guardada correctamente'
       };
 
+    case 'guardarconfiguracionplantillaimpresion':
+      return {
+        datos: guardarConfiguracionPlantillaImpresion(contenido.token,contenido.tipo,contenido.anchoCm,contenido.altoCm,contenido.tamanoCentralPt,contenido.tamanoInferiorPt,contenido.fuente),
+        mensaje: 'Configuración de plantilla guardada correctamente'
+      };
+
     case 'actualizarconfiguracionexistente':
       return {
         datos:

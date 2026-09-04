@@ -27,6 +27,7 @@ import {
   obtenerDatosGeneracionImpresion,
   obtenerImagenPlantillaImpresion,
   guardarPlantillaImpresionApi,
+  guardarConfiguracionPlantillaImpresionApi,
 } from '../api/impresionRetiroApi';
 import {
   generarEscarapelasPdf,
@@ -140,17 +141,29 @@ function Plantilla({
           ? 'Estamos procesando la nueva imagen y guardando la configuración.'
           : 'Estamos guardando los tamaños y la tipografía sin modificar la imagen actual.',
       );
-      const a = file ? await archivoBase64(file) : null;
-      await guardarPlantillaImpresionApi(
-        token,
-        tipo,
-        a,
-        w,
-        h,
-        central,
-        inferior,
-        fuente,
-      );
+      if (reemplazaImagen) {
+        const a = await archivoBase64(file);
+        await guardarPlantillaImpresionApi(
+          token,
+          tipo,
+          a,
+          w,
+          h,
+          central,
+          inferior,
+          fuente,
+        );
+      } else {
+        await guardarConfiguracionPlantillaImpresionApi(
+          token,
+          tipo,
+          w,
+          h,
+          central,
+          inferior,
+          fuente,
+        );
+      }
       setFile(null);
       await onSaved();
     } catch (e) {

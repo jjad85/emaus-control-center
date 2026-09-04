@@ -51,3 +51,29 @@ export async function guardarPlantillaImpresionApi(
   );
   return r.datos;
 }
+
+
+export async function guardarConfiguracionPlantillaImpresionApi(
+  token,
+  tipo,
+  anchoCm,
+  altoCm,
+  tamanoCentralPt,
+  tamanoInferiorPt,
+  fuente,
+) {
+  const r = await postAction(
+    'guardarConfiguracionPlantillaImpresion',
+    {
+      token,
+      tipo,
+      anchoCm,
+      altoCm,
+      tamanoCentralPt,
+      tamanoInferiorPt,
+      fuente,
+    },
+    { timeout: 120000 },
+  );
+  return r.datos;
+}

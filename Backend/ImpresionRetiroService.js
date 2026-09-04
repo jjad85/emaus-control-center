@@ -243,6 +243,104 @@ function obtenerDatosGeneracionImpresion(token) {
   };
 }
 
+
+function guardarConfiguracionPlantillaImpresion(token, tipo, anchoCm, altoCm, tamanoCentralPt, tamanoInferiorPt, fuente) {
+  var sesion = validarPermiso(
+    token,
+    'SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION'
+  );
+
+  tipo = String(tipo || '').toLowerCase().trim();
+  if (['escarapela', 'habitacion'].indexOf(tipo) < 0) {
+    throw crearErrorAplicacion('TIPO_PLANTILLA_INVALIDO', 'Tipo de plantilla inválido.');
+  }
+
+  var ancho = Number(anchoCm);
+  var alto = Number(altoCm);
+  if (!(ancho > 0 && alto > 0 && ancho <= 50 && alto <= 50)) {
+    throw crearErrorAplicacion(
+      'DIMENSIONES_INVALIDAS',
+      'Indique ancho y alto válidos en centímetros.'
+    );
+  }
+
+  var valoresDefecto = obtenerValoresTextoPlantillaImpresion_(tipo);
+  var tamanoCentral = Number(tamanoCentralPt || valoresDefecto.tamanoCentralPt);
+  var tamanoInferior = Number(tamanoInferiorPt || valoresDefecto.tamanoInferiorPt);
+  var fuenteNormalizada = normalizarFuentePlantillaImpresion_(fuente || valoresDefecto.fuente);
+
+  if (!(tamanoCentral >= 6 && tamanoCentral <= 72)) {
+    throw crearErrorAplicacion(
+      'TAMANO_LETRA_CENTRAL_INVALIDO',
+      'El tamaño de letra central debe estar entre 6 y 72 puntos.'
+    );
+  }
+
+  if (!(tamanoInferior >= 6 && tamanoInferior <= 48)) {
+    throw crearErrorAplicacion(
+      'TAMANO_LETRA_INFERIOR_INVALIDO',
+      'El tamaño de letra inferior debe estar entre 6 y 48 puntos.'
+    );
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var clave = tipo === 'escarapela'
+    ? CLAVE_PLANTILLA_ESCARAPELA_
+    : CLAVE_PLANTILLA_HABITACION_;
+  var anterior = leerPlantillaImpresion_(props, clave);
+
+  if (!anterior.fileId) {
+    throw crearErrorAplicacion(
+      'IMAGEN_REQUERIDA',
+      'Primero debe configurar una imagen para esta plantilla.'
+    );
+  }
+
+  var dato = {
+    fileId: anterior.fileId,
+    nombre: anterior.nombre || '',
+    tipo: anterior.tipo || '',
+    anchoCm: ancho,
+    altoCm: alto,
+    tamanoCentralPt: tamanoCentral,
+    tamanoInferiorPt: tamanoInferior,
+    fuente: fuenteNormalizada,
+    carpetaId: anterior.carpetaId || '',
+    carpetaNombre: anterior.carpetaNombre || '',
+    carpetaUrl: anterior.carpetaUrl || '',
+    actualizado: new Date().toISOString()
+  };
+
+  props.setProperty(clave, JSON.stringify(dato));
+
+  if (typeof registrarAuditoria === 'function') {
+    try {
+      registrarAuditoria({
+        usuario: sesion.usuario || '',
+        nombre: sesion.nombre || '',
+        rol: sesion.rol || '',
+        accion: 'ACTUALIZAR_PARAMETROS_PLANTILLA_IMPRESION',
+        entidad: 'Sistema',
+        idRegistro: tipo,
+        resultado: 'EXITOSO',
+        detalle: JSON.stringify({
+          tipo: tipo,
+          anchoCm: ancho,
+          altoCm: alto,
+          tamanoCentralPt: tamanoCentral,
+          tamanoInferiorPt: tamanoInferior,
+          fuente: fuenteNormalizada,
+          nombre: dato.nombre
+        })
+      });
+    } catch (e) {
+      // La auditoría no debe bloquear el guardado de parámetros.
+    }
+  }
+
+  return dato;
+}
+
 function obtenerImagenPlantillaImpresion(token, tipo) {
   validarAccesoPlantillaImpresion_(token);
 
