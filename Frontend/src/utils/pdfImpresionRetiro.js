@@ -128,8 +128,8 @@ async function dibujarEscarapela(doc, img, x, y, w, h, c, opciones) {
   doc.setTextColor(20, 35, 45);
   doc.setFont(fuente, 'bold');
 
-  const tamanoCaminante = Math.max(13, central - 2);
-  doc.setFontSize(tamanoCaminante);
+  // El título CAMINANTE usa exactamente el tamaño central configurado.
+  doc.setFontSize(central);
   doc.text('CAMINANTE', x + w / 2, y + h * 0.34, { align: 'center' });
 
   ajustarFuente(doc, nombre, w * 0.88, central, Math.max(9, central * 0.55));
@@ -168,8 +168,8 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
       doc,
       p.nombre || '',
       w * 0.84,
-      Math.max(10, central * 0.72),
-      Math.max(7, central * 0.45),
+      central,
+      Math.max(9, central * 0.55),
     );
     doc.text(p.nombre || '', x + w / 2, yy, { align: 'center' });
 
