@@ -190,6 +190,15 @@ function routeRequest(parametros) {
         mensaje: 'Centro logístico consultado correctamente'
       };
 
+    case 'configuracionimpresion':
+      return { datos: obtenerConfiguracionImpresion(parametros.token), mensaje: 'Configuración de impresión consultada' };
+
+    case 'datosgeneracionimpresion':
+      return { datos: obtenerDatosGeneracionImpresion(parametros.token), mensaje: 'Datos de impresión consultados' };
+
+    case 'imagenplantillaimpresion':
+      return { datos: obtenerImagenPlantillaImpresion(parametros.token,parametros.tipo), mensaje: 'Plantilla consultada' };
+
     case 'datoshotel':
       return {
         datos:

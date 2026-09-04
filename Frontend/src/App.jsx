@@ -50,6 +50,7 @@ import CentroLogistico from './pages/CentroLogistico';
 import ConfiguracionAlertas from './pages/ConfiguracionAlertas';
 import EstadoAplicacion from './pages/EstadoAplicacion';
 import DatosHotel from './pages/DatosHotel';
+import ImpresionRetiro from './pages/ImpresionRetiro';
 import ServicioRetiro from './pages/ServicioRetiro';
 
 export default function App() {
@@ -226,6 +227,10 @@ export default function App() {
           <Route
             path="/sistema/datos-hotel"
             element={<PrivateRoute permiso="SISTEMA_TODO"><DatosHotel /></PrivateRoute>}
+          />
+          <Route
+            path="/sistema/escarapelas-habitaciones"
+            element={<PrivateRoute permiso="SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES"><ImpresionRetiro /></PrivateRoute>}
           />
 
           <Route

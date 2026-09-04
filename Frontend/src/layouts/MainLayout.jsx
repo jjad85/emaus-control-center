@@ -29,6 +29,7 @@ import PersonRounded from '@mui/icons-material/PersonRounded';
 import TableRestaurantRounded from '@mui/icons-material/TableRestaurantRounded';
 import SlideshowRounded from '@mui/icons-material/SlideshowRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
+import PrintRounded from '@mui/icons-material/PrintRounded';
 import ConstructionRounded from '@mui/icons-material/ConstructionRounded';
 import SettingsRounded from '@mui/icons-material/SettingsRounded';
 import PeopleRounded from '@mui/icons-material/PeopleRounded';
@@ -265,6 +266,12 @@ const menuGroups = [
         path: '/sistema/datos-hotel',
         icon: <HotelRounded />,
         permiso: 'SISTEMA_TODO',
+      },
+      {
+        label: 'Escarapelas y habitaciones',
+        path: '/sistema/escarapelas-habitaciones',
+        icon: <PrintRounded />,
+        permiso: 'SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES',
       },
       {
         label: 'Auditoría',
