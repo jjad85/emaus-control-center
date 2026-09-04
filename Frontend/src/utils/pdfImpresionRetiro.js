@@ -103,14 +103,56 @@ function numeroPositivo(valor, defecto) {
   return Number.isFinite(numero) && numero > 0 ? numero : defecto;
 }
 
-function ajustarFuente(doc, texto, maxWidth, inicial, min = 7) {
-  let s = inicial;
-  doc.setFontSize(s);
-  while (s > min && doc.getTextWidth(texto) > maxWidth) {
-    s -= 0.5;
-    doc.setFontSize(s);
+function dividirTextoEnDosLineas(doc, texto, maxWidth, tamano) {
+  const limpio = String(texto || '').trim().replace(/\s+/g, ' ');
+  if (!limpio) return [''];
+
+  doc.setFontSize(tamano);
+  if (doc.getTextWidth(limpio) <= maxWidth) return [limpio];
+
+  const palabras = limpio.split(' ');
+  if (palabras.length === 1) return [limpio];
+
+  let mejor = null;
+  for (let corte = 1; corte < palabras.length; corte += 1) {
+    const linea1 = palabras.slice(0, corte).join(' ');
+    const linea2 = palabras.slice(corte).join(' ');
+    const ancho1 = doc.getTextWidth(linea1);
+    const ancho2 = doc.getTextWidth(linea2);
+    const cabe = ancho1 <= maxWidth && ancho2 <= maxWidth;
+    const diferencia = Math.abs(ancho1 - ancho2);
+
+    if (cabe && (!mejor || diferencia < mejor.diferencia)) {
+      mejor = { lineas: [linea1, linea2], diferencia };
+    }
   }
-  return s;
+
+  if (mejor) return mejor.lineas;
+
+  // Caso extremo: si ni en dos líneas cabe al tamaño central, jsPDF reduce
+  // únicamente lo indispensable para evitar que el texto se salga.
+  const lineas = doc.splitTextToSize(limpio, maxWidth);
+  return lineas.slice(0, 2);
+}
+
+function dibujarNombreCentral(doc, texto, centroX, centroY, maxWidth, tamanoCentral) {
+  doc.setFontSize(tamanoCentral);
+  let lineas = dividirTextoEnDosLineas(doc, texto, maxWidth, tamanoCentral);
+  let tamano = tamanoCentral;
+
+  while (lineas.some((linea) => doc.getTextWidth(linea) > maxWidth) && tamano > 8) {
+    tamano -= 0.5;
+    doc.setFontSize(tamano);
+    lineas = dividirTextoEnDosLineas(doc, texto, maxWidth, tamano);
+  }
+
+  const interlineado = tamano * 0.38; // pt -> separación visual apropiada en mm
+  const yInicial = lineas.length === 2 ? centroY - interlineado / 2 : centroY;
+  lineas.forEach((linea, indice) => {
+    doc.text(linea, centroX, yInicial + indice * interlineado, { align: 'center' });
+  });
+
+  return lineas.length;
 }
 
 async function dibujarEscarapela(doc, img, x, y, w, h, c, opciones) {
@@ -132,8 +174,9 @@ async function dibujarEscarapela(doc, img, x, y, w, h, c, opciones) {
   doc.setFontSize(central);
   doc.text('CAMINANTE', x + w / 2, y + h * 0.34, { align: 'center' });
 
-  ajustarFuente(doc, nombre, w * 0.88, central, Math.max(9, central * 0.55));
-  doc.text(nombre, x + w / 2, y + h * 0.49, { align: 'center' });
+  // El nombre conserva el tamaño central. Si no cabe en una línea, se divide
+  // primero en dos líneas antes de considerar cualquier reducción de tamaño.
+  dibujarNombreCentral(doc, nombre, x + w / 2, y + h * 0.49, w * 0.88, central);
 
   doc.setFont(fuente, 'bold');
   doc.setFontSize(inferior);
@@ -164,18 +207,19 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
   personas.forEach((p, i) => {
     const yy = inicio + i * espacio;
     doc.setFont(fuente, 'bold');
-    ajustarFuente(
+    const lineasNombre = dibujarNombreCentral(
       doc,
       p.nombre || '',
+      x + w / 2,
+      yy,
       w * 0.84,
       central,
-      Math.max(9, central * 0.55),
     );
-    doc.text(p.nombre || '', x + w / 2, yy, { align: 'center' });
 
     doc.setFont(fuente, 'normal');
     doc.setFontSize(inferior);
-    doc.text(p.tipoPersona || '', x + w / 2, yy + 4.2, { align: 'center' });
+    const desplazamientoTipo = lineasNombre === 2 ? 7.2 : 4.2;
+    doc.text(p.tipoPersona || '', x + w / 2, yy + desplazamientoTipo, { align: 'center' });
   });
 }
 
