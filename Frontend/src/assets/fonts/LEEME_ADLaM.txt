@@ -1,0 +1,9 @@
+COLOCA AQUÍ TU ARCHIVO DE FUENTE CON ESTE NOMBRE EXACTO:
+
+ADLaMDisplay-Regular.ttf
+
+Ruta final:
+Frontend/src/assets/fonts/ADLaMDisplay-Regular.ttf
+
+No necesitas instalar la fuente en Windows ni ejecutar npm install por esta fuente.
+Después de copiarla, ejecuta normalmente npm run build.

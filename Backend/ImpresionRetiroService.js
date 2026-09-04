@@ -22,7 +22,7 @@ function obtenerConfiguracionImpresion(token) {
   };
 }
 
-function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm) {
+function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamanoCentralPt, tamanoInferiorPt, fuente) {
   var sesion = validarPermiso(
     token,
     'SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION'
@@ -42,6 +42,25 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm) {
     throw crearErrorAplicacion(
       'DIMENSIONES_INVALIDAS',
       'Indique ancho y alto válidos en centímetros.'
+    );
+  }
+
+  var valoresDefecto = obtenerValoresTextoPlantillaImpresion_(tipo);
+  var tamanoCentral = Number(tamanoCentralPt || valoresDefecto.tamanoCentralPt);
+  var tamanoInferior = Number(tamanoInferiorPt || valoresDefecto.tamanoInferiorPt);
+  var fuenteNormalizada = normalizarFuentePlantillaImpresion_(fuente || valoresDefecto.fuente);
+
+  if (!(tamanoCentral >= 6 && tamanoCentral <= 72)) {
+    throw crearErrorAplicacion(
+      'TAMANO_LETRA_CENTRAL_INVALIDO',
+      'El tamaño de letra central debe estar entre 6 y 72 puntos.'
+    );
+  }
+
+  if (!(tamanoInferior >= 6 && tamanoInferior <= 48)) {
+    throw crearErrorAplicacion(
+      'TAMANO_LETRA_INFERIOR_INVALIDO',
+      'El tamaño de letra inferior debe estar entre 6 y 48 puntos.'
     );
   }
 
@@ -108,6 +127,9 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm) {
       tipo: String(archivo.tipo || 'image/png'),
       anchoCm: ancho,
       altoCm: alto,
+      tamanoCentralPt: tamanoCentral,
+      tamanoInferiorPt: tamanoInferior,
+      fuente: fuenteNormalizada,
       carpetaId: carpeta.getId(),
       carpetaNombre: carpeta.getName(),
       carpetaUrl: carpeta.getUrl(),
@@ -143,6 +165,9 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm) {
             tipo: tipo,
             anchoCm: ancho,
             altoCm: alto,
+            tamanoCentralPt: tamanoCentral,
+            tamanoInferiorPt: tamanoInferior,
+            fuente: fuenteNormalizada,
             nombre: dato.nombre,
             fileId: dato.fileId,
             carpetaId: dato.carpetaId
@@ -212,7 +237,7 @@ function obtenerDatosGeneracionImpresion(token) {
 }
 
 function obtenerImagenPlantillaImpresion(token, tipo) {
-  validarPermiso(token, 'SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES');
+  validarAccesoPlantillaImpresion_(token);
 
   tipo = String(tipo || '').toLowerCase();
   var props = PropertiesService.getScriptProperties();
@@ -239,6 +264,9 @@ function obtenerImagenPlantillaImpresion(token, tipo) {
       Utilities.base64Encode(blob.getBytes()),
     anchoCm: dato.anchoCm,
     altoCm: dato.altoCm,
+    tamanoCentralPt: dato.tamanoCentralPt,
+    tamanoInferiorPt: dato.tamanoInferiorPt,
+    fuente: dato.fuente,
     nombre: dato.nombre
   };
 }
@@ -250,6 +278,9 @@ function leerPlantillaImpresion_(props, clave) {
     tipo: '',
     anchoCm: '',
     altoCm: '',
+    tamanoCentralPt: '',
+    tamanoInferiorPt: '',
+    fuente: 'helvetica',
     carpetaId: '',
     carpetaNombre: '',
     carpetaUrl: '',
@@ -267,6 +298,9 @@ function leerPlantillaImpresion_(props, clave) {
       tipo: dato.tipo || '',
       anchoCm: dato.anchoCm || '',
       altoCm: dato.altoCm || '',
+      tamanoCentralPt: dato.tamanoCentralPt || '',
+      tamanoInferiorPt: dato.tamanoInferiorPt || '',
+      fuente: normalizarFuentePlantillaImpresion_(dato.fuente || 'helvetica'),
       carpetaId: dato.carpetaId || '',
       carpetaNombre: dato.carpetaNombre || '',
       carpetaUrl: dato.carpetaUrl || '',
@@ -308,4 +342,35 @@ function limpiarNombrePlantillaImpresion_(nombre, tipo) {
     .trim();
 
   return valor || ('plantilla-' + tipo + '.png');
+}
+
+
+function obtenerValoresTextoPlantillaImpresion_(tipo) {
+  return String(tipo || '').toLowerCase() === 'escarapela'
+    ? { tamanoCentralPt: 20, tamanoInferiorPt: 11, fuente: 'helvetica' }
+    : { tamanoCentralPt: 18, tamanoInferiorPt: 10, fuente: 'helvetica' };
+}
+
+function normalizarFuentePlantillaImpresion_(fuente) {
+  var valor = String(fuente || 'helvetica').toLowerCase().trim();
+  return ['helvetica', 'times', 'courier'].indexOf(valor) >= 0
+    ? valor
+    : 'helvetica';
+}
+
+function validarAccesoPlantillaImpresion_(token) {
+  var sesion = obtenerSesion(token);
+  var permisos = obtenerPermisosPorRol(sesion.rol) || [];
+  var esAdmin = normalizarCodigoRol_(sesion.rol) === 'admin';
+  var puedeConfigurar = permisos.indexOf('SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION') >= 0;
+  var puedeGenerar = permisos.indexOf('SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES') >= 0;
+
+  if (!esAdmin && !puedeConfigurar && !puedeGenerar) {
+    throw crearErrorAplicacion(
+      'PERMISO_DENEGADO',
+      'No tiene permisos para consultar la plantilla de impresión.'
+    );
+  }
+
+  return sesion;
 }

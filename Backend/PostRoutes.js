@@ -768,7 +768,7 @@ function routePost(contenido) {
 
     case 'guardarplantillaimpresion':
       return {
-        datos: guardarPlantillaImpresion(contenido.token,contenido.tipo,contenido.archivo,contenido.anchoCm,contenido.altoCm),
+        datos: guardarPlantillaImpresion(contenido.token,contenido.tipo,contenido.archivo,contenido.anchoCm,contenido.altoCm,contenido.tamanoCentralPt,contenido.tamanoInferiorPt,contenido.fuente),
         mensaje: 'Plantilla guardada correctamente'
       };
 
