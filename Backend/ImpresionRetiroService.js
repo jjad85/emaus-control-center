@@ -64,84 +64,92 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
     );
   }
 
-  if (
-    !archivo ||
-    !archivo.base64 ||
-    !/^image\//i.test(String(archivo.tipo || ''))
-  ) {
-    throw crearErrorAplicacion(
-      'IMAGEN_REQUERIDA',
-      'Seleccione una imagen válida.'
-    );
-  }
-
-  var base64 = String(archivo.base64 || '')
-    .replace(/^data:[^;]+;base64,/, '');
-
-  var bytes;
-  try {
-    bytes = Utilities.base64Decode(base64);
-  } catch (errorBase64) {
-    throw crearErrorAplicacion(
-      'IMAGEN_INVALIDA',
-      'No fue posible leer la imagen seleccionada.'
-    );
-  }
-
-  if (bytes.length > MAX_IMAGEN_IMPRESION_BYTES_) {
-    throw crearErrorAplicacion(
-      'IMAGEN_MUY_GRANDE',
-      'La imagen no puede superar 8 MB.'
-    );
-  }
-
   var props = PropertiesService.getScriptProperties();
   var clave = tipo === 'escarapela'
     ? CLAVE_PLANTILLA_ESCARAPELA_
     : CLAVE_PLANTILLA_HABITACION_;
   var anterior = leerPlantillaImpresion_(props, clave);
-  var carpeta = obtenerCarpetaPlantillasImpresion_();
-
-  var nombreArchivo = limpiarNombrePlantillaImpresion_(
-    archivo.nombre || ('plantilla-' + tipo + '.png'),
-    tipo
+  var reemplazaImagen = Boolean(
+    archivo &&
+    archivo.base64 &&
+    /^image\//i.test(String(archivo.tipo || ''))
   );
 
-  var blob = Utilities.newBlob(
-    bytes,
-    String(archivo.tipo || 'image/png'),
-    nombreArchivo
-  );
+  // La imagen y la parametrización son independientes. Solo se exige imagen
+  // en la primera configuración; si ya existe una, se pueden guardar ancho,
+  // alto, tamaños de letra y tipografía sin volver a cargarla.
+  if (!reemplazaImagen && !anterior.fileId) {
+    throw crearErrorAplicacion(
+      'IMAGEN_REQUERIDA',
+      'Seleccione una imagen para configurar la plantilla por primera vez.'
+    );
+  }
+
+  var dato = {
+    fileId: anterior.fileId || '',
+    nombre: anterior.nombre || '',
+    tipo: anterior.tipo || '',
+    anchoCm: ancho,
+    altoCm: alto,
+    tamanoCentralPt: tamanoCentral,
+    tamanoInferiorPt: tamanoInferior,
+    fuente: fuenteNormalizada,
+    carpetaId: anterior.carpetaId || '',
+    carpetaNombre: anterior.carpetaNombre || '',
+    carpetaUrl: anterior.carpetaUrl || '',
+    actualizado: new Date().toISOString()
+  };
 
   var file = null;
 
   try {
-    file = carpeta.createFile(blob);
+    if (reemplazaImagen) {
+      var base64 = String(archivo.base64 || '')
+        .replace(/^data:[^;]+;base64,/, '');
 
-    // No hacemos pública la plantilla. El backend la recupera por fileId,
-    // por lo que setSharing(ANYONE_WITH_LINK) era innecesario y podía
-    // introducir latencia o fallos en dominios de Google Workspace.
-    var dato = {
-      fileId: file.getId(),
-      nombre: file.getName(),
-      tipo: String(archivo.tipo || 'image/png'),
-      anchoCm: ancho,
-      altoCm: alto,
-      tamanoCentralPt: tamanoCentral,
-      tamanoInferiorPt: tamanoInferior,
-      fuente: fuenteNormalizada,
-      carpetaId: carpeta.getId(),
-      carpetaNombre: carpeta.getName(),
-      carpetaUrl: carpeta.getUrl(),
-      actualizado: new Date().toISOString()
-    };
+      var bytes;
+      try {
+        bytes = Utilities.base64Decode(base64);
+      } catch (errorBase64) {
+        throw crearErrorAplicacion(
+          'IMAGEN_INVALIDA',
+          'No fue posible leer la imagen seleccionada.'
+        );
+      }
 
-    // Primero confirmamos la nueva plantilla como vigente.
+      if (bytes.length > MAX_IMAGEN_IMPRESION_BYTES_) {
+        throw crearErrorAplicacion(
+          'IMAGEN_MUY_GRANDE',
+          'La imagen no puede superar 8 MB.'
+        );
+      }
+
+      var carpeta = obtenerCarpetaPlantillasImpresion_();
+      var nombreArchivo = limpiarNombrePlantillaImpresion_(
+        archivo.nombre || ('plantilla-' + tipo + '.png'),
+        tipo
+      );
+
+      var blob = Utilities.newBlob(
+        bytes,
+        String(archivo.tipo || 'image/png'),
+        nombreArchivo
+      );
+
+      file = carpeta.createFile(blob);
+      dato.fileId = file.getId();
+      dato.nombre = file.getName();
+      dato.tipo = String(archivo.tipo || 'image/png');
+      dato.carpetaId = carpeta.getId();
+      dato.carpetaNombre = carpeta.getName();
+      dato.carpetaUrl = carpeta.getUrl();
+    }
+
+    // Confirmar en propiedades tanto cambios de imagen como cambios solo de parámetros.
     props.setProperty(clave, JSON.stringify(dato));
 
-    // La limpieza de la versión anterior es de mejor esfuerzo. Un fallo al
-    // enviarla a la papelera no debe invalidar una carga ya confirmada.
-    if (anterior.fileId && anterior.fileId !== dato.fileId) {
+    // Solo eliminar la imagen anterior cuando efectivamente fue reemplazada.
+    if (reemplazaImagen && anterior.fileId && anterior.fileId !== dato.fileId) {
       try {
         DriveApp.getFileById(anterior.fileId).setTrashed(true);
       } catch (errorAnterior) {
@@ -149,28 +157,28 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
       }
     }
 
-    // La auditoría tampoco debe revertir una plantilla ya guardada. Se
-    // conserva el registro cuando el servicio está disponible.
     if (typeof registrarAuditoria === 'function') {
       try {
         registrarAuditoria({
           usuario: sesion.usuario || '',
           nombre: sesion.nombre || '',
           rol: sesion.rol || '',
-          accion: 'CONFIGURAR_PLANTILLA_IMPRESION',
+          accion: reemplazaImagen
+            ? 'CONFIGURAR_PLANTILLA_IMPRESION'
+            : 'ACTUALIZAR_PARAMETROS_PLANTILLA_IMPRESION',
           entidad: 'Sistema',
           idRegistro: tipo,
           resultado: 'EXITOSO',
           detalle: JSON.stringify({
             tipo: tipo,
+            reemplazaImagen: reemplazaImagen,
             anchoCm: ancho,
             altoCm: alto,
             tamanoCentralPt: tamanoCentral,
             tamanoInferiorPt: tamanoInferior,
             fuente: fuenteNormalizada,
             nombre: dato.nombre,
-            fileId: dato.fileId,
-            carpetaId: dato.carpetaId
+            fileId: dato.fileId
           }),
           datosAntes: anterior,
           datosDespues: dato
@@ -185,8 +193,8 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
 
     return dato;
   } catch (error) {
-    // Si el archivo alcanzó a crearse pero no se pudo confirmar la operación,
-    // evitamos dejar un archivo huérfano en Drive.
+    // Si una NUEVA imagen alcanzó a crearse pero la operación no se confirmó,
+    // se limpia. Nunca se toca la imagen ya existente al guardar solo parámetros.
     if (file) {
       try {
         file.setTrashed(true);
@@ -197,7 +205,6 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
     throw error;
   }
 }
-
 function obtenerDatosGeneracionImpresion(token) {
   validarPermiso(token, 'SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES');
 
@@ -353,7 +360,7 @@ function obtenerValoresTextoPlantillaImpresion_(tipo) {
 
 function normalizarFuentePlantillaImpresion_(fuente) {
   var valor = String(fuente || 'helvetica').toLowerCase().trim();
-  return ['helvetica', 'times', 'courier'].indexOf(valor) >= 0
+  return ['adlam', 'helvetica', 'times', 'courier'].indexOf(valor) >= 0
     ? valor
     : 'helvetica';
 }

@@ -119,7 +119,9 @@ function Plantilla({
   async function guardar() {
     try {
       setErr('');
-      if (!file) throw new Error('Seleccione una imagen.');
+      if (!file && !config?.fileId) {
+        throw new Error('Seleccione una imagen para configurar la plantilla por primera vez.');
+      }
       if (!(Number(w) > 0) || !(Number(h) > 0)) {
         throw new Error('Indique ancho y alto válidos.');
       }
@@ -130,8 +132,15 @@ function Plantilla({
         throw new Error('El tamaño de letra inferior debe estar entre 6 y 48 pt.');
       }
 
-      onProcesando(true, 'Guardando plantilla', 'Estamos procesando y guardando la imagen en Google Drive.');
-      const a = await archivoBase64(file);
+      const reemplazaImagen = Boolean(file);
+      onProcesando(
+        true,
+        reemplazaImagen ? 'Guardando plantilla' : 'Guardando configuración',
+        reemplazaImagen
+          ? 'Estamos procesando la nueva imagen y guardando la configuración.'
+          : 'Estamos guardando los tamaños y la tipografía sin modificar la imagen actual.',
+      );
+      const a = file ? await archivoBase64(file) : null;
       await guardarPlantillaImpresionApi(
         token,
         tipo,
@@ -284,8 +293,8 @@ function Plantilla({
             ))}
           </TextField>
 
-          <Button variant="contained" onClick={guardar} disabled={!puede || !file}>
-            Guardar plantilla
+          <Button variant="contained" onClick={guardar} disabled={!puede}>
+            Guardar configuración
           </Button>
         </Stack>
       </CardContent>
