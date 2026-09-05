@@ -183,6 +183,12 @@ const menuGroups = [
         icon: <FolderRounded />,
         permiso: 'DOCUMENTOS_CONSULTAR',
       },
+      {
+        label: 'Escarapelas y habitaciones',
+        path: '/logistica/escarapelas-habitaciones',
+        icon: <PrintRounded />,
+        permiso: 'SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES',
+      },
     ],
   },
   {
@@ -266,12 +272,6 @@ const menuGroups = [
         path: '/sistema/datos-hotel',
         icon: <HotelRounded />,
         permiso: 'SISTEMA_TODO',
-      },
-      {
-        label: 'Escarapelas y habitaciones',
-        path: '/sistema/escarapelas-habitaciones',
-        icon: <PrintRounded />,
-        permiso: 'SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES',
       },
       {
         label: 'Auditoría',

@@ -142,8 +142,8 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['SERVICIO_SERENATA_NOTIFICAR','Servicio al retiro','Serenata','Notificar decisiones por WhatsApp'],
 
     ['SISTEMA_TODO','Sistema','Sistema','Acceso completo'],
-    ['SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION','Sistema','Escarapelas y habitaciones','Configurar plantillas'],
-    ['SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES','Sistema','Escarapelas y habitaciones','Generar PDFs'],
+    ['SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION','Logística','Escarapelas y habitaciones','Configurar plantillas'],
+    ['SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES','Logística','Escarapelas y habitaciones','Generar PDFs'],
     ['USUARIOS_CONSULTAR','Sistema','Usuarios','Consultar'],
     ['USUARIOS_CREAR','Sistema','Usuarios','Crear'],
     ['USUARIOS_EDITAR','Sistema','Usuarios','Editar y activar/inactivar'],
@@ -245,7 +245,7 @@ function obtenerMatrizInicialRolesPermisos_() {
 
   dar('SISTEMA_TODO',['LIDER_RETIRO']);
   dar('SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION',['LIDER_RETIRO']);
-  dar('SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES',['LIDER_RETIRO']);
+  dar('SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES',['LIDER_RETIRO','LOGISTICA']);
   dar('FECHAS_IMPORTANTES_GESTIONAR',['LIDER_RETIRO']);
   ['MI_CUENTA_VER','MI_MENU_REPORTAR_PAGO','CODIGO_VESTUARIO_VER','MIS_TEMAS_VER'].forEach(function(p){dar(p,todosConsulta);});
   Object.keys(mapa).forEach(function(r){mapa[r]=Array.from(new Set(mapa[r]));});
