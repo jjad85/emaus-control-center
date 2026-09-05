@@ -192,20 +192,23 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
   doc.setTextColor(20, 35, 45);
   doc.setFont(fuente, 'bold');
   doc.setFontSize(central);
-  doc.text(`Habitación ${hab.habitacion || ''}`, x + w / 2, y + h * 0.22, {
+
+  // Todo el bloque se baja respecto de la versión anterior para que el texto
+  // quede visualmente más centrado en sentido vertical dentro de la plantilla.
+  doc.text(`Habitación ${hab.habitacion || ''}`, x + w / 2, y + h * 0.30, {
     align: 'center',
   });
 
   const personas = hab.personas || [];
   const cantidad = Math.max(personas.length, 1);
-  const inicio = y + h * (cantidad > 1 ? 0.39 : 0.47);
-  const espacio = cantidad > 1 ? h * 0.30 : h * 0.32;
+  const inicio = y + h * (cantidad > 1 ? 0.46 : 0.55);
+  const espacio = cantidad > 1 ? h * 0.29 : h * 0.30;
 
   personas.forEach((p, i) => {
     const yy = inicio + i * espacio;
 
-    // Nombre completo de la persona con el mismo tamaño central configurado.
-    // Si no cabe en una línea, conserva la lógica de dos líneas antes de reducir.
+    // Nombre completo en tamaño central. Si no cabe, primero se divide en dos
+    // líneas antes de reducir el tamaño.
     doc.setFont(fuente, 'bold');
     const lineasNombre = dibujarNombreCentral(
       doc,
@@ -219,14 +222,31 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
     doc.setFont(fuente, 'normal');
     doc.setFontSize(inferior);
 
-    const desplazamientoTipo = lineasNombre === 2 ? 7.2 : 4.4;
+    // Se deja un renglón visual adicional después del nombre antes de mostrar
+    // Caminante / Servidor.
+    const desplazamientoTipo = lineasNombre === 2 ? 10.0 : 7.2;
     const yTipo = yy + desplazamientoTipo;
     doc.text(p.tipoPersona || '', x + w / 2, yTipo, { align: 'center' });
 
-    // La mesa solo se imprime cuando la persona realmente tiene una asignada.
     const mesa = String(p.mesa || '').trim();
-    if (mesa) {
-      doc.text(`Mesa ${mesa}`, x + w / 2, yTipo + 4.4, { align: 'center' });
+    const esServidor = String(p.tipoPersona || '').trim().toLowerCase() === 'servidor';
+
+    if (esServidor) {
+      if (mesa) {
+        const rolMesa = String(p.rolMesa || '').trim();
+        const textoMesa = `Mesa ${mesa}${rolMesa ? ` - ${rolMesa}` : ''}`;
+        doc.text(textoMesa, x + w / 2, yTipo + 4.8, { align: 'center' });
+      } else {
+        const equipo = String(p.equipo || '').trim();
+        if (equipo) {
+          const textoEquipo = /^equipo\b/i.test(equipo) ? equipo : `Equipo ${equipo}`;
+          doc.text(textoEquipo, x + w / 2, yTipo + 4.8, { align: 'center' });
+        }
+      }
+    } else if (mesa) {
+      // Para caminantes se conserva la regla anterior: mostrar su mesa cuando
+      // exista una asignación.
+      doc.text(`Mesa ${mesa}`, x + w / 2, yTipo + 4.8, { align: 'center' });
     }
   });
 }

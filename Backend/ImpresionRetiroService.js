@@ -208,40 +208,231 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
 function obtenerDatosGeneracionImpresion(token) {
   validarPermiso(token, 'SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES');
 
-  var caminantes = obtenerCaminantes({}).map(function(c) {
+  // Fuentes maestras de asignación:
+  // - El catálogo/número de habitación sale de la hoja Habitaciones.
+  // - Las personas asignadas se obtienen filtrando Caminantes y Servidores
+  //   por su columna Habitacion.
+  // - El tipo de persona lo determina la hoja de origen.
+  // - La mesa se resuelve a partir del consolidado de Mesas, no de la
+  //   habitación, para que solo se imprima cuando exista esa asignación.
+  var caminantesFuente = obtenerCaminantes({});
+  var servidoresFuente = obtenerServidores({}).filter(function(s) {
+    return Boolean(s.activo);
+  });
+  var mesas = obtenerMesas(caminantesFuente, servidoresFuente);
+
+  var mapaMesas = construirMapaMesasImpresion_(mesas);
+
+  var caminantes = caminantesFuente.map(function(c) {
     return {
       id: c.id || '',
-      nombre: c.nombre || c.nombreCompleto || '',
-      mesa: c.mesa || '',
+      nombre: obtenerNombreCompletoImpresion_(c),
+      mesa: buscarMesaPersonaImpresion_(mapaMesas.caminantes, c),
       habitacion: c.habitacion || ''
     };
   });
 
-  var servidores = obtenerServidores({}).filter(function(s) {
-    return Boolean(s.activo);
-  });
+  // Se parte directamente de la hoja Habitaciones para garantizar que la
+  // marcación use exactamente los números allí configurados. La ocupación no
+  // se toma de esa hoja: se reconstruye cruzando la columna Habitacion de las
+  // hojas Caminantes y Servidores.
+  var registrosHabitaciones = leerHojaComoObjetos(HOJAS.HABITACIONES);
 
-  var habitaciones = obtenerHabitaciones(
-    obtenerCaminantes({}),
-    servidores
-  ).map(function(h) {
-    return {
-      id: h.id || h.habitacion || '',
-      habitacion: h.habitacion || h.nombre || h.id || '',
-      personas: (h.personas || h.personasAsignadas || []).map(function(p) {
-        return {
-          nombre: p.nombre || '',
-          tipoPersona: p.tipoPersona || '',
-          mesa: p.mesa || ''
-        };
-      })
-    };
-  });
+  var habitaciones = registrosHabitaciones
+    .map(function(registro) {
+      var numeroHabitacion = String(
+        registro.habitacion ||
+        registro.nombre ||
+        registro.id ||
+        ''
+      ).trim();
+
+      var claveHabitacion = normalizarHabitacionImpresion_(numeroHabitacion);
+      var personas = [];
+
+      caminantesFuente
+        .filter(function(caminante) {
+          return (
+            claveHabitacion &&
+            normalizarHabitacionImpresion_(caminante.habitacion) === claveHabitacion
+          );
+        })
+        .forEach(function(caminante) {
+          personas.push({
+            id: caminante.id || '',
+            nombre: obtenerNombreCompletoImpresion_(caminante),
+            tipoPersona: 'Caminante',
+            mesa: buscarMesaPersonaImpresion_(mapaMesas.caminantes, caminante)
+          });
+        });
+
+      servidoresFuente
+        .filter(function(servidor) {
+          return (
+            claveHabitacion &&
+            normalizarHabitacionImpresion_(servidor.habitacion) === claveHabitacion
+          );
+        })
+        .forEach(function(servidor) {
+          var mesaServidor = buscarMesaPersonaImpresion_(mapaMesas.servidores, servidor);
+          personas.push({
+            id: servidor.id || '',
+            nombre: obtenerNombreCompletoImpresion_(servidor),
+            tipoPersona: 'Servidor',
+            mesa: mesaServidor,
+            rolMesa: mesaServidor ? obtenerRolMesaImpresion_(servidor) : '',
+            equipo: mesaServidor ? '' : obtenerEquipoServidorImpresion_(servidor)
+          });
+        });
+
+      return {
+        id: registro.id || numeroHabitacion,
+        habitacion: numeroHabitacion,
+        personas: personas
+      };
+    })
+    .filter(function(habitacion) {
+      return Boolean(String(habitacion.habitacion || '').trim());
+    });
 
   return {
     caminantes: caminantes,
     habitaciones: habitaciones
   };
+}
+
+/**
+ * Construye índices de pertenencia a mesa usando el resultado oficial de
+ * obtenerMesas(). Para caminantes se toma mesa.caminantes; para servidores,
+ * los servidores de mesa expuestos por el consolidado (líder y colíder).
+ */
+function construirMapaMesasImpresion_(mesas) {
+  var mapa = {
+    caminantes: { porId: {}, porNombre: {} },
+    servidores: { porId: {}, porNombre: {} }
+  };
+
+  (mesas || []).forEach(function(mesa) {
+    var numero = String(mesa.numero || '').trim();
+    if (!numero) {
+      return;
+    }
+
+    (mesa.caminantes || []).forEach(function(caminante) {
+      registrarMesaPersonaImpresion_(mapa.caminantes, caminante, numero);
+    });
+
+    if (mesa.lider) {
+      registrarMesaPersonaImpresion_(mapa.servidores, mesa.lider, numero);
+    }
+    if (mesa.colider) {
+      registrarMesaPersonaImpresion_(mapa.servidores, mesa.colider, numero);
+    }
+  });
+
+  return mapa;
+}
+
+function registrarMesaPersonaImpresion_(mapa, persona, numeroMesa) {
+  if (!persona) {
+    return;
+  }
+
+  var id = String(persona.id || '').trim();
+  var nombre = normalizarTexto(obtenerNombreCompletoImpresion_(persona));
+
+  if (id) {
+    mapa.porId[id] = numeroMesa;
+  }
+  if (nombre) {
+    mapa.porNombre[nombre] = numeroMesa;
+  }
+}
+
+function buscarMesaPersonaImpresion_(mapa, persona) {
+  if (!mapa || !persona) {
+    return '';
+  }
+
+  var id = String(persona.id || '').trim();
+  if (id && mapa.porId[id]) {
+    return mapa.porId[id];
+  }
+
+  var nombre = normalizarTexto(obtenerNombreCompletoImpresion_(persona));
+  return nombre && mapa.porNombre[nombre]
+    ? mapa.porNombre[nombre]
+    : '';
+}
+
+
+/**
+ * Para servidores asignados a una mesa, el rol se toma de la columna ROL
+ * (o de rolMesa cuando la estructura nueva ya la separó). Se normaliza solo
+ * la etiqueta de impresión, sin alterar el dato almacenado en la hoja.
+ */
+function obtenerRolMesaImpresion_(servidor) {
+  if (!servidor) {
+    return '';
+  }
+
+  var valor = String(servidor.rolMesa || servidor.rol || '').trim();
+  var normalizado = normalizarTexto(valor);
+
+  if (normalizado === 'lider' || normalizado === 'líder') {
+    return 'Líder';
+  }
+  if (normalizado === 'colider' || normalizado === 'colíder') {
+    return 'Colíder';
+  }
+
+  return valor;
+}
+
+/**
+ * Si el servidor no pertenece a una mesa, la marcación muestra el equipo
+ * asignado en la hoja Servidores. El valor técnico "Mesa" no se imprime como
+ * equipo porque representa una asignación de mesa, no un equipo de apoyo.
+ */
+function obtenerEquipoServidorImpresion_(servidor) {
+  if (!servidor) {
+    return '';
+  }
+
+  var equipo = String(servidor.equipo || '').trim();
+  return normalizarTexto(equipo) === 'mesa' ? '' : equipo;
+}
+
+/**
+ * Prioriza los campos separados para garantizar que la marcación incluya
+ * nombres y apellidos. Si un registro antiguo no los tiene, conserva el
+ * nombre completo existente como respaldo.
+ */
+function obtenerNombreCompletoImpresion_(persona) {
+  var nombreConstruido = construirNombreCompletoPersona(
+    persona.primerNombre || '',
+    persona.segundoNombre || '',
+    persona.primerApellido || '',
+    persona.segundoApellido || ''
+  );
+
+  return nombreConstruido || persona.nombre || persona.nombreCompleto || '';
+}
+
+function normalizarHabitacionImpresion_(valor) {
+  var texto = String(valor || '').trim();
+  if (!texto) {
+    return '';
+  }
+
+  texto = texto.replace(/^habitaci[oó]n\s*/i, '').trim();
+
+  // Si ambos lados son números, 01 y 1 deben representar la misma habitación.
+  if (/^\d+(?:\.0+)?$/.test(texto)) {
+    return String(Number(texto));
+  }
+
+  return normalizarTexto(texto);
 }
 
 
