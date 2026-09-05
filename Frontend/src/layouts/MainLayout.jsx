@@ -185,7 +185,7 @@ const menuGroups = [
       },
       {
         label: 'Escarapelas y habitaciones',
-        path: '/logistica/escarapelas-habitaciones',
+        path: '/sistema/escarapelas-habitaciones',
         icon: <PrintRounded />,
         permiso: 'LOGISTICA_ESCARAPELAS_HABITACIONES_VER',
       },
