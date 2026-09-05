@@ -199,7 +199,7 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
     align: 'center',
   });
 
-  const personas = hab.personas || [];
+  const personas = Array.isArray(hab.personas) ? hab.personas : [];
   const cantidad = Math.max(personas.length, 1);
   const inicio = y + h * (cantidad > 1 ? 0.46 : 0.55);
   const espacio = cantidad > 1 ? h * 0.29 : h * 0.30;
@@ -268,17 +268,18 @@ async function generar(items, plantilla, tipo, nombre) {
   const pw = 210;
   const ph = 297;
 
-  // Las marcaciones se distribuyen sin separación entre sí. De esta forma,
-  // cada corte sirve como borde compartido para dos piezas y se aprovecha al
-  // máximo el área útil de la hoja. El bloque completo se centra en la A4 para
-  // conservar márgenes exteriores simétricos cuando sobra espacio.
+  // Las piezas quedan completamente pegadas entre sí: 0 mm horizontal y
+  // 0 mm vertical. Solo se reparte como margen exterior el espacio que sobra
+  // en la hoja. Un pequeño epsilon evita perder una fila/columna por errores
+  // de punto flotante (por ejemplo 210 / 70 = 2.999999...).
   if (w > pw || h > ph) {
     throw new Error('Las dimensiones configuradas son mayores que una página A4.');
   }
 
-  const cols = Math.max(1, Math.floor(pw / w));
-  const rows = Math.max(1, Math.floor(ph / h));
-  const cap = cols * rows;
+  const EPSILON = 0.0001;
+  const cols = Math.max(1, Math.floor((pw + EPSILON) / w));
+  const rows = Math.max(1, Math.floor((ph + EPSILON) / h));
+  const cap = Math.max(1, cols * rows);
   const offsetX = Math.max(0, (pw - cols * w) / 2);
   const offsetY = Math.max(0, (ph - rows * h) / 2);
 
