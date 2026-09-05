@@ -56,6 +56,52 @@ function instalarMatrizRolesPermisosDefinitiva() {
   return { roles: roles.length, permisos: permisos.length, instalado: true };
 }
 
+
+/**
+ * Migra únicamente el permiso de acceso al módulo de Escarapelas y habitaciones
+ * sin reinstalar ni sobrescribir toda la matriz existente.
+ * Ejecutar una vez después de desplegar esta entrega.
+ */
+function instalarPermisoLogisticaEscarapelasHabitaciones() {
+  const libro = obtenerLibro();
+  const hoja = asegurarHojaConEncabezados_(
+    libro,
+    HOJAS.PERMISOS_ROL,
+    ['Rol', 'Permiso', 'Activo']
+  );
+
+  const permiso = 'LOGISTICA_ESCARAPELAS_HABITACIONES_VER';
+  const rolesActivosPorDefecto = ['ADMIN', 'LIDER_RETIRO', 'LOGISTICA'];
+  const roles = leerHojaComoObjetos(HOJAS.ROLES)
+    .filter(function(item) { return convertirBooleano(item.activo); })
+    .map(function(item) { return String(item.rol || '').trim(); })
+    .filter(Boolean);
+
+  const existentes = leerHojaComoObjetos(HOJAS.PERMISOS_ROL);
+  const indice = {};
+  existentes.forEach(function(item, i) {
+    indice[normalizarTexto(item.rol) + '|' + normalizarPermiso(item.permiso)] = i + 2;
+  });
+
+  roles.forEach(function(rol) {
+    const clave = normalizarTexto(rol) + '|' + permiso;
+    const activo = rolesActivosPorDefecto.indexOf(String(rol).toUpperCase()) >= 0 ? 'Sí' : 'No';
+    if (indice[clave]) {
+      hoja.getRange(indice[clave], 3).setValue(activo);
+    } else {
+      hoja.appendRow([rol, permiso, activo]);
+    }
+  });
+
+  limpiarCachePermisos();
+  SpreadsheetApp.flush();
+  return {
+    permiso: permiso,
+    rolesProcesados: roles.length,
+    instalado: true
+  };
+}
+
 function asegurarHojaConEncabezados_(libro, nombre, encabezados) {
   let hoja = libro.getSheetByName(nombre);
   if (!hoja) hoja = libro.insertSheet(nombre);
@@ -89,6 +135,9 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['SERVIDORES_ASIGNAR_EQUIPO','Personas','Servidores','Asignar equipo'],
     ['SERVIDORES_ASIGNAR_HABITACION','Personas','Servidores','Asignar habitación'],
     ['CENTRO_LOGISTICO_VER','Logística','Centro Logístico','Consultar panel y reportes'],
+    ['LOGISTICA_ESCARAPELAS_HABITACIONES_VER','Logística','Escarapelas y habitaciones','Acceder al módulo'],
+    ['SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION','Logística','Escarapelas y habitaciones','Configurar plantillas'],
+    ['SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES','Logística','Escarapelas y habitaciones','Generar PDFs'],
     ['DOCUMENTOS_CONSULTAR','Logística','Documentos','Consultar'],
     ['DOCUMENTOS_CREAR','Logística','Documentos','Crear'],
     ['DOCUMENTOS_EDITAR','Logística','Documentos','Editar'],
@@ -142,8 +191,6 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['SERVICIO_SERENATA_NOTIFICAR','Servicio al retiro','Serenata','Notificar decisiones por WhatsApp'],
 
     ['SISTEMA_TODO','Sistema','Sistema','Acceso completo'],
-    ['SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION','Logística','Escarapelas y habitaciones','Configurar plantillas'],
-    ['SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES','Logística','Escarapelas y habitaciones','Generar PDFs'],
     ['USUARIOS_CONSULTAR','Sistema','Usuarios','Consultar'],
     ['USUARIOS_CREAR','Sistema','Usuarios','Crear'],
     ['USUARIOS_EDITAR','Sistema','Usuarios','Editar y activar/inactivar'],
@@ -244,6 +291,7 @@ function obtenerMatrizInicialRolesPermisos_() {
   });
 
   dar('SISTEMA_TODO',['LIDER_RETIRO']);
+  dar('LOGISTICA_ESCARAPELAS_HABITACIONES_VER',['LIDER_RETIRO','LOGISTICA']);
   dar('SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION',['LIDER_RETIRO']);
   dar('SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES',['LIDER_RETIRO','LOGISTICA']);
   dar('FECHAS_IMPORTANTES_GESTIONAR',['LIDER_RETIRO']);

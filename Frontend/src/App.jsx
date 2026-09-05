@@ -229,8 +229,12 @@ export default function App() {
             element={<PrivateRoute permiso="SISTEMA_TODO"><DatosHotel /></PrivateRoute>}
           />
           <Route
+            path="/logistica/escarapelas-habitaciones"
+            element={<PrivateRoute permiso="LOGISTICA_ESCARAPELAS_HABITACIONES_VER"><ImpresionRetiro /></PrivateRoute>}
+          />
+          <Route
             path="/sistema/escarapelas-habitaciones"
-            element={<PrivateRoute permiso="SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES"><ImpresionRetiro /></PrivateRoute>}
+            element={<Navigate to="/logistica/escarapelas-habitaciones" replace />}
           />
 
           <Route

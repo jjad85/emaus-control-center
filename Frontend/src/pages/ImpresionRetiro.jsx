@@ -354,22 +354,35 @@ export default function ImpresionRetiro() {
   }
 
   async function cargar() {
+    setErr('');
+
+    // La configuración y los datos de generación son cargas independientes.
+    // Esto evita bloquear toda la pantalla cuando un rol puede entrar al
+    // módulo pero no tiene permiso para generar PDFs o configurar plantillas.
     try {
-      setErr('');
-      const [c, d] = await Promise.all([
-        obtenerConfiguracionImpresion(token),
-        obtenerDatosGeneracionImpresion(token),
-      ]);
-      setCfg(c);
-      setDatos(d);
+      const c = await obtenerConfiguracionImpresion(token);
+      setCfg(c || {});
     } catch (e) {
-      setErr(e.message);
+      setErr(e.message || 'No fue posible cargar la configuración de impresión.');
+    }
+
+    if (!puedeGen) {
+      setDatos({ caminantes: [], habitaciones: [] });
+      return;
+    }
+
+    try {
+      const d = await obtenerDatosGeneracionImpresion(token);
+      setDatos(d || { caminantes: [], habitaciones: [] });
+    } catch (e) {
+      setErr((actual) => actual || e.message || 'No fue posible cargar los datos para generar los PDFs.');
     }
   }
 
   useEffect(() => {
+    if (!token) return;
     cargar();
-  }, [token]);
+  }, [token, puedeGen]);
 
   async function plantilla(tipo) {
     return obtenerImagenPlantillaImpresion(token, tipo);
