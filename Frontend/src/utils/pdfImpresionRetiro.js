@@ -267,16 +267,20 @@ async function generar(items, plantilla, tipo, nombre) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const pw = 210;
   const ph = 297;
-  const m = 7;
-  const g = 3;
 
-  if (w > pw - 2 * m || h > ph - 2 * m) {
+  // Las marcaciones se distribuyen sin separación entre sí. De esta forma,
+  // cada corte sirve como borde compartido para dos piezas y se aprovecha al
+  // máximo el área útil de la hoja. El bloque completo se centra en la A4 para
+  // conservar márgenes exteriores simétricos cuando sobra espacio.
+  if (w > pw || h > ph) {
     throw new Error('Las dimensiones configuradas son mayores que una página A4.');
   }
 
-  const cols = Math.max(1, Math.floor((pw - 2 * m + g) / (w + g)));
-  const rows = Math.max(1, Math.floor((ph - 2 * m + g) / (h + g)));
+  const cols = Math.max(1, Math.floor(pw / w));
+  const rows = Math.max(1, Math.floor(ph / h));
   const cap = cols * rows;
+  const offsetX = Math.max(0, (pw - cols * w) / 2);
+  const offsetY = Math.max(0, (ph - rows * h) / 2);
 
   const opciones = {
     fuente: plantilla.fuente || 'helvetica',
@@ -292,8 +296,8 @@ async function generar(items, plantilla, tipo, nombre) {
     const pos = i % cap;
     const col = pos % cols;
     const row = Math.floor(pos / cols);
-    const x = m + col * (w + g);
-    const y = m + row * (h + g);
+    const x = offsetX + col * w;
+    const y = offsetY + row * h;
 
     if (tipo === 'escarapela') {
       await dibujarEscarapela(doc, imagenAplanada, x, y, w, h, items[i], opciones);
