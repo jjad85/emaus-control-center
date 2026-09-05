@@ -499,6 +499,15 @@ function routePost(contenido) {
         mensaje: 'Opciones de servidor consultadas correctamente'
       };
 
+    case 'crearservidor':
+      return {
+        datos: crearServidor(
+          contenido.token,
+          contenido.datos || {}
+        ),
+        mensaje: 'Servidor creado correctamente'
+      };
+
     case 'editarservidor':
       return {
         datos: editarServidor(contenido.token, contenido.id, contenido.datos),

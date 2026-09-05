@@ -33,6 +33,7 @@ import {
   SearchRounded,
   TableRestaurantRounded,
   GroupsRounded,
+  AddRounded,
 } from '@mui/icons-material';
 
 import { useMemo, useState } from 'react';
@@ -44,6 +45,7 @@ import {
   asignarMesaServidorApi,
   asignarTemaServidorApi,
   editarServidorApi,
+  crearServidorApi,
   obtenerOpcionesGestionServidorApi,
   obtenerServidores,
 } from '../api/servidoresApi';
@@ -130,6 +132,25 @@ export default function Servidores() {
       normalizar(item.documentoIdentidad).includes(texto) ||
       normalizar(item.correo).includes(texto) || String(item.celular || '').includes(busqueda);
   }), [items, busqueda]);
+
+  function abrirNuevoServidor() {
+    setSelected(null);
+    setDialogo('crear');
+    setOpciones(null);
+    setForm({
+      primerNombre: '',
+      segundoNombre: '',
+      primerApellido: '',
+      segundoApellido: '',
+      documentoIdentidad: '',
+      correo: '',
+      celular: '',
+      contacto: '',
+      estadoPago: 'Pendiente',
+      exentoPago: false,
+      motivoExencionPago: '',
+    });
+  }
 
   async function abrirAccion(tipo, servidor) {
     setSelected(servidor);
@@ -235,9 +256,10 @@ export default function Servidores() {
   }
 
   async function ejecutarGuardado() {
-    if (!selected) return;
+    if (dialogo !== 'crear' && !selected) return;
     setGuardando(true);
     try {
+      if (dialogo === 'crear') await crearServidorApi(token, form);
       if (dialogo === 'editar') await editarServidorApi(token, selected.id, form);
       if (dialogo === 'tema') await asignarTemaServidorApi(token, selected.id, form.temaId);
       if (dialogo === 'mesa') await asignarMesaServidorApi(
@@ -253,7 +275,7 @@ export default function Servidores() {
       setSelected(null);
       setOpciones(null);
       setForm({});
-      setMensaje('Cambio guardado correctamente.');
+      setMensaje(dialogo === 'crear' ? 'Servidor agregado correctamente.' : 'Cambio guardado correctamente.');
       await api.reload();
     } finally {
       setGuardando(false);
@@ -261,7 +283,7 @@ export default function Servidores() {
   }
 
   async function guardar() {
-    if (dialogo === 'editar' && !String(form.segundoApellido || '').trim()) {
+    if ((dialogo === 'editar' || dialogo === 'crear') && !String(form.segundoApellido || '').trim()) {
       setConfirmarSinSegundoApellido(true);
       return;
     }
@@ -303,15 +325,26 @@ export default function Servidores() {
       />
 
       <Stack spacing={2.5}>
-        <TextField
-          placeholder="Buscar por nombre, documento, correo o celular"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          sx={{ maxWidth: 440 }}
-          InputProps={{
-            startAdornment: <InputAdornment position="start"><SearchRounded /></InputAdornment>,
-          }}
-        />
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <TextField
+            placeholder="Buscar por nombre, documento, correo o celular"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            sx={{ maxWidth: 440, flex: 1 }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SearchRounded /></InputAdornment>,
+            }}
+          />
+          <ProtectedButton
+            permiso="SERVIDORES_EDITAR"
+            variant="contained"
+            startIcon={<AddRounded />}
+            onClick={abrirNuevoServidor}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Agregar servidor
+          </ProtectedButton>
+        </Stack>
 
         {!autenticado && (
           <Alert severity="info">Está en modo consulta. Inicie sesión para modificar información.</Alert>
@@ -658,7 +691,7 @@ export default function Servidores() {
       </Dialog>
 
       <Dialog open={Boolean(dialogo)} onClose={cerrarDialogo} fullWidth maxWidth="sm">
-        <DialogTitle>{dialogo === 'editar' ? 'Editar servidor' : dialogo === 'asignacionExistente' ? 'Equipo asignado' : dialogo === 'habitacionExistente' ? 'Habitación existente' : CONFIG_ACCIONES[dialogo]?.titulo}</DialogTitle>
+        <DialogTitle>{dialogo === 'crear' ? 'Agregar servidor' : dialogo === 'editar' ? 'Editar servidor' : dialogo === 'asignacionExistente' ? 'Equipo asignado' : dialogo === 'habitacionExistente' ? 'Habitación existente' : CONFIG_ACCIONES[dialogo]?.titulo}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {cargandoOpciones && <Alert severity="info">Cargando opciones disponibles…</Alert>}
@@ -688,8 +721,13 @@ export default function Servidores() {
               </Alert>
             )}
 
-            {dialogo === 'editar' && (
+            {(dialogo === 'editar' || dialogo === 'crear') && (
               <>
+                {dialogo === 'crear' && (
+                  <Alert severity="info">
+                    Registra los datos básicos del nuevo servidor. Las asignaciones de equipo, habitación y temas se realizan después de crearlo.
+                  </Alert>
+                )}
                 <Grid container spacing={1.5}>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField label="Primer nombre" value={form.primerNombre || ''} onChange={(e) => setForm({ ...form, primerNombre: e.target.value })} required fullWidth />

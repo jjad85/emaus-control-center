@@ -5,6 +5,12 @@ export async function obtenerServidores(params = {}) {
   return response.datos;
 }
 
+
+export async function crearServidorApi(token, datos) {
+  const response = await postAction('crearServidor', { token, datos });
+  return response.datos;
+}
+
 export async function obtenerOpcionesGestionServidorApi(token, id) {
   const response = await postAction('obtenerOpcionesGestionServidor', { token, id });
   return response.datos;

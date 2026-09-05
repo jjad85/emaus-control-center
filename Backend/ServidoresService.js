@@ -223,6 +223,83 @@ function obtenerOpcionesGestionServidor(token, servidorId) {
   };
 }
 
+function crearServidor(token, datos) {
+  const sesion = validarPermiso(token, 'SERVIDORES_EDITAR');
+  const entrada = datos || {};
+  const nombres = validarNombresPersona(
+    entrada,
+    'El servidor'
+  );
+  const nombre = nombres.nombreCompleto;
+  const documentoIdentidad = String(entrada.documentoIdentidad || '').trim();
+  const correo = String(entrada.correo || '').trim();
+  const celular = String(entrada.celular || '').trim();
+  const exentoPago = convertirBooleano(entrada.exentoPago);
+
+  return ejecutarCrudConBloqueo(function() {
+    const servidores = obtenerServidores({});
+
+    if (documentoIdentidad) {
+      const duplicadoDocumento = servidores.some(function(servidor) {
+        return normalizarTexto(servidor.documentoIdentidad) === normalizarTexto(documentoIdentidad);
+      });
+
+      if (duplicadoDocumento) {
+        throw crearErrorAplicacion(
+          'DOCUMENTO_SERVIDOR_DUPLICADO',
+          'Ya existe un servidor con este documento de identidad.'
+        );
+      }
+    }
+
+    if (correo) {
+      const duplicadoCorreo = servidores.some(function(servidor) {
+        return normalizarTexto(servidor.correo) === normalizarTexto(correo);
+      });
+
+      if (duplicadoCorreo) {
+        throw crearErrorAplicacion(
+          'CORREO_SERVIDOR_DUPLICADO',
+          'Ya existe un servidor con este correo electrónico.'
+        );
+      }
+    }
+
+    const creado = crearRegistroSheet(
+      HOJAS.SERVIDORES,
+      {
+        primerNombre: nombres.primerNombre,
+        segundoNombre: nombres.segundoNombre,
+        primerApellido: nombres.primerApellido,
+        segundoApellido: nombres.segundoApellido,
+        nombre: nombre,
+        documentoIdentidad: documentoIdentidad,
+        correo: correo,
+        celular: celular,
+        contacto: String(entrada.contacto || '').trim(),
+        exentoPago: exentoPago ? 'Sí' : 'No',
+        motivoExencionPago: exentoPago
+          ? String(entrada.motivoExencionPago || '').trim()
+          : '',
+        estadoPago: exentoPago ? 'Exento' : 'Pendiente',
+        equipo: '',
+        rol: '',
+        rolEquipo: '',
+        mesa: '',
+        rolMesa: '',
+        habitacion: '',
+        temaId: '',
+        tema: '',
+        activo: 'Sí'
+      },
+      opcionesCrudServidores_(sesion.usuario)
+    );
+
+    auditarServidor_(sesion, 'SERVIDORES_CREAR', creado.id, creado);
+    return convertirServidor(creado);
+  });
+}
+
 function editarServidor(token, id, datos) {
   const sesion = validarPermiso(token, 'SERVIDORES_EDITAR');
   const entrada = datos || {};
