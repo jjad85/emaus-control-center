@@ -231,7 +231,8 @@ function obtenerDatosGeneracionImpresion(token) {
       personas: (h.personas || h.personasAsignadas || []).map(function(p) {
         return {
           nombre: p.nombre || '',
-          tipoPersona: p.tipoPersona || ''
+          tipoPersona: p.tipoPersona || '',
+          mesa: p.mesa || ''
         };
       })
     };

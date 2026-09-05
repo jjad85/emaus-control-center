@@ -459,6 +459,18 @@ function routePost(contenido) {
           'Aspirante convertido en caminante correctamente'
       };
 
+    case 'crearrecordatoriopagowhatsapp':
+      return {
+        datos:
+          crearRecordatorioPagoWhatsapp(
+            contenido.token,
+            contenido.tipoPersona,
+            contenido.personaId
+          ),
+        mensaje:
+          'Recordatorio de pago creado correctamente'
+      };
+
     case 'prepararnotificacionwhatsapp':
       return {
         datos:

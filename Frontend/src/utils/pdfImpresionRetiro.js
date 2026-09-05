@@ -170,10 +170,6 @@ async function dibujarEscarapela(doc, img, x, y, w, h, c, opciones) {
   doc.setTextColor(20, 35, 45);
   doc.setFont(fuente, 'bold');
 
-  // El título CAMINANTE usa exactamente el tamaño central configurado.
-  doc.setFontSize(central);
-  doc.text('CAMINANTE', x + w / 2, y + h * 0.34, { align: 'center' });
-
   // El nombre conserva el tamaño central. Si no cabe en una línea, se divide
   // primero en dos líneas antes de considerar cualquier reducción de tamaño.
   dibujarNombreCentral(doc, nombre, x + w / 2, y + h * 0.49, w * 0.88, central);
@@ -196,33 +192,44 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
   doc.setTextColor(20, 35, 45);
   doc.setFont(fuente, 'bold');
   doc.setFontSize(central);
-  doc.text(`Habitación ${hab.habitacion || ''}`, x + w / 2, y + h * 0.25, {
+  doc.text(`Habitación ${hab.habitacion || ''}`, x + w / 2, y + h * 0.22, {
     align: 'center',
   });
 
   const personas = hab.personas || [];
-  const inicio = y + h * 0.40;
-  const espacio = Math.min(h * 0.13, (h * 0.48) / Math.max(personas.length, 1));
+  const cantidad = Math.max(personas.length, 1);
+  const inicio = y + h * (cantidad > 1 ? 0.39 : 0.47);
+  const espacio = cantidad > 1 ? h * 0.30 : h * 0.32;
 
   personas.forEach((p, i) => {
     const yy = inicio + i * espacio;
+
+    // Nombre completo de la persona con el mismo tamaño central configurado.
+    // Si no cabe en una línea, conserva la lógica de dos líneas antes de reducir.
     doc.setFont(fuente, 'bold');
     const lineasNombre = dibujarNombreCentral(
       doc,
       p.nombre || '',
       x + w / 2,
       yy,
-      w * 0.84,
+      w * 0.86,
       central,
     );
 
     doc.setFont(fuente, 'normal');
     doc.setFontSize(inferior);
-    const desplazamientoTipo = lineasNombre === 2 ? 7.2 : 4.2;
-    doc.text(p.tipoPersona || '', x + w / 2, yy + desplazamientoTipo, { align: 'center' });
+
+    const desplazamientoTipo = lineasNombre === 2 ? 7.2 : 4.4;
+    const yTipo = yy + desplazamientoTipo;
+    doc.text(p.tipoPersona || '', x + w / 2, yTipo, { align: 'center' });
+
+    // La mesa solo se imprime cuando la persona realmente tiene una asignada.
+    const mesa = String(p.mesa || '').trim();
+    if (mesa) {
+      doc.text(`Mesa ${mesa}`, x + w / 2, yTipo + 4.4, { align: 'center' });
+    }
   });
 }
-
 async function generar(items, plantilla, tipo, nombre) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('No hay registros para generar.');
