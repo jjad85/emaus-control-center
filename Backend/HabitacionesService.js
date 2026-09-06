@@ -49,14 +49,23 @@ function obtenerHabitaciones(
 }
 
 function obtenerHabitacionPorId(id) {
+  var habitaciones = obtenerHabitaciones();
+  var referencia = String(id || '').trim();
+
+  // Primero se busca EXCLUSIVAMENTE por ID. Antes se evaluaba ID o número
+  // dentro del mismo find(); si un ID coincidía con el número de otra
+  // habitación podía devolverse la habitación equivocada.
   var habitacion =
-    obtenerHabitaciones()
-      .find(function(item) {
-        return (
-          String(item.id) === String(id) ||
-          String(item.habitacion) === String(id)
-        );
+    habitaciones.find(function(item) {
+      return String(item.id || '').trim() === referencia;
+    });
+
+  if (!habitacion) {
+    habitacion =
+      habitaciones.find(function(item) {
+        return String(item.habitacion || '').trim() === referencia;
       });
+  }
 
   if (!habitacion) {
     throw crearErrorAplicacion(
@@ -66,6 +75,46 @@ function obtenerHabitacionPorId(id) {
   }
 
   return habitacion;
+}
+
+/**
+ * Resuelve una habitación usando la referencia de la UI.
+ * Cuando el frontend envía ID + número se valida primero el número visible,
+ * evitando cruces entre IDs históricos y números de habitación.
+ */
+function obtenerHabitacionPorReferencia_(habitacionId, habitacionNumero) {
+  var habitaciones = obtenerHabitaciones();
+  var id = String(habitacionId || '').trim();
+  var numero = String(habitacionNumero || '').trim();
+
+  if (numero) {
+    var porNumero = habitaciones.filter(function(item) {
+      return String(item.habitacion || '').trim() === numero;
+    });
+
+    if (id) {
+      var coincidenciaExacta = porNumero.find(function(item) {
+        return String(item.id || '').trim() === id;
+      });
+
+      if (coincidenciaExacta) {
+        return coincidenciaExacta;
+      }
+    }
+
+    if (porNumero.length === 1) {
+      return porNumero[0];
+    }
+
+    if (porNumero.length > 1) {
+      throw crearErrorAplicacion(
+        'HABITACION_DUPLICADA',
+        'Hay más de un registro para la habitación ' + numero + '. Revise la hoja Habitaciones.'
+      );
+    }
+  }
+
+  return obtenerHabitacionPorId(habitacionId || habitacionNumero);
 }
 
 function construirHabitacion(
@@ -399,7 +448,8 @@ function editarHabitacion(
 function obtenerCandidatosHabitacion(
   token,
   habitacionId,
-  tipoPersona
+  tipoPersona,
+  habitacionNumero
 ) {
   validarPermiso(
     token,
@@ -407,8 +457,9 @@ function obtenerCandidatosHabitacion(
   );
 
   var habitacion =
-    obtenerHabitacionPorId(
-      habitacionId
+    obtenerHabitacionPorReferencia_(
+      habitacionId,
+      habitacionNumero
     );
 
   if (!habitacion.activo) {
@@ -540,7 +591,8 @@ function asignarPersonasHabitacion(
   token,
   habitacionId,
   tipoPersona,
-  personaIds
+  personaIds,
+  habitacionNumero
 ) {
   var sesion =
     validarPermiso(
@@ -573,8 +625,9 @@ function asignarPersonasHabitacion(
   return ejecutarCrudConBloqueo(
     function() {
       var habitacion =
-        obtenerHabitacionPorId(
-          habitacionId
+        obtenerHabitacionPorReferencia_(
+          habitacionId,
+          habitacionNumero
         );
 
       if (!habitacion.activo) {

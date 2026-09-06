@@ -36,7 +36,8 @@ export async function editarHabitacion(
 export async function obtenerCandidatosHabitacion(
   token,
   habitacionId,
-  tipoPersona
+  tipoPersona,
+  habitacionNumero = ''
 ) {
   const response =
     await postAction(
@@ -45,6 +46,7 @@ export async function obtenerCandidatosHabitacion(
         token,
         habitacionId,
         tipoPersona,
+        habitacionNumero,
       }
     );
 
@@ -55,7 +57,8 @@ export async function asignarPersonasHabitacion(
   token,
   habitacionId,
   tipoPersona,
-  personaIds
+  personaIds,
+  habitacionNumero = ''
 ) {
   const response =
     await postAction(
@@ -65,6 +68,7 @@ export async function asignarPersonasHabitacion(
         habitacionId,
         tipoPersona,
         personaIds,
+        habitacionNumero,
       }
     );
 

@@ -960,7 +960,8 @@ function routePost(contenido) {
         datos: obtenerCandidatosHabitacion(
           contenido.token,
           contenido.habitacionId,
-          contenido.tipoPersona
+          contenido.tipoPersona,
+          contenido.habitacionNumero
         ),
         mensaje:
           'Personas disponibles consultadas correctamente'
@@ -995,7 +996,8 @@ function routePost(contenido) {
           contenido.token,
           contenido.habitacionId,
           contenido.tipoPersona,
-          contenido.personaIds
+          contenido.personaIds,
+          contenido.habitacionNumero
         ),
         mensaje:
           'Personas asignadas correctamente'

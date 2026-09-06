@@ -87,7 +87,8 @@ export default function AsignarPersonaHabitacionDialog({
     obtenerCandidatosHabitacion(
       token,
       habitacion.id,
-      tipoPersona
+      tipoPersona,
+      habitacion.habitacion
     )
       .then((respuesta) => {
         if (activo) {
@@ -160,7 +161,8 @@ export default function AsignarPersonaHabitacionDialog({
           tipoPersona,
           seleccionados.map(
             (persona) => persona.id
-          )
+          ),
+          habitacion.habitacion
         );
 
       if (onSaved) {
