@@ -5,6 +5,8 @@
  */
 var CLAVE_PLANTILLA_ESCARAPELA_ = 'EMAUS_PLANTILLA_ESCARAPELA';
 var CLAVE_PLANTILLA_HABITACION_ = 'EMAUS_PLANTILLA_HABITACION';
+var CLAVE_PLANTILLA_FORMATO3_ = 'EMAUS_PLANTILLA_FORMATO3';
+var CLAVE_PLANTILLA_FORMATO4_ = 'EMAUS_PLANTILLA_FORMATO4';
 var CLAVE_CARPETA_IMPRESION_ = 'EMAUS_CARPETA_PLANTILLAS_IMPRESION';
 var NOMBRE_CARPETA_IMPRESION_ = 'Plantillas impresión Emaús';
 var MAX_IMAGEN_IMPRESION_BYTES_ = 8 * 1024 * 1024;
@@ -18,7 +20,9 @@ function obtenerConfiguracionImpresion(token) {
   var props = PropertiesService.getScriptProperties();
   return {
     escarapela: leerPlantillaImpresion_(props, CLAVE_PLANTILLA_ESCARAPELA_),
-    habitacion: leerPlantillaImpresion_(props, CLAVE_PLANTILLA_HABITACION_)
+    habitacion: leerPlantillaImpresion_(props, CLAVE_PLANTILLA_HABITACION_),
+    formato3: leerPlantillaImpresion_(props, CLAVE_PLANTILLA_FORMATO3_),
+    formato4: leerPlantillaImpresion_(props, CLAVE_PLANTILLA_FORMATO4_)
   };
 }
 
@@ -29,7 +33,7 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
   );
 
   tipo = String(tipo || '').toLowerCase().trim();
-  if (['escarapela', 'habitacion'].indexOf(tipo) < 0) {
+  if (['escarapela', 'habitacion', 'formato3', 'formato4'].indexOf(tipo) < 0) {
     throw crearErrorAplicacion(
       'TIPO_PLANTILLA_INVALIDO',
       'Tipo de plantilla inválido.'
@@ -65,9 +69,7 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
   }
 
   var props = PropertiesService.getScriptProperties();
-  var clave = tipo === 'escarapela'
-    ? CLAVE_PLANTILLA_ESCARAPELA_
-    : CLAVE_PLANTILLA_HABITACION_;
+  var clave = obtenerClavePlantillaImpresion_(tipo);
   var anterior = leerPlantillaImpresion_(props, clave);
   var reemplazaImagen = Boolean(
     archivo &&
@@ -292,7 +294,11 @@ function obtenerDatosGeneracionImpresion(token) {
       };
     })
     .filter(function(habitacion) {
-      return Boolean(String(habitacion.habitacion || '').trim());
+      return (
+        Boolean(String(habitacion.habitacion || '').trim()) &&
+        Array.isArray(habitacion.personas) &&
+        habitacion.personas.length > 0
+      );
     });
 
   return {
@@ -443,7 +449,7 @@ function guardarConfiguracionPlantillaImpresion(token, tipo, anchoCm, altoCm, ta
   );
 
   tipo = String(tipo || '').toLowerCase().trim();
-  if (['escarapela', 'habitacion'].indexOf(tipo) < 0) {
+  if (['escarapela', 'habitacion', 'formato3', 'formato4'].indexOf(tipo) < 0) {
     throw crearErrorAplicacion('TIPO_PLANTILLA_INVALIDO', 'Tipo de plantilla inválido.');
   }
 
@@ -476,9 +482,7 @@ function guardarConfiguracionPlantillaImpresion(token, tipo, anchoCm, altoCm, ta
   }
 
   var props = PropertiesService.getScriptProperties();
-  var clave = tipo === 'escarapela'
-    ? CLAVE_PLANTILLA_ESCARAPELA_
-    : CLAVE_PLANTILLA_HABITACION_;
+  var clave = obtenerClavePlantillaImpresion_(tipo);
   var anterior = leerPlantillaImpresion_(props, clave);
 
   if (!anterior.fileId) {
@@ -538,12 +542,11 @@ function obtenerImagenPlantillaImpresion(token, tipo) {
 
   tipo = String(tipo || '').toLowerCase();
   var props = PropertiesService.getScriptProperties();
-  var dato = leerPlantillaImpresion_(
-    props,
-    tipo === 'escarapela'
-      ? CLAVE_PLANTILLA_ESCARAPELA_
-      : CLAVE_PLANTILLA_HABITACION_
-  );
+  if (['escarapela', 'habitacion', 'formato3', 'formato4'].indexOf(tipo) < 0) {
+    throw crearErrorAplicacion('TIPO_PLANTILLA_INVALIDO', 'Tipo de plantilla inválido.');
+  }
+
+  var dato = leerPlantillaImpresion_(props, obtenerClavePlantillaImpresion_(tipo));
 
   if (!dato.fileId) {
     throw crearErrorAplicacion(
@@ -643,9 +646,20 @@ function limpiarNombrePlantillaImpresion_(nombre, tipo) {
 
 
 function obtenerValoresTextoPlantillaImpresion_(tipo) {
-  return String(tipo || '').toLowerCase() === 'escarapela'
-    ? { tamanoCentralPt: 20, tamanoInferiorPt: 11, fuente: 'helvetica' }
-    : { tamanoCentralPt: 18, tamanoInferiorPt: 10, fuente: 'helvetica' };
+  var tipoNormalizado = String(tipo || '').toLowerCase();
+  if (tipoNormalizado === 'habitacion') {
+    return { tamanoCentralPt: 18, tamanoInferiorPt: 10, fuente: 'helvetica' };
+  }
+  return { tamanoCentralPt: 20, tamanoInferiorPt: 11, fuente: 'helvetica' };
+}
+
+function obtenerClavePlantillaImpresion_(tipo) {
+  var tipoNormalizado = String(tipo || '').toLowerCase().trim();
+  if (tipoNormalizado === 'escarapela') return CLAVE_PLANTILLA_ESCARAPELA_;
+  if (tipoNormalizado === 'habitacion') return CLAVE_PLANTILLA_HABITACION_;
+  if (tipoNormalizado === 'formato3') return CLAVE_PLANTILLA_FORMATO3_;
+  if (tipoNormalizado === 'formato4') return CLAVE_PLANTILLA_FORMATO4_;
+  throw crearErrorAplicacion('TIPO_PLANTILLA_INVALIDO', 'Tipo de plantilla inválido.');
 }
 
 function normalizarFuentePlantillaImpresion_(fuente) {

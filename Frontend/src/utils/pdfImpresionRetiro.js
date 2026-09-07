@@ -250,6 +250,53 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
     }
   });
 }
+
+async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
+  const fuente = nombreFuenteJsPdf(opciones.fuente);
+  const central = numeroPositivo(opciones.tamanoCentralPt, 20);
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(x, y, w, h, 'F');
+  doc.addImage(img, 'PNG', x, y, w, h);
+
+  doc.setTextColor(20, 35, 45);
+  doc.setFont(fuente, 'bold');
+  dibujarNombreCentral(
+    doc,
+    String(c.nombre || ''),
+    x + w / 2,
+    y + h * 0.57,
+    w * 0.88,
+    central,
+  );
+}
+
+async function dibujarFormato4(doc, img, x, y, w, h, c, opciones) {
+  const fuente = nombreFuenteJsPdf(opciones.fuente);
+  const central = numeroPositivo(opciones.tamanoCentralPt, 20);
+  const inferior = numeroPositivo(opciones.tamanoInferiorPt, 11);
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(x, y, w, h, 'F');
+  doc.addImage(img, 'PNG', x, y, w, h);
+
+  doc.setTextColor(20, 35, 45);
+  doc.setFont(fuente, 'bold');
+  dibujarNombreCentral(
+    doc,
+    String(c.nombre || ''),
+    x + w / 2,
+    y + h * 0.49,
+    w * 0.88,
+    central,
+  );
+
+  doc.setFont(fuente, 'bold');
+  doc.setFontSize(inferior);
+  doc.text(`Mesa: ${c.mesa || ''}`, x + w * 0.09, y + h * 0.79);
+  doc.text(`Habitación: ${c.habitacion || ''}`, x + w * 0.09, y + h * 0.88);
+}
+
 async function generar(items, plantilla, tipo, nombre) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('No hay registros para generar.');
@@ -302,8 +349,14 @@ async function generar(items, plantilla, tipo, nombre) {
 
     if (tipo === 'escarapela') {
       await dibujarEscarapela(doc, imagenAplanada, x, y, w, h, items[i], opciones);
-    } else {
+    } else if (tipo === 'habitacion') {
       await dibujarHabitacion(doc, imagenAplanada, x, y, w, h, items[i], opciones);
+    } else if (tipo === 'formato3') {
+      await dibujarFormato3(doc, imagenAplanada, x, y, w, h, items[i], opciones);
+    } else if (tipo === 'formato4') {
+      await dibujarFormato4(doc, imagenAplanada, x, y, w, h, items[i], opciones);
+    } else {
+      throw new Error('Tipo de formato de impresión no soportado.');
     }
   }
 
@@ -321,3 +374,16 @@ export const generarHabitacionesPdf = (items, p) =>
 
 export const generarHabitacionPdf = (item, p) =>
   generar([item], p, 'habitacion', `Habitacion_${item.habitacion || ''}.pdf`);
+
+
+export const generarFormato3Pdf = (items, p) =>
+  generar(items, p, 'formato3', 'Marcacion_Nombre_Caminantes.pdf');
+
+export const generarFormato3IndividualPdf = (item, p) =>
+  generar([item], p, 'formato3', `Marcacion_Nombre_${item.nombre || 'Caminante'}.pdf`);
+
+export const generarFormato4Pdf = (items, p) =>
+  generar(items, p, 'formato4', 'Marcacion_Caminantes_Mesa_Habitacion.pdf');
+
+export const generarFormato4IndividualPdf = (item, p) =>
+  generar([item], p, 'formato4', `Marcacion_${item.nombre || 'Caminante'}.pdf`);

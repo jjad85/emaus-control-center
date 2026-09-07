@@ -34,6 +34,10 @@ import {
   generarEscarapelaPdf,
   generarHabitacionesPdf,
   generarHabitacionPdf,
+  generarFormato3Pdf,
+  generarFormato3IndividualPdf,
+  generarFormato4Pdf,
+  generarFormato4IndividualPdf,
 } from '../utils/pdfImpresionRetiro';
 
 const FUENTES = [
@@ -58,9 +62,9 @@ function archivoBase64(file) {
 }
 
 function valoresDefecto(tipo) {
-  return tipo === 'escarapela'
-    ? { central: 20, inferior: 11, fuente: 'helvetica' }
-    : { central: 18, inferior: 10, fuente: 'helvetica' };
+  return tipo === 'habitacion'
+    ? { central: 18, inferior: 10, fuente: 'helvetica' }
+    : { central: 20, inferior: 11, fuente: 'helvetica' };
 }
 
 function Plantilla({
@@ -275,7 +279,7 @@ function Plantilla({
               onChange={(e) => setCentral(e.target.value)}
               disabled={!puede}
               inputProps={{ min: 6, max: 72, step: 1 }}
-              helperText={tipo === 'escarapela' ? 'Nombre y texto CAMINANTE' : 'Título y nombres principales'}
+              helperText={tipo === 'habitacion' ? 'Habitación y nombres principales' : 'Nombre del caminante'}
             />
             <TextField
               label="Tamaño letra inferior (pt)"
@@ -284,7 +288,7 @@ function Plantilla({
               onChange={(e) => setInferior(e.target.value)}
               disabled={!puede}
               inputProps={{ min: 6, max: 48, step: 1 }}
-              helperText={tipo === 'escarapela' ? 'Mesa y habitación' : 'Tipo de persona'}
+              helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'No se usa en este formato' : 'Mesa y habitación'}
             />
           </Stack>
 
@@ -339,6 +343,8 @@ export default function ImpresionRetiro() {
   const [datos, setDatos] = useState({ caminantes: [], habitaciones: [] });
   const [cam, setCam] = useState('');
   const [hab, setHab] = useState('');
+  const [camFormato3, setCamFormato3] = useState('');
+  const [camFormato4, setCamFormato4] = useState('');
   const [err, setErr] = useState('');
   const [proceso, setProceso] = useState({
     abierto: false,
@@ -403,8 +409,8 @@ export default function ImpresionRetiro() {
   return (
     <Box>
       <PageHeader
-        titulo="Escarapelas y habitaciones"
-        subtitulo="Configura las plantillas y genera PDFs listos para impresión."
+        titulo="Escarapelas y marcaciones"
+        subtitulo="Configura las plantillas y genera PDFs optimizados para impresión y corte."
         icono={<BadgeRounded />}
       />
 
@@ -429,6 +435,30 @@ export default function ImpresionRetiro() {
               titulo="Plantilla de habitación"
               tipo="habitacion"
               config={cfg.habitacion}
+              token={token}
+              puede={puedeCfg}
+              onSaved={cargar}
+              onProcesando={cambiarProceso}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Plantilla
+              titulo="Plantilla 3 · Nombre"
+              tipo="formato3"
+              config={cfg.formato3}
+              token={token}
+              puede={puedeCfg}
+              onSaved={cargar}
+              onProcesando={cambiarProceso}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Plantilla
+              titulo="Plantilla 4 · Nombre, mesa y habitación"
+              tipo="formato4"
+              config={cfg.formato4}
               token={token}
               puede={puedeCfg}
               onSaved={cargar}
@@ -512,7 +542,7 @@ export default function ImpresionRetiro() {
                     Marcación de habitaciones
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {datos.habitaciones?.length || 0} habitaciones.
+                    {(datos.habitaciones || []).filter((x) => Array.isArray(x.personas) && x.personas.length > 0).length} habitaciones con asignación.
                   </Typography>
 
                   <Button
@@ -525,7 +555,7 @@ export default function ImpresionRetiro() {
                         'Estamos preparando el PDF de todas las habitaciones. La descarga iniciará al finalizar.',
                         async () =>
                           generarHabitacionesPdf(
-                            datos.habitaciones,
+                            (datos.habitaciones || []).filter((x) => Array.isArray(x.personas) && x.personas.length > 0),
                             await plantilla('habitacion'),
                           ),
                       )
@@ -540,7 +570,7 @@ export default function ImpresionRetiro() {
                     value={hab}
                     onChange={(e) => setHab(e.target.value)}
                   >
-                    {(datos.habitaciones || []).map((h) => (
+                    {(datos.habitaciones || []).filter((h) => Array.isArray(h.personas) && h.personas.length > 0).map((h) => (
                       <MenuItem key={h.id} value={h.id}>
                         Habitación {h.habitacion}
                       </MenuItem>
@@ -557,6 +587,126 @@ export default function ImpresionRetiro() {
                         async () => {
                           const h = datos.habitaciones.find((x) => x.id === hab);
                           await generarHabitacionPdf(h, await plantilla('habitacion'));
+                        },
+                      )
+                    }
+                  >
+                    Generar individual
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="h6" fontWeight={900}>
+                    Plantilla 3 · Nombre
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Imagen de fondo y nombre del caminante centrado en texto grande.
+                  </Typography>
+
+                  <Button
+                    variant="contained"
+                    startIcon={<PictureAsPdfRounded />}
+                    disabled={!puedeGen || !cfg.formato3?.fileId}
+                    onClick={() =>
+                      ejecutar(
+                        'Generando plantilla 3',
+                        'Estamos preparando las marcaciones de nombre de todos los caminantes.',
+                        async () => generarFormato3Pdf(datos.caminantes, await plantilla('formato3')),
+                      )
+                    }
+                  >
+                    Generar todas
+                  </Button>
+
+                  <TextField
+                    select
+                    label="Caminante"
+                    value={camFormato3}
+                    onChange={(e) => setCamFormato3(e.target.value)}
+                  >
+                    {(datos.caminantes || []).map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.nombre}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <Button
+                    variant="outlined"
+                    disabled={!puedeGen || !camFormato3 || !cfg.formato3?.fileId}
+                    onClick={() =>
+                      ejecutar(
+                        'Generando plantilla 3',
+                        'Estamos preparando la marcación del caminante seleccionado.',
+                        async () => {
+                          const c = datos.caminantes.find((x) => x.id === camFormato3);
+                          await generarFormato3IndividualPdf(c, await plantilla('formato3'));
+                        },
+                      )
+                    }
+                  >
+                    Generar individual
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="h6" fontWeight={900}>
+                    Plantilla 4 · Nombre, mesa y habitación
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Nombre centrado en grande; mesa y habitación alineadas a la izquierda.
+                  </Typography>
+
+                  <Button
+                    variant="contained"
+                    startIcon={<PictureAsPdfRounded />}
+                    disabled={!puedeGen || !cfg.formato4?.fileId}
+                    onClick={() =>
+                      ejecutar(
+                        'Generando plantilla 4',
+                        'Estamos preparando las marcaciones de todos los caminantes.',
+                        async () => generarFormato4Pdf(datos.caminantes, await plantilla('formato4')),
+                      )
+                    }
+                  >
+                    Generar todas
+                  </Button>
+
+                  <TextField
+                    select
+                    label="Caminante"
+                    value={camFormato4}
+                    onChange={(e) => setCamFormato4(e.target.value)}
+                  >
+                    {(datos.caminantes || []).map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.nombre}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <Button
+                    variant="outlined"
+                    disabled={!puedeGen || !camFormato4 || !cfg.formato4?.fileId}
+                    onClick={() =>
+                      ejecutar(
+                        'Generando plantilla 4',
+                        'Estamos preparando la marcación del caminante seleccionado.',
+                        async () => {
+                          const c = datos.caminantes.find((x) => x.id === camFormato4);
+                          await generarFormato4IndividualPdf(c, await plantilla('formato4'));
                         },
                       )
                     }
