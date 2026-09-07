@@ -34,10 +34,10 @@ import {
   generarEscarapelaPdf,
   generarHabitacionesPdf,
   generarHabitacionPdf,
-  generarFormato3Pdf,
-  generarFormato3IndividualPdf,
-  generarFormato4Pdf,
-  generarFormato4IndividualPdf,
+  generarSobresBienvenidaPdf,
+  generarSobreBienvenidaIndividualPdf,
+  generarNombresSantisimoPdf,
+  generarNombreSantisimoIndividualPdf,
 } from '../utils/pdfImpresionRetiro';
 
 const FUENTES = [
@@ -62,9 +62,9 @@ function archivoBase64(file) {
 }
 
 function valoresDefecto(tipo) {
-  return tipo === 'habitacion'
-    ? { central: 18, inferior: 10, fuente: 'helvetica' }
-    : { central: 20, inferior: 11, fuente: 'helvetica' };
+  if (tipo === 'habitacion') return { central: 18, inferior: 10, fuente: 'helvetica' };
+  if (tipo === 'formato3') return { central: 11, inferior: 11, fuente: 'helvetica' };
+  return { central: 20, inferior: 11, fuente: 'helvetica' };
 }
 
 function Plantilla({
@@ -130,13 +130,18 @@ function Plantilla({
       if (!(Number(w) > 0) || !(Number(h) > 0)) {
         throw new Error('Indique ancho y alto válidos.');
       }
-      if (!(Number(central) >= 6 && Number(central) <= 72)) {
-        throw new Error('El tamaño de letra central debe estar entre 6 y 72 pt.');
+      if (!(Number(central) >= 6 && Number(central) <= (tipo === 'formato3' ? 48 : 72))) {
+        throw new Error(
+          tipo === 'formato3'
+            ? 'El tamaño del texto debe estar entre 6 y 48 pt.'
+            : 'El tamaño de letra central debe estar entre 6 y 72 pt.',
+        );
       }
-      if (!(Number(inferior) >= 6 && Number(inferior) <= 48)) {
+      if (tipo !== 'formato3' && !(Number(inferior) >= 6 && Number(inferior) <= 48)) {
         throw new Error('El tamaño de letra inferior debe estar entre 6 y 48 pt.');
       }
 
+      const inferiorGuardar = tipo === 'formato3' ? central : inferior;
       const reemplazaImagen = Boolean(file);
       onProcesando(
         true,
@@ -154,7 +159,7 @@ function Plantilla({
           w,
           h,
           central,
-          inferior,
+          inferiorGuardar,
           fuente,
         );
       } else {
@@ -164,7 +169,7 @@ function Plantilla({
           w,
           h,
           central,
-          inferior,
+          inferiorGuardar,
           fuente,
         );
       }
@@ -271,26 +276,51 @@ function Plantilla({
 
           <Typography fontWeight={800}>Texto del PDF</Typography>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          {tipo === 'formato3' ? (
             <TextField
-              label="Tamaño letra central (pt)"
+              label="Tamaño del texto (pt)"
+              type="number"
+              value={central}
+              onChange={(e) => {
+                setCentral(e.target.value);
+                setInferior(e.target.value);
+              }}
+              disabled={!puede}
+              inputProps={{ min: 6, max: 48, step: 1 }}
+              helperText="Nombre, dirección, ciudad, indicaciones y celular usan exactamente el mismo tamaño."
+            />
+          ) : tipo === 'formato4' ? (
+            <TextField
+              label="Tamaño del nombre (pt)"
               type="number"
               value={central}
               onChange={(e) => setCentral(e.target.value)}
               disabled={!puede}
               inputProps={{ min: 6, max: 72, step: 1 }}
-              helperText={tipo === 'habitacion' ? 'Habitación y nombres principales' : 'Nombre del caminante'}
+              helperText="Nombre del caminante centrado en tamaño grande."
             />
-            <TextField
-              label="Tamaño letra inferior (pt)"
-              type="number"
-              value={inferior}
-              onChange={(e) => setInferior(e.target.value)}
-              disabled={!puede}
-              inputProps={{ min: 6, max: 48, step: 1 }}
-              helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'No se usa en este formato' : 'Mesa y habitación'}
-            />
-          </Stack>
+          ) : (
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <TextField
+                label="Tamaño letra central (pt)"
+                type="number"
+                value={central}
+                onChange={(e) => setCentral(e.target.value)}
+                disabled={!puede}
+                inputProps={{ min: 6, max: 72, step: 1 }}
+                helperText={tipo === 'habitacion' ? 'Habitación y nombres principales' : 'Nombre del caminante'}
+              />
+              <TextField
+                label="Tamaño letra inferior (pt)"
+                type="number"
+                value={inferior}
+                onChange={(e) => setInferior(e.target.value)}
+                disabled={!puede}
+                inputProps={{ min: 6, max: 48, step: 1 }}
+                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : 'Mesa y habitación'}
+              />
+            </Stack>
+          )}
 
           <TextField
             select
@@ -343,8 +373,8 @@ export default function ImpresionRetiro() {
   const [datos, setDatos] = useState({ caminantes: [], habitaciones: [] });
   const [cam, setCam] = useState('');
   const [hab, setHab] = useState('');
-  const [camFormato3, setCamFormato3] = useState('');
-  const [camFormato4, setCamFormato4] = useState('');
+  const [camSobre, setCamSobre] = useState('');
+  const [camSantisimo, setCamSantisimo] = useState('');
   const [err, setErr] = useState('');
   const [proceso, setProceso] = useState({
     abierto: false,
@@ -409,8 +439,8 @@ export default function ImpresionRetiro() {
   return (
     <Box>
       <PageHeader
-        titulo="Escarapelas y marcaciones"
-        subtitulo="Configura las plantillas y genera PDFs optimizados para impresión y corte."
+        titulo="Escarapelas, marcaciones y sobres"
+        subtitulo="Configura escarapelas, habitaciones, sobres de bienvenida y nombres para Santísimo. Todos los PDF se optimizan para corte."
         icono={<BadgeRounded />}
       />
 
@@ -444,7 +474,7 @@ export default function ImpresionRetiro() {
 
           <Grid size={{ xs: 12, md: 6 }}>
             <Plantilla
-              titulo="Plantilla 3 · Nombre"
+              titulo="Opción 3 · Sobres de bienvenida"
               tipo="formato3"
               config={cfg.formato3}
               token={token}
@@ -456,7 +486,7 @@ export default function ImpresionRetiro() {
 
           <Grid size={{ xs: 12, md: 6 }}>
             <Plantilla
-              titulo="Plantilla 4 · Nombre, mesa y habitación"
+              titulo="Opción 4 · Nombres para Santísimo"
               tipo="formato4"
               config={cfg.formato4}
               token={token}
@@ -603,10 +633,10 @@ export default function ImpresionRetiro() {
               <CardContent>
                 <Stack spacing={2}>
                   <Typography variant="h6" fontWeight={900}>
-                    Plantilla 3 · Nombre
+                    Opción 3 · Marcación de sobres de bienvenida
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Imagen de fondo y nombre del caminante centrado en texto grande.
+                    Genera una marcación por caminante con Nombre, Dirección registrada, Ciudad, Indicaciones y Celular. Todo el texto usa el mismo tamaño.
                   </Typography>
 
                   <Button
@@ -615,20 +645,20 @@ export default function ImpresionRetiro() {
                     disabled={!puedeGen || !cfg.formato3?.fileId}
                     onClick={() =>
                       ejecutar(
-                        'Generando plantilla 3',
-                        'Estamos preparando las marcaciones de nombre de todos los caminantes.',
-                        async () => generarFormato3Pdf(datos.caminantes, await plantilla('formato3')),
+                        'Generando sobres de bienvenida',
+                        'Estamos preparando las marcaciones para los sobres de todos los caminantes.',
+                        async () => generarSobresBienvenidaPdf(datos.caminantes, await plantilla('formato3')),
                       )
                     }
                   >
-                    Generar todas
+                    Generar todos
                   </Button>
 
                   <TextField
                     select
                     label="Caminante"
-                    value={camFormato3}
-                    onChange={(e) => setCamFormato3(e.target.value)}
+                    value={camSobre}
+                    onChange={(e) => setCamSobre(e.target.value)}
                   >
                     {(datos.caminantes || []).map((c) => (
                       <MenuItem key={c.id} value={c.id}>
@@ -639,14 +669,14 @@ export default function ImpresionRetiro() {
 
                   <Button
                     variant="outlined"
-                    disabled={!puedeGen || !camFormato3 || !cfg.formato3?.fileId}
+                    disabled={!puedeGen || !camSobre || !cfg.formato3?.fileId}
                     onClick={() =>
                       ejecutar(
-                        'Generando plantilla 3',
+                        'Generando sobre de bienvenida',
                         'Estamos preparando la marcación del caminante seleccionado.',
                         async () => {
-                          const c = datos.caminantes.find((x) => x.id === camFormato3);
-                          await generarFormato3IndividualPdf(c, await plantilla('formato3'));
+                          const c = datos.caminantes.find((x) => x.id === camSobre);
+                          await generarSobreBienvenidaIndividualPdf(c, await plantilla('formato3'));
                         },
                       )
                     }
@@ -663,10 +693,10 @@ export default function ImpresionRetiro() {
               <CardContent>
                 <Stack spacing={2}>
                   <Typography variant="h6" fontWeight={900}>
-                    Plantilla 4 · Nombre, mesa y habitación
+                    Opción 4 · Nombres para Santísimo
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Nombre centrado en grande; mesa y habitación alineadas a la izquierda.
+                    Imagen de fondo y nombre del caminante centrado en texto grande.
                   </Typography>
 
                   <Button
@@ -675,20 +705,20 @@ export default function ImpresionRetiro() {
                     disabled={!puedeGen || !cfg.formato4?.fileId}
                     onClick={() =>
                       ejecutar(
-                        'Generando plantilla 4',
-                        'Estamos preparando las marcaciones de todos los caminantes.',
-                        async () => generarFormato4Pdf(datos.caminantes, await plantilla('formato4')),
+                        'Generando nombres para Santísimo',
+                        'Estamos preparando los nombres de todos los caminantes.',
+                        async () => generarNombresSantisimoPdf(datos.caminantes, await plantilla('formato4')),
                       )
                     }
                   >
-                    Generar todas
+                    Generar todos
                   </Button>
 
                   <TextField
                     select
                     label="Caminante"
-                    value={camFormato4}
-                    onChange={(e) => setCamFormato4(e.target.value)}
+                    value={camSantisimo}
+                    onChange={(e) => setCamSantisimo(e.target.value)}
                   >
                     {(datos.caminantes || []).map((c) => (
                       <MenuItem key={c.id} value={c.id}>
@@ -699,14 +729,14 @@ export default function ImpresionRetiro() {
 
                   <Button
                     variant="outlined"
-                    disabled={!puedeGen || !camFormato4 || !cfg.formato4?.fileId}
+                    disabled={!puedeGen || !camSantisimo || !cfg.formato4?.fileId}
                     onClick={() =>
                       ejecutar(
-                        'Generando plantilla 4',
-                        'Estamos preparando la marcación del caminante seleccionado.',
+                        'Generando nombre para Santísimo',
+                        'Estamos preparando el nombre del caminante seleccionado.',
                         async () => {
-                          const c = datos.caminantes.find((x) => x.id === camFormato4);
-                          await generarFormato4IndividualPdf(c, await plantilla('formato4'));
+                          const c = datos.caminantes.find((x) => x.id === camSantisimo);
+                          await generarNombreSantisimoIndividualPdf(c, await plantilla('formato4'));
                         },
                       )
                     }

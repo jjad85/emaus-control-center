@@ -1,5 +1,5 @@
 /**
- * Plantillas de impresión: escarapelas y marcación de habitaciones.
+ * Plantillas de impresión: escarapelas, habitaciones, sobres de bienvenida y nombres para Santísimo.
  * Las imágenes se guardan en Google Drive y sus IDs/dimensiones en
  * ScriptProperties.
  */
@@ -230,7 +230,29 @@ function obtenerDatosGeneracionImpresion(token) {
       id: c.id || '',
       nombre: obtenerNombreCompletoImpresion_(c),
       mesa: buscarMesaPersonaImpresion_(mapaMesas.caminantes, c),
-      habitacion: c.habitacion || ''
+      habitacion: c.habitacion || '',
+
+      // Datos usados por la Opción 3: marcación de sobres de bienvenida.
+      // Se conservan alternativas de nombre para soportar registros históricos
+      // o importados sin obligar a modificar la hoja actual.
+      direccionRegistrada:
+        c.direccionResidencia ||
+        c.direccion ||
+        '',
+      ciudad:
+        c.ciudad ||
+        c.municipio ||
+        '',
+      indicaciones:
+        c.indicaciones ||
+        c.indicacionesEntrega ||
+        c.referenciaDireccion ||
+        c.observacionesDireccion ||
+        '',
+      celular:
+        c.telefono ||
+        c.celular ||
+        ''
     };
   });
 

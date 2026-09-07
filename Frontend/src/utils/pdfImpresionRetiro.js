@@ -251,7 +251,72 @@ async function dibujarHabitacion(doc, img, x, y, w, h, hab, opciones) {
   });
 }
 
+function textoSeguro(valor) {
+  return String(valor == null ? '' : valor).trim();
+}
+
+function dibujarCampoSobre(doc, etiqueta, valor, x, y, maxWidth, tamano, fuente) {
+  doc.setFont(fuente, 'bold');
+  doc.setFontSize(tamano);
+  const prefijo = `${etiqueta}:`;
+  doc.text(prefijo, x, y);
+
+  const anchoPrefijo = doc.getTextWidth(prefijo + ' ');
+  doc.setFont(fuente, 'normal');
+  const contenido = textoSeguro(valor);
+  if (!contenido) return 1;
+
+  const anchoDisponiblePrimera = Math.max(12, maxWidth - anchoPrefijo);
+  const partesPrimera = doc.splitTextToSize(contenido, anchoDisponiblePrimera);
+  const primera = partesPrimera.shift() || '';
+  doc.text(primera, x + anchoPrefijo, y);
+
+  if (!partesPrimera.length) return 1;
+
+  const resto = doc.splitTextToSize(partesPrimera.join(' '), maxWidth);
+  const salto = tamano * 0.43;
+  resto.forEach((linea, i) => doc.text(linea, x, y + salto * (i + 1)));
+  return 1 + resto.length;
+}
+
 async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
+  // Opción 3: marcación de sobres de bienvenida.
+  // Todos los datos usan exactamente el mismo tamaño de fuente.
+  const fuente = nombreFuenteJsPdf(opciones.fuente);
+  const tamano = numeroPositivo(opciones.tamanoCentralPt, 11);
+  const salto = tamano * 0.43;
+  const left = x + w * 0.08;
+  const maxWidth = w * 0.84;
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(x, y, w, h, 'F');
+  doc.addImage(img, 'PNG', x, y, w, h);
+  doc.setTextColor(20, 35, 45);
+
+  let yy = y + h * 0.34;
+
+  // El nombre no aumenta de tamaño: solo se resalta en negrita.
+  doc.setFont(fuente, 'bold');
+  doc.setFontSize(tamano);
+  const lineasNombre = doc.splitTextToSize(textoSeguro(c.nombre), maxWidth);
+  lineasNombre.forEach((linea, i) => doc.text(linea, left, yy + i * salto));
+  yy += Math.max(1, lineasNombre.length) * salto + salto * 0.65;
+
+  const campos = [
+    ['Dirección registrada', c.direccionRegistrada || c.direccion || ''],
+    ['Ciudad', c.ciudad || ''],
+    ['Indicaciones', c.indicaciones || ''],
+    ['Celular', c.celular || ''],
+  ];
+
+  campos.forEach(([etiqueta, valor]) => {
+    const lineas = dibujarCampoSobre(doc, etiqueta, valor, left, yy, maxWidth, tamano, fuente);
+    yy += Math.max(1, lineas) * salto + salto * 0.42;
+  });
+}
+
+async function dibujarFormato4(doc, img, x, y, w, h, c, opciones) {
+  // Opción 4: nombre para el momento de Santísimo.
   const fuente = nombreFuenteJsPdf(opciones.fuente);
   const central = numeroPositivo(opciones.tamanoCentralPt, 20);
 
@@ -263,38 +328,12 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   doc.setFont(fuente, 'bold');
   dibujarNombreCentral(
     doc,
-    String(c.nombre || ''),
+    textoSeguro(c.nombre),
     x + w / 2,
     y + h * 0.57,
     w * 0.88,
     central,
   );
-}
-
-async function dibujarFormato4(doc, img, x, y, w, h, c, opciones) {
-  const fuente = nombreFuenteJsPdf(opciones.fuente);
-  const central = numeroPositivo(opciones.tamanoCentralPt, 20);
-  const inferior = numeroPositivo(opciones.tamanoInferiorPt, 11);
-
-  doc.setFillColor(255, 255, 255);
-  doc.rect(x, y, w, h, 'F');
-  doc.addImage(img, 'PNG', x, y, w, h);
-
-  doc.setTextColor(20, 35, 45);
-  doc.setFont(fuente, 'bold');
-  dibujarNombreCentral(
-    doc,
-    String(c.nombre || ''),
-    x + w / 2,
-    y + h * 0.49,
-    w * 0.88,
-    central,
-  );
-
-  doc.setFont(fuente, 'bold');
-  doc.setFontSize(inferior);
-  doc.text(`Mesa: ${c.mesa || ''}`, x + w * 0.09, y + h * 0.79);
-  doc.text(`Habitación: ${c.habitacion || ''}`, x + w * 0.09, y + h * 0.88);
 }
 
 async function generar(items, plantilla, tipo, nombre) {
@@ -376,14 +415,14 @@ export const generarHabitacionPdf = (item, p) =>
   generar([item], p, 'habitacion', `Habitacion_${item.habitacion || ''}.pdf`);
 
 
-export const generarFormato3Pdf = (items, p) =>
-  generar(items, p, 'formato3', 'Marcacion_Nombre_Caminantes.pdf');
+export const generarSobresBienvenidaPdf = (items, p) =>
+  generar(items, p, 'formato3', 'Marcacion_Sobres_Bienvenida.pdf');
 
-export const generarFormato3IndividualPdf = (item, p) =>
-  generar([item], p, 'formato3', `Marcacion_Nombre_${item.nombre || 'Caminante'}.pdf`);
+export const generarSobreBienvenidaIndividualPdf = (item, p) =>
+  generar([item], p, 'formato3', `Sobre_Bienvenida_${item.nombre || 'Caminante'}.pdf`);
 
-export const generarFormato4Pdf = (items, p) =>
-  generar(items, p, 'formato4', 'Marcacion_Caminantes_Mesa_Habitacion.pdf');
+export const generarNombresSantisimoPdf = (items, p) =>
+  generar(items, p, 'formato4', 'Nombres_Santisimo_Caminantes.pdf');
 
-export const generarFormato4IndividualPdf = (item, p) =>
-  generar([item], p, 'formato4', `Marcacion_${item.nombre || 'Caminante'}.pdf`);
+export const generarNombreSantisimoIndividualPdf = (item, p) =>
+  generar([item], p, 'formato4', `Nombre_Santisimo_${item.nombre || 'Caminante'}.pdf`);
