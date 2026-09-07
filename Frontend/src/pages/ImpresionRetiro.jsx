@@ -63,7 +63,7 @@ function archivoBase64(file) {
 
 function valoresDefecto(tipo) {
   if (tipo === 'habitacion') return { central: 18, inferior: 10, fuente: 'helvetica' };
-  if (tipo === 'formato3') return { central: 11, inferior: 11, fuente: 'helvetica' };
+  if (tipo === 'formato3') return { central: 20, inferior: 11, fuente: 'helvetica' };
   return { central: 20, inferior: 11, fuente: 'helvetica' };
 }
 
@@ -130,18 +130,14 @@ function Plantilla({
       if (!(Number(w) > 0) || !(Number(h) > 0)) {
         throw new Error('Indique ancho y alto válidos.');
       }
-      if (!(Number(central) >= 6 && Number(central) <= (tipo === 'formato3' ? 48 : 72))) {
-        throw new Error(
-          tipo === 'formato3'
-            ? 'El tamaño del texto debe estar entre 6 y 48 pt.'
-            : 'El tamaño de letra central debe estar entre 6 y 72 pt.',
-        );
+      if (!(Number(central) >= 6 && Number(central) <= 72)) {
+        throw new Error('El tamaño de letra central debe estar entre 6 y 72 pt.');
       }
-      if (tipo !== 'formato3' && !(Number(inferior) >= 6 && Number(inferior) <= 48)) {
+      if (tipo !== 'formato4' && !(Number(inferior) >= 6 && Number(inferior) <= 48)) {
         throw new Error('El tamaño de letra inferior debe estar entre 6 y 48 pt.');
       }
 
-      const inferiorGuardar = tipo === 'formato3' ? central : inferior;
+      const inferiorGuardar = tipo === 'formato4' ? central : inferior;
       const reemplazaImagen = Boolean(file);
       onProcesando(
         true,
@@ -276,20 +272,7 @@ function Plantilla({
 
           <Typography fontWeight={800}>Texto del PDF</Typography>
 
-          {tipo === 'formato3' ? (
-            <TextField
-              label="Tamaño del texto (pt)"
-              type="number"
-              value={central}
-              onChange={(e) => {
-                setCentral(e.target.value);
-                setInferior(e.target.value);
-              }}
-              disabled={!puede}
-              inputProps={{ min: 6, max: 48, step: 1 }}
-              helperText="Nombre, dirección, ciudad, indicaciones y celular usan exactamente el mismo tamaño."
-            />
-          ) : tipo === 'formato4' ? (
+          {tipo === 'formato4' ? (
             <TextField
               label="Tamaño del nombre (pt)"
               type="number"
@@ -317,7 +300,7 @@ function Plantilla({
                 onChange={(e) => setInferior(e.target.value)}
                 disabled={!puede}
                 inputProps={{ min: 6, max: 48, step: 1 }}
-                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : 'Mesa y habitación'}
+                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'Habitación del caminante' : 'Mesa y habitación'}
               />
             </Stack>
           )}
@@ -636,7 +619,7 @@ export default function ImpresionRetiro() {
                     Opción 3 · Marcación de sobres de bienvenida
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Genera una marcación por caminante con Nombre, Dirección registrada, Ciudad, Indicaciones y Celular. Todo el texto usa el mismo tamaño.
+                    Genera una marcación por caminante con el nombre centrado en tamaño grande y la habitación en un tamaño inferior, ambos parametrizables.
                   </Typography>
 
                   <Button
