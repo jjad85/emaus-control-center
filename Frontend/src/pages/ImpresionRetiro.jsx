@@ -300,7 +300,7 @@ function Plantilla({
                 onChange={(e) => setInferior(e.target.value)}
                 disabled={!puede}
                 inputProps={{ min: 6, max: 48, step: 1 }}
-                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'Mesa y habitación, ambas alineadas a la izquierda' : 'Mesa y habitación'}
+                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'Mesa y habitación, ambas alineadas a la derecha' : 'Mesa y habitación'}
               />
             </Stack>
           )}
@@ -329,6 +329,75 @@ function Plantilla({
         </Stack>
       </CardContent>
     </Card>
+  );
+}
+
+
+function textoClave(valor) {
+  return String(valor == null ? '' : valor)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function enriquecerCaminanteParaSobre(caminante, habitaciones = []) {
+  if (!caminante) return caminante;
+
+  const idCaminante = String(
+    caminante.id || caminante.caminanteId || caminante.personaId || ''
+  ).trim();
+  const nombreCaminante = textoClave(caminante.nombre);
+
+  let personaHabitacion = null;
+  let habitacionEncontrada = null;
+
+  for (const habitacion of habitaciones || []) {
+    const personas = Array.isArray(habitacion?.personas) ? habitacion.personas : [];
+    const persona = personas.find((p) => {
+      const idPersona = String(
+        p?.id || p?.caminanteId || p?.personaId || p?.servidorId || ''
+      ).trim();
+      if (idCaminante && idPersona && idCaminante === idPersona) return true;
+      return nombreCaminante && textoClave(p?.nombre) === nombreCaminante;
+    });
+
+    if (persona) {
+      personaHabitacion = persona;
+      habitacionEncontrada = habitacion;
+      break;
+    }
+  }
+
+  const mesa =
+    caminante.mesa ||
+    caminante.numeroMesa ||
+    caminante.mesaNumero ||
+    personaHabitacion?.mesa ||
+    personaHabitacion?.numeroMesa ||
+    personaHabitacion?.mesaNumero ||
+    '';
+
+  const habitacion =
+    caminante.habitacion ||
+    caminante.numeroHabitacion ||
+    caminante.habitacionNumero ||
+    personaHabitacion?.habitacion ||
+    habitacionEncontrada?.habitacion ||
+    habitacionEncontrada?.numero ||
+    '';
+
+  return {
+    ...caminante,
+    mesa,
+    habitacion,
+  };
+}
+
+function enriquecerCaminantesParaSobres(caminantes = [], habitaciones = []) {
+  return (caminantes || []).map((c) =>
+    enriquecerCaminanteParaSobre(c, habitaciones)
   );
 }
 

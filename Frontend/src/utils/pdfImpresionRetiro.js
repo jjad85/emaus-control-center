@@ -315,13 +315,13 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   const nombres = ajustarTextoUnaLinea(doc, partes.nombres, anchoMaximo, central);
   if (nombres.texto) {
     doc.setFontSize(nombres.tamano);
-    doc.text(nombres.texto, centroX, y + h * 0.40, { align: 'center' });
+    doc.text(nombres.texto, centroX, y + h * 0.31, { align: 'center' });
   }
 
   const apellidos = ajustarTextoUnaLinea(doc, partes.apellidos, anchoMaximo, central);
   if (apellidos.texto) {
     doc.setFontSize(apellidos.tamano);
-    doc.text(apellidos.texto, centroX, y + h * 0.52, { align: 'center' });
+    doc.text(apellidos.texto, centroX, y + h * 0.41, { align: 'center' });
   }
 
   // Bloque inferior a la derecha: primero Mesa y luego Habitación.
@@ -336,13 +336,13 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   doc.text(
     mesa ? `Mesa ${mesa}` : 'Mesa',
     xDerecha,
-    y + h * 0.65,
+    y + h * 0.52,
     { align: 'right' },
   );
   doc.text(
     habitacion ? `Habitación ${habitacion}` : 'Habitación',
     xDerecha,
-    y + h * 0.74,
+    y + h * 0.61,
     { align: 'right' },
   );
 }
