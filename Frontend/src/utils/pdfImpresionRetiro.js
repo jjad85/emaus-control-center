@@ -315,36 +315,35 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   const nombres = ajustarTextoUnaLinea(doc, partes.nombres, anchoMaximo, central);
   if (nombres.texto) {
     doc.setFontSize(nombres.tamano);
-    doc.text(nombres.texto, centroX, y + h * 0.48, { align: 'center' });
+    doc.text(nombres.texto, centroX, y + h * 0.40, { align: 'center' });
   }
 
   const apellidos = ajustarTextoUnaLinea(doc, partes.apellidos, anchoMaximo, central);
   if (apellidos.texto) {
     doc.setFontSize(apellidos.tamano);
-    doc.text(apellidos.texto, centroX, y + h * 0.60, { align: 'center' });
+    doc.text(apellidos.texto, centroX, y + h * 0.52, { align: 'center' });
   }
 
-  // Mesa y habitación forman un bloque inferior, primero mesa y luego habitación.
-  // Se ubican hacia el costado izquierdo y un poco más arriba para evitar
-  // que la segunda línea quede por fuera o demasiado cerca del borde inferior.
+  // Bloque inferior a la derecha: primero Mesa y luego Habitación.
+  // Se mantiene suficientemente arriba para que ambas líneas queden visibles.
   doc.setFont(fuente, 'bold');
   doc.setFontSize(inferior);
-  const margenIzquierdo = Math.max(4, w * 0.06);
-  const xIzquierda = x + margenIzquierdo;
+  const margenDerecho = Math.max(4, w * 0.06);
+  const xDerecha = x + w - margenDerecho;
   const habitacion = textoSeguro(c.habitacion);
   const mesa = textoSeguro(c.mesa);
 
   doc.text(
     mesa ? `Mesa ${mesa}` : 'Mesa',
-    xIzquierda,
-    y + h * 0.72,
-    { align: 'left' },
+    xDerecha,
+    y + h * 0.65,
+    { align: 'right' },
   );
   doc.text(
     habitacion ? `Habitación ${habitacion}` : 'Habitación',
-    xIzquierda,
-    y + h * 0.80,
-    { align: 'left' },
+    xDerecha,
+    y + h * 0.74,
+    { align: 'right' },
   );
 }
 
