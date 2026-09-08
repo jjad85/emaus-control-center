@@ -257,8 +257,8 @@ function textoSeguro(valor) {
 
 async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   // Opción 3: marcación de sobres de bienvenida.
-  // Mantiene el mismo modelo paramétrico de la escarapela:
-  // nombre central + texto inferior independiente.
+  // Nombre(s) y apellido(s) se imprimen en dos filas independientes;
+  // habitación y mesa usan el tamaño inferior y quedan alineadas a la derecha.
   const fuente = nombreFuenteJsPdf(opciones.fuente);
   const central = numeroPositivo(opciones.tamanoCentralPt, 20);
   const inferior = numeroPositivo(opciones.tamanoInferiorPt, 11);
@@ -268,24 +268,60 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   doc.addImage(img, 'PNG', x, y, w, h);
   doc.setTextColor(20, 35, 45);
 
+  const nombres = [textoSeguro(c.primerNombre), textoSeguro(c.segundoNombre)]
+    .filter(Boolean)
+    .join(' ');
+  const apellidos = [textoSeguro(c.primerApellido), textoSeguro(c.segundoApellido)]
+    .filter(Boolean)
+    .join(' ');
+
   doc.setFont(fuente, 'bold');
-  const lineasNombre = dibujarNombreCentral(
-    doc,
-    textoSeguro(c.nombre),
-    x + w / 2,
-    y + h * 0.56,
-    w * 0.86,
-    central,
-    fuente,
-  );
+  doc.setFontSize(central);
+
+  const centroX = x + w / 2;
+  const anchoMaximo = w * 0.86;
+  const yNombres = y + h * 0.49;
+  const separacion = central * 0.42;
+
+  if (nombres || apellidos) {
+    if (nombres) {
+      dibujarNombreCentral(doc, nombres, centroX, yNombres, anchoMaximo, central);
+    }
+    if (apellidos) {
+      dibujarNombreCentral(
+        doc,
+        apellidos,
+        centroX,
+        yNombres + separacion,
+        anchoMaximo,
+        central,
+      );
+    }
+  } else {
+    dibujarNombreCentral(
+      doc,
+      textoSeguro(c.nombre),
+      centroX,
+      y + h * 0.54,
+      anchoMaximo,
+      central,
+    );
+  }
 
   doc.setFont(fuente, 'normal');
   doc.setFontSize(inferior);
-  const desplazamiento = lineasNombre === 2 ? 10.5 : 7.5;
+  const xDerecha = x + w * 0.92;
   doc.text(
     `Habitación ${textoSeguro(c.habitacion)}`,
-    x + w * 0.08,
-    y + h * 0.56 + desplazamiento,
+    xDerecha,
+    y + h * 0.79,
+    { align: 'right' },
+  );
+  doc.text(
+    `Mesa ${textoSeguro(c.mesa)}`,
+    xDerecha,
+    y + h * 0.88,
+    { align: 'right' },
   );
 }
 

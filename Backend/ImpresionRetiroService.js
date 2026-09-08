@@ -229,6 +229,10 @@ function obtenerDatosGeneracionImpresion(token) {
     return {
       id: c.id || '',
       nombre: obtenerNombreCompletoImpresion_(c),
+      primerNombre: c.primerNombre || '',
+      segundoNombre: c.segundoNombre || '',
+      primerApellido: c.primerApellido || '',
+      segundoApellido: c.segundoApellido || '',
       mesa: buscarMesaPersonaImpresion_(mapaMesas.caminantes, c),
       habitacion: c.habitacion || '',
 
