@@ -324,27 +324,27 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
     doc.text(apellidos.texto, centroX, y + h * 0.60, { align: 'center' });
   }
 
-  // Habitación y mesa forman un bloque inferior alineado estrictamente
-  // contra el borde derecho de la pieza. Se usa el mismo tamaño inferior
-  // parametrizable para las dos líneas.
+  // Mesa y habitación forman un bloque inferior, primero mesa y luego habitación.
+  // Se ubican hacia el costado izquierdo y un poco más arriba para evitar
+  // que la segunda línea quede por fuera o demasiado cerca del borde inferior.
   doc.setFont(fuente, 'bold');
   doc.setFontSize(inferior);
-  const margenDerecho = Math.max(4, w * 0.06);
-  const xDerecha = x + w - margenDerecho;
+  const margenIzquierdo = Math.max(4, w * 0.06);
+  const xIzquierda = x + margenIzquierdo;
   const habitacion = textoSeguro(c.habitacion);
   const mesa = textoSeguro(c.mesa);
 
   doc.text(
-    habitacion ? `Habitación ${habitacion}` : 'Habitación',
-    xDerecha,
-    y + h * 0.80,
-    { align: 'right' },
+    mesa ? `Mesa ${mesa}` : 'Mesa',
+    xIzquierda,
+    y + h * 0.72,
+    { align: 'left' },
   );
   doc.text(
-    mesa ? `Mesa ${mesa}` : 'Mesa',
-    xDerecha,
-    y + h * 0.89,
-    { align: 'right' },
+    habitacion ? `Habitación ${habitacion}` : 'Habitación',
+    xIzquierda,
+    y + h * 0.80,
+    { align: 'left' },
   );
 }
 

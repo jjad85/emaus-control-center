@@ -300,7 +300,7 @@ function Plantilla({
                 onChange={(e) => setInferior(e.target.value)}
                 disabled={!puede}
                 inputProps={{ min: 6, max: 48, step: 1 }}
-                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'Habitación y mesa, ambas alineadas a la derecha' : 'Mesa y habitación'}
+                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'Mesa y habitación, ambas alineadas a la izquierda' : 'Mesa y habitación'}
               />
             </Stack>
           )}
