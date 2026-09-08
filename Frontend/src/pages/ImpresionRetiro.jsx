@@ -630,7 +630,10 @@ export default function ImpresionRetiro() {
                       ejecutar(
                         'Generando sobres de bienvenida',
                         'Estamos preparando las marcaciones para los sobres de todos los caminantes.',
-                        async () => generarSobresBienvenidaPdf(datos.caminantes, await plantilla('formato3')),
+                        async () => generarSobresBienvenidaPdf(
+                          enriquecerCaminantesParaSobres(datos.caminantes, datos.habitaciones),
+                          await plantilla('formato3'),
+                        ),
                       )
                     }
                   >
@@ -659,7 +662,8 @@ export default function ImpresionRetiro() {
                         'Estamos preparando la marcación del caminante seleccionado.',
                         async () => {
                           const c = datos.caminantes.find((x) => x.id === camSobre);
-                          await generarSobreBienvenidaIndividualPdf(c, await plantilla('formato3'));
+                          const sobre = enriquecerCaminanteParaSobre(c, datos.habitaciones);
+                          await generarSobreBienvenidaIndividualPdf(sobre, await plantilla('formato3'));
                         },
                       )
                     }
