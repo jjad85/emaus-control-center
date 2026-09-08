@@ -23,7 +23,7 @@ import UploadFileRounded from '@mui/icons-material/UploadFileRounded';
 import PictureAsPdfRounded from '@mui/icons-material/PictureAsPdfRounded';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import MailOutlineRounded from '@mui/icons-material/MailOutlineRounded';
-import FavoriteRounded from '@mui/icons-material/FavoriteRounded';
+import ChurchRounded from '@mui/icons-material/ChurchRounded';
 import { useEffect, useMemo, useState } from 'react';
 import adlamDisplayUrl from '../assets/fonts/ADLaMDisplay-Regular.ttf?url';
 import PageHeader from '../components/PageHeader';
@@ -340,7 +340,6 @@ function Plantilla({
 
 
 function BloqueAcordeon({
-  numero,
   titulo,
   descripcion,
   icono,
@@ -386,9 +385,6 @@ function BloqueAcordeon({
             {icono}
           </Box>
           <Box minWidth={0}>
-            <Typography variant="caption" color="primary" fontWeight={900}>
-              OPCIÓN {numero}
-            </Typography>
             <Typography variant="h6" fontWeight={900} lineHeight={1.15}>
               {titulo}
             </Typography>
@@ -517,7 +513,6 @@ export default function ImpresionRetiro() {
         {err && <Alert severity="error">{err}</Alert>}
 
         <BloqueAcordeon
-          numero="1"
           titulo="Escarapelas"
           descripcion="Configura la plantilla de la escarapela y genera el PDF para todos los caminantes o uno individual."
           icono={<BadgeRounded />}
@@ -590,7 +585,6 @@ export default function ImpresionRetiro() {
         </BloqueAcordeon>
 
         <BloqueAcordeon
-          numero="2"
           titulo="Marcación de habitaciones"
           descripcion="Configura la plantilla de habitación y genera las marcaciones de las habitaciones que tengan personas asignadas."
           icono={<HotelRounded />}
@@ -667,7 +661,6 @@ export default function ImpresionRetiro() {
         </BloqueAcordeon>
 
         <BloqueAcordeon
-          numero="3"
           titulo="Sobres de bienvenida"
           descripcion="Configura el formato de los sobres y genera las marcaciones para todos los caminantes o uno individual."
           icono={<MailOutlineRounded />}
@@ -739,10 +732,9 @@ export default function ImpresionRetiro() {
         </BloqueAcordeon>
 
         <BloqueAcordeon
-          numero="4"
           titulo="Nombres para Santísimo"
           descripcion="Configura la tarjeta para Santísimo y genera nombres de caminantes y servidores activos."
-          icono={<FavoriteRounded />}
+          icono={<ChurchRounded />}
         >
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 6 }}>
