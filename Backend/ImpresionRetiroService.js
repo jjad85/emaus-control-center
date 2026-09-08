@@ -229,10 +229,10 @@ function obtenerDatosGeneracionImpresion(token) {
     return {
       id: c.id || '',
       nombre: obtenerNombreCompletoImpresion_(c),
-      primerNombre: c.primerNombre || '',
-      segundoNombre: c.segundoNombre || '',
-      primerApellido: c.primerApellido || '',
-      segundoApellido: c.segundoApellido || '',
+      primerNombre: c.primerNombre || c.nombre1 || '',
+      segundoNombre: c.segundoNombre || c.nombre2 || '',
+      primerApellido: c.primerApellido || c.apellido1 || '',
+      segundoApellido: c.segundoApellido || c.apellido2 || '',
       mesa: buscarMesaPersonaImpresion_(mapaMesas.caminantes, c),
       habitacion: c.habitacion || '',
 

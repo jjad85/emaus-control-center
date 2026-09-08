@@ -155,6 +155,43 @@ function dibujarNombreCentral(doc, texto, centroX, centroY, maxWidth, tamanoCent
   return lineas.length;
 }
 
+
+function ajustarTextoUnaLinea(doc, texto, maxWidth, tamanoInicial, tamanoMinimo = 8) {
+  const limpio = textoSeguro(texto);
+  let tamano = tamanoInicial;
+  doc.setFontSize(tamano);
+  while (limpio && doc.getTextWidth(limpio) > maxWidth && tamano > tamanoMinimo) {
+    tamano -= 0.5;
+    doc.setFontSize(tamano);
+  }
+  return { texto: limpio, tamano };
+}
+
+function obtenerPartesNombreSobre(c) {
+  const primerNombre = textoSeguro(c.primerNombre || c.nombre1);
+  const segundoNombre = textoSeguro(c.segundoNombre || c.nombre2);
+  const primerApellido = textoSeguro(c.primerApellido || c.apellido1);
+  const segundoApellido = textoSeguro(c.segundoApellido || c.apellido2);
+
+  if (primerNombre || segundoNombre || primerApellido || segundoApellido) {
+    return {
+      nombres: [primerNombre, segundoNombre].filter(Boolean).join(' '),
+      apellidos: [primerApellido, segundoApellido].filter(Boolean).join(' '),
+    };
+  }
+
+  // Respaldo para clientes que aún estén consumiendo un backend anterior:
+  // mantiene dos filas en lugar de volver al nombre completo en una sola línea.
+  const partes = textoSeguro(c.nombre).split(/\s+/).filter(Boolean);
+  if (partes.length <= 1) return { nombres: partes.join(' '), apellidos: '' };
+  if (partes.length === 2) return { nombres: partes[0], apellidos: partes[1] };
+  if (partes.length === 3) return { nombres: partes[0], apellidos: partes.slice(1).join(' ') };
+  return {
+    nombres: partes.slice(0, 2).join(' '),
+    apellidos: partes.slice(2).join(' '),
+  };
+}
+
 async function dibujarEscarapela(doc, img, x, y, w, h, c, opciones) {
   const fuente = nombreFuenteJsPdf(opciones.fuente);
   const central = numeroPositivo(opciones.tamanoCentralPt, 20);
@@ -256,9 +293,10 @@ function textoSeguro(valor) {
 }
 
 async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
-  // Opción 3: marcación de sobres de bienvenida.
-  // Nombre(s) y apellido(s) se imprimen en dos filas independientes;
-  // habitación y mesa usan el tamaño inferior y quedan alineadas a la derecha.
+  // Opción 3 · Sobres de bienvenida:
+  // fila 1 = nombre 1 + nombre 2
+  // fila 2 = apellido 1 + apellido 2
+  // habitación y mesa = tamaño inferior, alineadas a la derecha.
   const fuente = nombreFuenteJsPdf(opciones.fuente);
   const central = numeroPositivo(opciones.tamanoCentralPt, 20);
   const inferior = numeroPositivo(opciones.tamanoInferiorPt, 11);
@@ -268,59 +306,38 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   doc.addImage(img, 'PNG', x, y, w, h);
   doc.setTextColor(20, 35, 45);
 
-  const nombres = [textoSeguro(c.primerNombre), textoSeguro(c.segundoNombre)]
-    .filter(Boolean)
-    .join(' ');
-  const apellidos = [textoSeguro(c.primerApellido), textoSeguro(c.segundoApellido)]
-    .filter(Boolean)
-    .join(' ');
-
-  doc.setFont(fuente, 'bold');
-  doc.setFontSize(central);
-
+  const partes = obtenerPartesNombreSobre(c);
   const centroX = x + w / 2;
   const anchoMaximo = w * 0.86;
-  const yNombres = y + h * 0.49;
-  const separacion = central * 0.42;
 
-  if (nombres || apellidos) {
-    if (nombres) {
-      dibujarNombreCentral(doc, nombres, centroX, yNombres, anchoMaximo, central);
-    }
-    if (apellidos) {
-      dibujarNombreCentral(
-        doc,
-        apellidos,
-        centroX,
-        yNombres + separacion,
-        anchoMaximo,
-        central,
-      );
-    }
-  } else {
-    dibujarNombreCentral(
-      doc,
-      textoSeguro(c.nombre),
-      centroX,
-      y + h * 0.54,
-      anchoMaximo,
-      central,
-    );
+  doc.setFont(fuente, 'bold');
+
+  const nombres = ajustarTextoUnaLinea(doc, partes.nombres, anchoMaximo, central);
+  if (nombres.texto) {
+    doc.setFontSize(nombres.tamano);
+    doc.text(nombres.texto, centroX, y + h * 0.48, { align: 'center' });
+  }
+
+  const apellidos = ajustarTextoUnaLinea(doc, partes.apellidos, anchoMaximo, central);
+  if (apellidos.texto) {
+    doc.setFontSize(apellidos.tamano);
+    doc.text(apellidos.texto, centroX, y + h * 0.60, { align: 'center' });
   }
 
   doc.setFont(fuente, 'normal');
   doc.setFontSize(inferior);
   const xDerecha = x + w * 0.92;
+
   doc.text(
-    `Habitación ${textoSeguro(c.habitacion)}`,
+    `Habitación: ${textoSeguro(c.habitacion)}`,
     xDerecha,
-    y + h * 0.79,
+    y + h * 0.80,
     { align: 'right' },
   );
   doc.text(
-    `Mesa ${textoSeguro(c.mesa)}`,
+    `Mesa: ${textoSeguro(c.mesa)}`,
     xDerecha,
-    y + h * 0.88,
+    y + h * 0.89,
     { align: 'right' },
   );
 }

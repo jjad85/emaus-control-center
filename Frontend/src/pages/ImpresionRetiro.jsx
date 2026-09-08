@@ -300,7 +300,7 @@ function Plantilla({
                 onChange={(e) => setInferior(e.target.value)}
                 disabled={!puede}
                 inputProps={{ min: 6, max: 48, step: 1 }}
-                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'Habitación y mesa del caminante' : 'Mesa y habitación'}
+                helperText={tipo === 'habitacion' ? 'Tipo, mesa, rol o equipo' : tipo === 'formato3' ? 'Habitación y mesa, ambas alineadas a la derecha' : 'Mesa y habitación'}
               />
             </Stack>
           )}
@@ -619,7 +619,7 @@ export default function ImpresionRetiro() {
                     Opción 3 · Marcación de sobres de bienvenida
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Genera una marcación por caminante con el nombre centrado en tamaño grande y la habitación en un tamaño inferior, ambos parametrizables.
+                    Genera dos filas centradas: nombre 1 + nombre 2 y, debajo, apellido 1 + apellido 2. Habitación y mesa usan el tamaño inferior parametrizable y se alinean a la derecha.
                   </Typography>
 
                   <Button
