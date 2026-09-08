@@ -1,4 +1,7 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -18,6 +21,9 @@ import BadgeRounded from '@mui/icons-material/BadgeRounded';
 import HotelRounded from '@mui/icons-material/HotelRounded';
 import UploadFileRounded from '@mui/icons-material/UploadFileRounded';
 import PictureAsPdfRounded from '@mui/icons-material/PictureAsPdfRounded';
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import MailOutlineRounded from '@mui/icons-material/MailOutlineRounded';
+import FavoriteRounded from '@mui/icons-material/FavoriteRounded';
 import { useEffect, useMemo, useState } from 'react';
 import adlamDisplayUrl from '../assets/fonts/ADLaMDisplay-Regular.ttf?url';
 import PageHeader from '../components/PageHeader';
@@ -332,6 +338,73 @@ function Plantilla({
   );
 }
 
+
+function BloqueAcordeon({
+  numero,
+  titulo,
+  descripcion,
+  icono,
+  defaultExpanded = false,
+  children,
+}) {
+  return (
+    <Accordion
+      defaultExpanded={defaultExpanded}
+      disableGutters
+      sx={{
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: '16px !important',
+        overflow: 'hidden',
+        boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+        '&:before': { display: 'none' },
+        '& + &': { mt: 2 },
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreRounded />}
+        sx={{
+          px: { xs: 2, md: 2.5 },
+          py: 0.8,
+          bgcolor: 'action.hover',
+          '& .MuiAccordionSummary-content': { my: 1.2 },
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center" minWidth={0}>
+          <Box
+            sx={{
+              width: 42,
+              height: 42,
+              borderRadius: 2.5,
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              flexShrink: 0,
+            }}
+          >
+            {icono}
+          </Box>
+          <Box minWidth={0}>
+            <Typography variant="caption" color="primary" fontWeight={900}>
+              OPCIÓN {numero}
+            </Typography>
+            <Typography variant="h6" fontWeight={900} lineHeight={1.15}>
+              {titulo}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mt={0.4}>
+              {descripcion}
+            </Typography>
+          </Box>
+        </Stack>
+      </AccordionSummary>
+      <AccordionDetails sx={{ p: { xs: 1.5, md: 2.5 }, bgcolor: 'background.default' }}>
+        {children}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 export default function ImpresionRetiro() {
   useEffect(() => {
     // Carga la fuente también en el navegador para que el nombre de la opción
@@ -435,326 +508,320 @@ export default function ImpresionRetiro() {
   return (
     <Box>
       <PageHeader
-        titulo="Escarapelas, marcaciones y sobres"
-        subtitulo="Configura escarapelas, habitaciones, sobres de bienvenida y nombres para Santísimo. Todos los PDF se optimizan para corte."
-        icono={<BadgeRounded />}
+        eyebrow="Logística · Impresión"
+        title="Escarapelas, marcaciones y sobres"
+        subtitle="Configura cada formato y genera sus PDF desde el mismo bloque. Abre únicamente la opción que necesites para mantener la página ordenada."
       />
 
       <Stack spacing={2.5}>
         {err && <Alert severity="error">{err}</Alert>}
 
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Plantilla
-              titulo="Plantilla de escarapela"
-              tipo="escarapela"
-              config={cfg.escarapela}
-              token={token}
-              puede={puedeCfg}
-              onSaved={cargar}
-              onProcesando={cambiarProceso}
-            />
+        <BloqueAcordeon
+          numero="1"
+          titulo="Escarapelas"
+          descripcion="Configura la plantilla de la escarapela y genera el PDF para todos los caminantes o uno individual."
+          icono={<BadgeRounded />}
+          defaultExpanded
+        >
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Plantilla
+                titulo="Configuración de escarapela"
+                tipo="escarapela"
+                config={cfg.escarapela}
+                token={token}
+                puede={puedeCfg}
+                onSaved={cargar}
+                onProcesando={cambiarProceso}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Typography variant="h6" fontWeight={900}>Generación de escarapelas</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {datos.caminantes?.length || 0} caminantes activos disponibles para generar.
+                    </Typography>
+
+                    <Button
+                      variant="contained"
+                      startIcon={<PictureAsPdfRounded />}
+                      disabled={!puedeGen || !cfg.escarapela?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando escarapelas',
+                          'Estamos preparando el PDF de todos los caminantes. La descarga iniciará al finalizar.',
+                          async () => generarEscarapelasPdf(datos.caminantes, await plantilla('escarapela')),
+                        )
+                      }
+                    >
+                      Generar todas
+                    </Button>
+
+                    <TextField select label="Caminante" value={cam} onChange={(e) => setCam(e.target.value)}>
+                      {(datos.caminantes || []).map((c) => (
+                        <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
+                      ))}
+                    </TextField>
+
+                    <Button
+                      variant="outlined"
+                      disabled={!puedeGen || !cam || !cfg.escarapela?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando escarapela',
+                          'Estamos preparando el PDF del caminante seleccionado.',
+                          async () => {
+                            const c = datos.caminantes.find((x) => x.id === cam);
+                            await generarEscarapelaPdf(c, await plantilla('escarapela'));
+                          },
+                        )
+                      }
+                    >
+                      Generar individual
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
+        </BloqueAcordeon>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Plantilla
-              titulo="Plantilla de habitación"
-              tipo="habitacion"
-              config={cfg.habitacion}
-              token={token}
-              puede={puedeCfg}
-              onSaved={cargar}
-              onProcesando={cambiarProceso}
-            />
-          </Grid>
+        <BloqueAcordeon
+          numero="2"
+          titulo="Marcación de habitaciones"
+          descripcion="Configura la plantilla de habitación y genera las marcaciones de las habitaciones que tengan personas asignadas."
+          icono={<HotelRounded />}
+        >
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Plantilla
+                titulo="Configuración de habitación"
+                tipo="habitacion"
+                config={cfg.habitacion}
+                token={token}
+                puede={puedeCfg}
+                onSaved={cargar}
+                onProcesando={cambiarProceso}
+              />
+            </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Plantilla
-              titulo="Opción 3 · Sobres de bienvenida"
-              tipo="formato3"
-              config={cfg.formato3}
-              token={token}
-              puede={puedeCfg}
-              onSaved={cargar}
-              onProcesando={cambiarProceso}
-            />
-          </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Typography variant="h6" fontWeight={900}>Generación de habitaciones</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {(datos.habitaciones || []).filter((x) => Array.isArray(x.personas) && x.personas.length > 0).length} habitaciones con asignación.
+                    </Typography>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Plantilla
-              titulo="Opción 4 · Nombres para Santísimo"
-              tipo="formato4"
-              config={cfg.formato4}
-              token={token}
-              puede={puedeCfg}
-              onSaved={cargar}
-              onProcesando={cambiarProceso}
-            />
-          </Grid>
-        </Grid>
-
-        <Divider />
-
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Stack spacing={2}>
-                  <Typography variant="h6" fontWeight={900}>
-                    Escarapelas
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {datos.caminantes?.length || 0} caminantes activos.
-                  </Typography>
-
-                  <Button
-                    variant="contained"
-                    startIcon={<PictureAsPdfRounded />}
-                    disabled={!puedeGen || !cfg.escarapela?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando escarapelas',
-                        'Estamos preparando el PDF de todos los caminantes. La descarga iniciará al finalizar.',
-                        async () =>
-                          generarEscarapelasPdf(
-                            datos.caminantes,
-                            await plantilla('escarapela'),
-                          ),
-                      )
-                    }
-                  >
-                    Generar todas
-                  </Button>
-
-                  <TextField
-                    select
-                    label="Caminante"
-                    value={cam}
-                    onChange={(e) => setCam(e.target.value)}
-                  >
-                    {(datos.caminantes || []).map((c) => (
-                      <MenuItem key={c.id} value={c.id}>
-                        {c.nombre}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-
-                  <Button
-                    variant="outlined"
-                    disabled={!puedeGen || !cam || !cfg.escarapela?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando escarapela',
-                        'Estamos preparando el PDF del caminante seleccionado.',
-                        async () => {
-                          const c = datos.caminantes.find((x) => x.id === cam);
-                          await generarEscarapelaPdf(c, await plantilla('escarapela'));
-                        },
-                      )
-                    }
-                  >
-                    Generar individual
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Stack spacing={2}>
-                  <Typography variant="h6" fontWeight={900}>
-                    Marcación de habitaciones
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {(datos.habitaciones || []).filter((x) => Array.isArray(x.personas) && x.personas.length > 0).length} habitaciones con asignación.
-                  </Typography>
-
-                  <Button
-                    variant="contained"
-                    startIcon={<HotelRounded />}
-                    disabled={!puedeGen || !cfg.habitacion?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando marcación de habitaciones',
-                        'Estamos preparando el PDF de todas las habitaciones. La descarga iniciará al finalizar.',
-                        async () =>
-                          generarHabitacionesPdf(
+                    <Button
+                      variant="contained"
+                      startIcon={<HotelRounded />}
+                      disabled={!puedeGen || !cfg.habitacion?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando marcación de habitaciones',
+                          'Estamos preparando el PDF de todas las habitaciones. La descarga iniciará al finalizar.',
+                          async () => generarHabitacionesPdf(
                             (datos.habitaciones || []).filter((x) => Array.isArray(x.personas) && x.personas.length > 0),
                             await plantilla('habitacion'),
                           ),
-                      )
-                    }
-                  >
-                    Generar todas
-                  </Button>
+                        )
+                      }
+                    >
+                      Generar todas
+                    </Button>
 
-                  <TextField
-                    select
-                    label="Habitación"
-                    value={hab}
-                    onChange={(e) => setHab(e.target.value)}
-                  >
-                    {(datos.habitaciones || []).filter((h) => Array.isArray(h.personas) && h.personas.length > 0).map((h) => (
-                      <MenuItem key={h.id} value={h.id}>
-                        Habitación {h.habitacion}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                    <TextField select label="Habitación" value={hab} onChange={(e) => setHab(e.target.value)}>
+                      {(datos.habitaciones || [])
+                        .filter((item) => Array.isArray(item.personas) && item.personas.length > 0)
+                        .map((item) => (
+                          <MenuItem key={item.id} value={item.id}>Habitación {item.habitacion}</MenuItem>
+                        ))}
+                    </TextField>
 
-                  <Button
-                    variant="outlined"
-                    disabled={!puedeGen || !hab || !cfg.habitacion?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando marcación de habitación',
-                        'Estamos preparando el PDF de la habitación seleccionada.',
-                        async () => {
-                          const h = datos.habitaciones.find((x) => x.id === hab);
-                          await generarHabitacionPdf(h, await plantilla('habitacion'));
-                        },
-                      )
-                    }
-                  >
-                    Generar individual
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
+                    <Button
+                      variant="outlined"
+                      disabled={!puedeGen || !hab || !cfg.habitacion?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando marcación de habitación',
+                          'Estamos preparando el PDF de la habitación seleccionada.',
+                          async () => {
+                            const item = datos.habitaciones.find((x) => x.id === hab);
+                            await generarHabitacionPdf(item, await plantilla('habitacion'));
+                          },
+                        )
+                      }
+                    >
+                      Generar individual
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
+        </BloqueAcordeon>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Stack spacing={2}>
-                  <Typography variant="h6" fontWeight={900}>
-                    Opción 3 · Marcación de sobres de bienvenida
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Genera dos filas centradas: nombre 1 + nombre 2 y, debajo, apellido 1 + apellido 2. Habitación y mesa usan el tamaño inferior parametrizable y se alinean a la derecha.
-                  </Typography>
+        <BloqueAcordeon
+          numero="3"
+          titulo="Sobres de bienvenida"
+          descripcion="Configura el formato de los sobres y genera las marcaciones para todos los caminantes o uno individual."
+          icono={<MailOutlineRounded />}
+        >
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Plantilla
+                titulo="Configuración de sobres de bienvenida"
+                tipo="formato3"
+                config={cfg.formato3}
+                token={token}
+                puede={puedeCfg}
+                onSaved={cargar}
+                onProcesando={cambiarProceso}
+              />
+            </Grid>
 
-                  <Button
-                    variant="contained"
-                    startIcon={<PictureAsPdfRounded />}
-                    disabled={!puedeGen || !cfg.formato3?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando sobres de bienvenida',
-                        'Estamos preparando las marcaciones para los sobres de todos los caminantes.',
-                        async () => generarSobresBienvenidaPdf(datos.caminantes, await plantilla('formato3')),
-                      )
-                    }
-                  >
-                    Generar todos
-                  </Button>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Typography variant="h6" fontWeight={900}>Generación de sobres</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Genera nombre y apellidos en dos filas, con mesa y habitación alineadas a la derecha.
+                    </Typography>
 
-                  <TextField
-                    select
-                    label="Caminante"
-                    value={camSobre}
-                    onChange={(e) => setCamSobre(e.target.value)}
-                  >
-                    {(datos.caminantes || []).map((c) => (
-                      <MenuItem key={c.id} value={c.id}>
-                        {c.nombre}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                    <Button
+                      variant="contained"
+                      startIcon={<PictureAsPdfRounded />}
+                      disabled={!puedeGen || !cfg.formato3?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando sobres de bienvenida',
+                          'Estamos preparando las marcaciones para los sobres de todos los caminantes.',
+                          async () => generarSobresBienvenidaPdf(datos.caminantes, await plantilla('formato3')),
+                        )
+                      }
+                    >
+                      Generar todos
+                    </Button>
 
-                  <Button
-                    variant="outlined"
-                    disabled={!puedeGen || !camSobre || !cfg.formato3?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando sobre de bienvenida',
-                        'Estamos preparando la marcación del caminante seleccionado.',
-                        async () => {
-                          const c = datos.caminantes.find((x) => x.id === camSobre);
-                          await generarSobreBienvenidaIndividualPdf(c, await plantilla('formato3'));
-                        },
-                      )
-                    }
-                  >
-                    Generar individual
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
+                    <TextField select label="Caminante" value={camSobre} onChange={(e) => setCamSobre(e.target.value)}>
+                      {(datos.caminantes || []).map((c) => (
+                        <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
+                      ))}
+                    </TextField>
+
+                    <Button
+                      variant="outlined"
+                      disabled={!puedeGen || !camSobre || !cfg.formato3?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando sobre de bienvenida',
+                          'Estamos preparando la marcación del caminante seleccionado.',
+                          async () => {
+                            const c = datos.caminantes.find((x) => x.id === camSobre);
+                            await generarSobreBienvenidaIndividualPdf(c, await plantilla('formato3'));
+                          },
+                        )
+                      }
+                    >
+                      Generar individual
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
+        </BloqueAcordeon>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Stack spacing={2}>
-                  <Typography variant="h6" fontWeight={900}>
-                    Opción 4 · Nombres para Santísimo
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Imagen de fondo y nombre centrado en texto grande. Incluye caminantes y servidores activos.
-                  </Typography>
+        <BloqueAcordeon
+          numero="4"
+          titulo="Nombres para Santísimo"
+          descripcion="Configura la tarjeta para Santísimo y genera nombres de caminantes y servidores activos."
+          icono={<FavoriteRounded />}
+        >
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Plantilla
+                titulo="Configuración de nombres para Santísimo"
+                tipo="formato4"
+                config={cfg.formato4}
+                token={token}
+                puede={puedeCfg}
+                onSaved={cargar}
+                onProcesando={cambiarProceso}
+              />
+            </Grid>
 
-                  <Button
-                    variant="contained"
-                    startIcon={<PictureAsPdfRounded />}
-                    disabled={!puedeGen || !cfg.formato4?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando nombres para Santísimo',
-                        'Estamos preparando los nombres de todos los caminantes y servidores activos.',
-                        async () => generarNombresSantisimoPdf(personasSantisimo, await plantilla('formato4')),
-                      )
-                    }
-                  >
-                    Generar todos
-                  </Button>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Typography variant="h6" fontWeight={900}>Generación para Santísimo</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {personasSantisimo.length} personas activas entre caminantes y servidores.
+                    </Typography>
 
-                  <TextField
-                    select
-                    label="Caminante o servidor"
-                    value={camSantisimo}
-                    onChange={(e) => setCamSantisimo(e.target.value)}
-                  >
-                    {personasSantisimo.map((persona) => {
-                      const valor = `${persona.tipoPersona}:${persona.id}`;
-                      return (
-                        <MenuItem key={valor} value={valor}>
-                          {persona.nombre} · {persona.tipoPersona}
-                        </MenuItem>
-                      );
-                    })}
-                  </TextField>
+                    <Button
+                      variant="contained"
+                      startIcon={<PictureAsPdfRounded />}
+                      disabled={!puedeGen || !cfg.formato4?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando nombres para Santísimo',
+                          'Estamos preparando los nombres de todos los caminantes y servidores activos.',
+                          async () => generarNombresSantisimoPdf(personasSantisimo, await plantilla('formato4')),
+                        )
+                      }
+                    >
+                      Generar todos
+                    </Button>
 
-                  <Button
-                    variant="outlined"
-                    disabled={!puedeGen || !camSantisimo || !cfg.formato4?.fileId}
-                    onClick={() =>
-                      ejecutar(
-                        'Generando nombre para Santísimo',
-                        'Estamos preparando el nombre de la persona seleccionada.',
-                        async () => {
-                          const persona = personasSantisimo.find(
-                            (x) => `${x.tipoPersona}:${x.id}` === camSantisimo,
-                          );
-                          if (!persona) {
-                            throw new Error('No fue posible encontrar la persona seleccionada.');
-                          }
-                          await generarNombreSantisimoIndividualPdf(
-                            persona,
-                            await plantilla('formato4'),
-                          );
-                        },
-                      )
-                    }
-                  >
-                    Generar individual
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
+                    <TextField
+                      select
+                      label="Caminante o servidor"
+                      value={camSantisimo}
+                      onChange={(e) => setCamSantisimo(e.target.value)}
+                    >
+                      {personasSantisimo.map((persona) => {
+                        const valor = `${persona.tipoPersona}:${persona.id}`;
+                        return (
+                          <MenuItem key={valor} value={valor}>
+                            {persona.nombre} · {persona.tipoPersona}
+                          </MenuItem>
+                        );
+                      })}
+                    </TextField>
+
+                    <Button
+                      variant="outlined"
+                      disabled={!puedeGen || !camSantisimo || !cfg.formato4?.fileId}
+                      onClick={() =>
+                        ejecutar(
+                          'Generando nombre para Santísimo',
+                          'Estamos preparando el nombre de la persona seleccionada.',
+                          async () => {
+                            const persona = personasSantisimo.find(
+                              (x) => `${x.tipoPersona}:${x.id}` === camSantisimo,
+                            );
+                            if (!persona) throw new Error('No fue posible encontrar la persona seleccionada.');
+                            await generarNombreSantisimoIndividualPdf(persona, await plantilla('formato4'));
+                          },
+                        )
+                      }
+                    >
+                      Generar individual
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
-        </Grid>
+        </BloqueAcordeon>
       </Stack>
 
       <Dialog

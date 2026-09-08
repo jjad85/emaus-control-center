@@ -13,12 +13,17 @@ function registrarActividadMinutograma(token, datos) {
 
     const existentesDia = obtenerMinutograma({ dia: registro.dia });
     registro.orden = existentesDia.length + 1;
+
     const creado = crearRegistroSheet(
       HOJAS.MINUTOGRAMA,
       registro,
       opcionesCrudMinutograma(sesion.usuario)
     );
-    recalcularProgramacionDiaMinutograma_(registro.dia, sesion.usuario);
+
+    // IMPORTANTE: al crear una actividad se conserva la hora ingresada por el usuario.
+    // Antes se recalculaba todo el día desde la primera actividad y la hora recién
+    // guardada podía ser reemplazada inmediatamente.
+    SpreadsheetApp.flush();
 
     auditarMinutograma(sesion, 'CREAR_ACTIVIDADES_PASO_A_PASO', creado.id, creado);
     return convertirActividadMinutograma(creado);
@@ -38,6 +43,20 @@ function editarActividadMinutograma(token, id, datos) {
     const registro = prepararActividadMinutograma(datos);
     validarActividadMinutograma(registro);
 
+    const cambioDia =
+      anterior.dia &&
+      normalizarTexto(anterior.dia) !== normalizarTexto(registro.dia);
+
+    // Si cambia de día, no reutilizamos el orden del día anterior: se agrega al
+    // final del nuevo día. Si permanece en el mismo día, conserva su orden.
+    if (cambioDia) {
+      const existentesDestino = obtenerMinutograma({ dia: registro.dia })
+        .filter(function(item) { return String(item.id) !== String(id); });
+      registro.orden = existentesDestino.length + 1;
+    } else {
+      registro.orden = convertirNumero(anterior.orden, registro.orden || 9999);
+    }
+
     const actualizado = actualizarRegistroSheet(
       HOJAS.MINUTOGRAMA,
       id,
@@ -45,17 +64,31 @@ function editarActividadMinutograma(token, id, datos) {
       opcionesCrudMinutograma(sesion.usuario)
     );
 
-    recalcularProgramacionDiaMinutograma_(registro.dia, sesion.usuario);
-    if (anterior.dia && normalizarTexto(anterior.dia) !== normalizarTexto(registro.dia)) {
+    // La hora editada debe mantenerse. A partir de esta actividad sí se encadenan
+    // las posteriores usando sus duraciones, para evitar que el guardado parezca
+    // "no funcionar" al volver a cargar la pantalla.
+    recalcularProgramacionDesdeActividadMinutograma_(
+      registro.dia,
+      id,
+      sesion.usuario
+    );
+
+    if (cambioDia) {
       recalcularProgramacionDiaMinutograma_(anterior.dia, sesion.usuario);
     }
 
+    const actualizadoFinal = leerRegistroPorIdSheet(
+      HOJAS.MINUTOGRAMA,
+      id,
+      opcionesCrudMinutograma(sesion.usuario)
+    );
+
     auditarMinutograma(sesion, 'EDITAR_ACTIVIDAD_PASO_A_PASO', id, {
       anterior: anterior,
-      nuevo: actualizado
+      nuevo: actualizadoFinal
     });
 
-    return convertirActividadMinutograma(actualizado);
+    return convertirActividadMinutograma(actualizadoFinal);
   });
 }
 
@@ -633,6 +666,60 @@ function reordenarActividadesMinutograma(token, dia, ids) {
     });
     return actualizadas.map(convertirActividadMinutograma);
   });
+}
+
+
+/**
+ * Conserva la hora de la actividad editada y recalcula únicamente las que vienen
+ * después de ella en el mismo día. Las actividades anteriores no se modifican.
+ */
+function recalcularProgramacionDesdeActividadMinutograma_(dia, idActividad, usuario) {
+  const actividades = leerHojaComoObjetos(HOJAS.MINUTOGRAMA)
+    .filter(function(item) {
+      return convertirBooleano(item.activo) &&
+        normalizarTexto(item.dia) === normalizarTexto(dia);
+    })
+    .sort(function(a, b) {
+      return convertirNumero(a.orden, 9999) - convertirNumero(b.orden, 9999);
+    });
+
+  if (!actividades.length) return [];
+
+  const indiceInicio = actividades.findIndex(function(item) {
+    return String(item.id) === String(idActividad);
+  });
+
+  if (indiceInicio < 0) return [];
+
+  const actividadBase = actividades[indiceInicio];
+  let minutoActual = convertirHoraAMinutos(
+    normalizarHoraMinutograma(actividadBase.horaInicio)
+  );
+
+  if (minutoActual === null) return [];
+
+  const actualizadas = [];
+
+  for (let indice = indiceInicio; indice < actividades.length; indice += 1) {
+    const actividad = actividades[indice];
+    const horaInicio = convertirMinutosAHora(minutoActual % 1440);
+
+    const actualizado = actualizarRegistroSheet(
+      HOJAS.MINUTOGRAMA,
+      actividad.id,
+      {
+        orden: indice + 1,
+        horaInicio: horaInicio
+      },
+      opcionesCrudMinutograma(usuario)
+    );
+
+    actualizadas.push(actualizado);
+    minutoActual += convertirNumero(actividad.duracionMinutos, 0);
+  }
+
+  SpreadsheetApp.flush();
+  return actualizadas;
 }
 
 /**
