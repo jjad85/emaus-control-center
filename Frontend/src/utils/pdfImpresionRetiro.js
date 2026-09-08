@@ -315,34 +315,32 @@ async function dibujarFormato3(doc, img, x, y, w, h, c, opciones) {
   const nombres = ajustarTextoUnaLinea(doc, partes.nombres, anchoMaximo, central);
   if (nombres.texto) {
     doc.setFontSize(nombres.tamano);
-    doc.text(nombres.texto, centroX, y + h * 0.31, { align: 'center' });
+    doc.text(nombres.texto, centroX, y + h * 0.27, { align: 'center' });
   }
 
   const apellidos = ajustarTextoUnaLinea(doc, partes.apellidos, anchoMaximo, central);
   if (apellidos.texto) {
     doc.setFontSize(apellidos.tamano);
-    doc.text(apellidos.texto, centroX, y + h * 0.41, { align: 'center' });
+    doc.text(apellidos.texto, centroX, y + h * 0.37, { align: 'center' });
   }
 
-  // Bloque inferior a la derecha: primero Mesa y luego Habitación.
-  // Se mantiene suficientemente arriba para que ambas líneas queden visibles.
+  // Bloque compacto a la derecha, sin línea en blanco entre apellido y logística.
+  // Primero Mesa y luego Habitación. Se usan los mismos campos que ya entrega
+  // el caminante, evitando cruces adicionales que puedan romper el botón.
   doc.setFont(fuente, 'bold');
   doc.setFontSize(inferior);
-  const margenDerecho = Math.max(4, w * 0.06);
-  const xDerecha = x + w - margenDerecho;
-  const habitacion = textoSeguro(c.habitacion);
-  const mesa = textoSeguro(c.mesa);
+  const xDerecha = x + w * 0.94;
 
   doc.text(
-    mesa ? `Mesa ${mesa}` : 'Mesa',
+    `Mesa ${textoSeguro(c.mesa)}`,
     xDerecha,
-    y + h * 0.52,
+    y + h * 0.48,
     { align: 'right' },
   );
   doc.text(
-    habitacion ? `Habitación ${habitacion}` : 'Habitación',
+    `Habitación ${textoSeguro(c.habitacion)}`,
     xDerecha,
-    y + h * 0.61,
+    y + h * 0.57,
     { align: 'right' },
   );
 }
