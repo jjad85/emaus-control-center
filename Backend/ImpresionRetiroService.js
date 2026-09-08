@@ -207,6 +207,26 @@ function guardarPlantillaImpresion(token, tipo, archivo, anchoCm, altoCm, tamano
     throw error;
   }
 }
+function esRegistroActivoImpresion_(registro) {
+  if (!registro) return false;
+
+  var valor = registro.activo;
+
+  // Algunos servicios ya devuelven únicamente registros activos y no
+  // exponen la propiedad "activo". En ese caso no se descarta el registro.
+  if (valor === undefined || valor === null || valor === '') return true;
+  if (valor === true || valor === 1) return true;
+  if (valor === false || valor === 0) return false;
+
+  var texto = String(valor)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return ['no', 'false', '0', 'inactivo', 'inactiva'].indexOf(texto) < 0;
+}
+
 function obtenerDatosGeneracionImpresion(token) {
   validarPermiso(token, 'SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES');
 
@@ -217,9 +237,11 @@ function obtenerDatosGeneracionImpresion(token) {
   // - El tipo de persona lo determina la hoja de origen.
   // - La mesa se resuelve a partir del consolidado de Mesas, no de la
   //   habitación, para que solo se imprima cuando exista esa asignación.
-  var caminantesFuente = obtenerCaminantes({});
+  var caminantesFuente = obtenerCaminantes({}).filter(function(c) {
+    return esRegistroActivoImpresion_(c);
+  });
   var servidoresFuente = obtenerServidores({}).filter(function(s) {
-    return Boolean(s.activo);
+    return esRegistroActivoImpresion_(s);
   });
   var mesas = obtenerMesas(caminantesFuente, servidoresFuente);
 
@@ -229,10 +251,8 @@ function obtenerDatosGeneracionImpresion(token) {
     return {
       id: c.id || '',
       nombre: obtenerNombreCompletoImpresion_(c),
-      primerNombre: c.primerNombre || c.nombre1 || '',
-      segundoNombre: c.segundoNombre || c.nombre2 || '',
-      primerApellido: c.primerApellido || c.apellido1 || '',
-      segundoApellido: c.segundoApellido || c.apellido2 || '',
+      tipoPersona: 'Caminante',
+      activo: true,
       mesa: buscarMesaPersonaImpresion_(mapaMesas.caminantes, c),
       habitacion: c.habitacion || '',
 
@@ -257,6 +277,18 @@ function obtenerDatosGeneracionImpresion(token) {
         c.telefono ||
         c.celular ||
         ''
+    };
+  });
+
+
+  // Opción 4 (Santísimo): además de caminantes, debe incluir todos los
+  // servidores activos, tengan o no habitación asignada.
+  var servidores = servidoresFuente.map(function(s) {
+    return {
+      id: s.id || '',
+      nombre: obtenerNombreCompletoImpresion_(s),
+      tipoPersona: 'Servidor',
+      activo: true
     };
   });
 
@@ -329,6 +361,7 @@ function obtenerDatosGeneracionImpresion(token) {
 
   return {
     caminantes: caminantes,
+    servidores: servidores,
     habitaciones: habitaciones
   };
 }

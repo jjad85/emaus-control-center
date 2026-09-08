@@ -353,11 +353,24 @@ export default function ImpresionRetiro() {
 
   const { token, tienePermiso } = useAuth();
   const [cfg, setCfg] = useState({});
-  const [datos, setDatos] = useState({ caminantes: [], habitaciones: [] });
+  const [datos, setDatos] = useState({ caminantes: [], servidores: [], habitaciones: [] });
   const [cam, setCam] = useState('');
   const [hab, setHab] = useState('');
   const [camSobre, setCamSobre] = useState('');
   const [camSantisimo, setCamSantisimo] = useState('');
+
+  const personasSantisimo = useMemo(() => {
+    const caminantes = (datos.caminantes || [])
+      .filter((persona) => persona?.activo !== false)
+      .map((persona) => ({ ...persona, tipoPersona: 'Caminante' }));
+
+    const servidores = (datos.servidores || [])
+      .filter((persona) => persona?.activo !== false)
+      .map((persona) => ({ ...persona, tipoPersona: 'Servidor' }));
+
+    return [...caminantes, ...servidores];
+  }, [datos.caminantes, datos.servidores]);
+
   const [err, setErr] = useState('');
   const [proceso, setProceso] = useState({
     abierto: false,
@@ -386,13 +399,13 @@ export default function ImpresionRetiro() {
     }
 
     if (!puedeGen) {
-      setDatos({ caminantes: [], habitaciones: [] });
+      setDatos({ caminantes: [], servidores: [], habitaciones: [] });
       return;
     }
 
     try {
       const d = await obtenerDatosGeneracionImpresion(token);
-      setDatos(d || { caminantes: [], habitaciones: [] });
+      setDatos(d || { caminantes: [], servidores: [], habitaciones: [] });
     } catch (e) {
       setErr((actual) => actual || e.message || 'No fue posible cargar los datos para generar los PDFs.');
     }
@@ -679,7 +692,7 @@ export default function ImpresionRetiro() {
                     Opción 4 · Nombres para Santísimo
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Imagen de fondo y nombre del caminante centrado en texto grande.
+                    Imagen de fondo y nombre centrado en texto grande. Incluye caminantes y servidores activos.
                   </Typography>
 
                   <Button
@@ -689,8 +702,8 @@ export default function ImpresionRetiro() {
                     onClick={() =>
                       ejecutar(
                         'Generando nombres para Santísimo',
-                        'Estamos preparando los nombres de todos los caminantes.',
-                        async () => generarNombresSantisimoPdf(datos.caminantes, await plantilla('formato4')),
+                        'Estamos preparando los nombres de todos los caminantes y servidores activos.',
+                        async () => generarNombresSantisimoPdf(personasSantisimo, await plantilla('formato4')),
                       )
                     }
                   >
@@ -699,15 +712,18 @@ export default function ImpresionRetiro() {
 
                   <TextField
                     select
-                    label="Caminante"
+                    label="Caminante o servidor"
                     value={camSantisimo}
                     onChange={(e) => setCamSantisimo(e.target.value)}
                   >
-                    {(datos.caminantes || []).map((c) => (
-                      <MenuItem key={c.id} value={c.id}>
-                        {c.nombre}
-                      </MenuItem>
-                    ))}
+                    {personasSantisimo.map((persona) => {
+                      const valor = `${persona.tipoPersona}:${persona.id}`;
+                      return (
+                        <MenuItem key={valor} value={valor}>
+                          {persona.nombre} · {persona.tipoPersona}
+                        </MenuItem>
+                      );
+                    })}
                   </TextField>
 
                   <Button
@@ -716,10 +732,18 @@ export default function ImpresionRetiro() {
                     onClick={() =>
                       ejecutar(
                         'Generando nombre para Santísimo',
-                        'Estamos preparando el nombre del caminante seleccionado.',
+                        'Estamos preparando el nombre de la persona seleccionada.',
                         async () => {
-                          const c = datos.caminantes.find((x) => x.id === camSantisimo);
-                          await generarNombreSantisimoIndividualPdf(c, await plantilla('formato4'));
+                          const persona = personasSantisimo.find(
+                            (x) => `${x.tipoPersona}:${x.id}` === camSantisimo,
+                          );
+                          if (!persona) {
+                            throw new Error('No fue posible encontrar la persona seleccionada.');
+                          }
+                          await generarNombreSantisimoIndividualPdf(
+                            persona,
+                            await plantilla('formato4'),
+                          );
                         },
                       )
                     }
