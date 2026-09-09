@@ -232,8 +232,8 @@ export default function App() {
             element={<PrivateRoute permiso="SISTEMA_TODO"><DatosHotel /></PrivateRoute>}
           />
           <Route
-            path="/sistema/documentos-identidad"
-            element={<PrivateRoute permiso="SISTEMA_DOCUMENTOS_IDENTIDAD_VER"><DocumentosIdentidad /></PrivateRoute>}
+            path="/logistica/documentos-identidad"
+            element={<PrivateRoute permiso="LOGISTICA_DOCUMENTOS_IDENTIDAD_VER"><DocumentosIdentidad /></PrivateRoute>}
           />
           <Route
             path="/sistema/escarapelas-habitaciones"

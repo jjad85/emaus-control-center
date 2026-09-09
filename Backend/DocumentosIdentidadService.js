@@ -8,7 +8,7 @@
  * - Los archivos NO se comparten públicamente en Drive.
  * - La consulta pública exige coincidencia exacta del número de documento.
  * - La carga vuelve a resolver la persona en backend y no confía en IDs del cliente.
- * - El panel interno requiere SISTEMA_DOCUMENTOS_IDENTIDAD_VER.
+ * - El panel interno requiere LOGISTICA_DOCUMENTOS_IDENTIDAD_VER.
  */
 
 const PROPIEDAD_CARPETA_DOCUMENTOS_IDENTIDAD =
@@ -113,7 +113,7 @@ function registrarDocumentoIdentidadPublico(documento, archivo) {
 }
 
 function obtenerPanelDocumentosIdentidad(token) {
-  validarPermiso(token, 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER');
+  validarPermiso(token, 'LOGISTICA_DOCUMENTOS_IDENTIDAD_VER');
 
   const personas = obtenerPersonasEsperadasDocumentosIdentidad_();
   const registros = obtenerRegistrosDocumentosIdentidadActivos_();
@@ -153,7 +153,7 @@ function obtenerPanelDocumentosIdentidad(token) {
 }
 
 function obtenerArchivoDocumentoIdentidad(token, tipoPersona, personaId) {
-  validarPermiso(token, 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER');
+  validarPermiso(token, 'LOGISTICA_DOCUMENTOS_IDENTIDAD_VER');
 
   const registro = obtenerRegistroDocumentoIdentidadPersona_(tipoPersona, personaId);
   if (!registro) {
@@ -184,7 +184,7 @@ function obtenerArchivoDocumentoIdentidad(token, tipoPersona, personaId) {
  * El frontend solicita lote 0, descarga y continúa hasta totalLotes - 1.
  */
 function exportarDocumentosIdentidad(token, lote) {
-  validarPermiso(token, 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER');
+  validarPermiso(token, 'LOGISTICA_DOCUMENTOS_IDENTIDAD_VER');
 
   const registros = obtenerRegistrosDocumentosIdentidadActivos_()
     .sort(function(a, b) {
@@ -262,7 +262,7 @@ function exportarDocumentosIdentidad(token, lote) {
 }
 
 function crearSolicitudDocumentoIdentidadWhatsapp(token, tipoPersona, personaId, link) {
-  validarPermiso(token, 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER');
+  validarPermiso(token, 'LOGISTICA_DOCUMENTOS_IDENTIDAD_VER');
 
   const persona = obtenerPersonaEsperadaDocumentoIdentidad_(tipoPersona, personaId);
   if (!persona) {

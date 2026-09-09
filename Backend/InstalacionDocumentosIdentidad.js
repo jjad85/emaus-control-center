@@ -44,7 +44,7 @@ function instalarDocumentosIdentidad() {
     instalado: true,
     hoja: HOJAS.DOCUMENTOS_IDENTIDAD,
     carpetaDriveId: carpeta.getId(),
-    permiso: 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER',
+    permiso: 'LOGISTICA_DOCUMENTOS_IDENTIDAD_VER',
     roles: ['ADMIN', 'LIDER_RETIRO', 'LIDER_MESA']
   };
 }
@@ -61,7 +61,7 @@ function configurarPermisoDocumentosIdentidad_() {
     throw new Error('PermisosRol debe contener Rol, Permiso y Activo.');
   }
 
-  const permiso = 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER';
+  const permiso = 'LOGISTICA_DOCUMENTOS_IDENTIDAD_VER';
   ['ADMIN', 'LIDER_RETIRO', 'LIDER_MESA'].forEach(function(rol) {
     let fila = -1;
     for (var i = 1; i < datos.length; i += 1) {

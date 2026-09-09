@@ -191,7 +191,7 @@ function obtenerCatalogoPermisosDefinitivo_() {
     ['SERVICIO_SERENATA_NOTIFICAR','Servicio al retiro','Serenata','Notificar decisiones por WhatsApp'],
 
     ['SISTEMA_TODO','Sistema','Sistema','Acceso completo'],
-    ['SISTEMA_DOCUMENTOS_IDENTIDAD_VER','Logística','Documentos de identidad','Consultar, visualizar, solicitar y exportar'],
+    ['LOGISTICA_DOCUMENTOS_IDENTIDAD_VER','Logística','Documentos de identidad','Consultar, visualizar, solicitar y exportar'],
     ['USUARIOS_CONSULTAR','Sistema','Usuarios','Consultar'],
     ['USUARIOS_CREAR','Sistema','Usuarios','Crear'],
     ['USUARIOS_EDITAR','Sistema','Usuarios','Editar y activar/inactivar'],
@@ -292,7 +292,7 @@ function obtenerMatrizInicialRolesPermisos_() {
   });
 
   dar('SISTEMA_TODO',['LIDER_RETIRO']);
-  dar('SISTEMA_DOCUMENTOS_IDENTIDAD_VER',['LIDER_RETIRO','LIDER_MESA']);
+  dar('LOGISTICA_DOCUMENTOS_IDENTIDAD_VER',['LIDER_RETIRO','LIDER_MESA']);
   dar('LOGISTICA_ESCARAPELAS_HABITACIONES_VER',['LIDER_RETIRO','LOGISTICA']);
   dar('SISTEMA_CONFIGURAR_PLANTILLAS_IMPRESION',['LIDER_RETIRO']);
   dar('SISTEMA_GENERAR_ESCARAPELAS_HABITACIONES',['LIDER_RETIRO','LOGISTICA']);

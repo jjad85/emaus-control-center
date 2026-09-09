@@ -192,9 +192,9 @@ const menuGroups = [
       },
       {
         label: 'Documentos de identidad',
-        path: '/sistema/documentos-identidad',
+        path: '/logistica/documentos-identidad',
         icon: <BadgeRounded />,
-        permiso: 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER',
+        permiso: 'LOGISTICA_DOCUMENTOS_IDENTIDAD_VER',
       },
     ],
   },
