@@ -184,6 +184,12 @@ function routeRequest(parametros) {
         mensaje: 'Biblioteca documental consultada correctamente'
       };
 
+    case 'documentosidentidad':
+      return {
+        datos: obtenerPanelDocumentosIdentidad(parametros.token),
+        mensaje: 'Documentos de identidad consultados correctamente'
+      };
+
     case 'centrologistico':
       return {
         datos: obtenerCentroLogistico(parametros.token),

@@ -30,6 +30,21 @@ function routePost(contenido) {
           'Sesión consultada correctamente'
       };
 
+    case 'consultardocumentoidentidadpublico':
+      return {
+        datos: consultarDocumentoIdentidadPublico(contenido.documento),
+        mensaje: 'Persona consultada correctamente'
+      };
+
+    case 'registrardocumentoidentidadpublico':
+      return {
+        datos: registrarDocumentoIdentidadPublico(
+          contenido.documento,
+          contenido.archivo
+        ),
+        mensaje: 'Documento de identidad recibido correctamente'
+      };
+
     case 'cerrarsesion':
       return {
         datos: cerrarSesion(
@@ -469,6 +484,36 @@ function routePost(contenido) {
           ),
         mensaje:
           'Recordatorio de pago creado correctamente'
+      };
+
+    case 'obtenerdocumentoidentidadarchivo':
+      return {
+        datos: obtenerArchivoDocumentoIdentidad(
+          contenido.token,
+          contenido.tipoPersona,
+          contenido.personaId
+        ),
+        mensaje: 'Documento de identidad consultado correctamente'
+      };
+
+    case 'exportardocumentosidentidad':
+      return {
+        datos: exportarDocumentosIdentidad(
+          contenido.token,
+          contenido.lote
+        ),
+        mensaje: 'Exportación de documentos de identidad generada correctamente'
+      };
+
+    case 'crearsolicituddocumentoidentidadwhatsapp':
+      return {
+        datos: crearSolicitudDocumentoIdentidadWhatsapp(
+          contenido.token,
+          contenido.tipoPersona,
+          contenido.personaId,
+          contenido.link
+        ),
+        mensaje: 'Solicitud de documento preparada correctamente'
       };
 
     case 'prepararnotificacionwhatsapp':

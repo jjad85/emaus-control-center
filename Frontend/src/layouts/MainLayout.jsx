@@ -54,6 +54,7 @@ import Inventory2Rounded from '@mui/icons-material/Inventory2Rounded';
 import MonitorHeartRounded from '@mui/icons-material/MonitorHeartRounded';
 import VolunteerActivismRounded from '@mui/icons-material/VolunteerActivismRounded';
 import MusicNoteRounded from '@mui/icons-material/MusicNoteRounded';
+import BadgeRounded from '@mui/icons-material/BadgeRounded';
 
 import {
   Outlet,
@@ -272,6 +273,12 @@ const menuGroups = [
         path: '/sistema/datos-hotel',
         icon: <HotelRounded />,
         permiso: 'SISTEMA_TODO',
+      },
+      {
+        label: 'Documentos de identidad',
+        path: '/sistema/documentos-identidad',
+        icon: <BadgeRounded />,
+        permiso: 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER',
       },
       {
         label: 'Auditoría',

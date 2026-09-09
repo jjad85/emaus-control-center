@@ -16,7 +16,8 @@ const TIPOS_NOTIFICACION_WHATSAPP = {
   CANCELACION: 'CANCELACION',
   PAGO_RECHAZADO: 'PAGO_RECHAZADO',
   RECORDATORIO_PAGO: 'RECORDATORIO_PAGO',
-  AUTORIZACIONES: 'AUTORIZACIONES'
+  AUTORIZACIONES: 'AUTORIZACIONES',
+  DOCUMENTO_IDENTIDAD: 'DOCUMENTO_IDENTIDAD'
 };
 
 const ESTADOS_NOTIFICACION_WHATSAPP = {
@@ -579,6 +580,10 @@ function puedeGestionarTipoWhatsapp_(permisos, tipo) {
     return permisos.includes('ENVIAR_AUTORIZACIONES_CAMINANTE');
   }
 
+  if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.DOCUMENTO_IDENTIDAD) {
+    return permisos.includes('SISTEMA_DOCUMENTOS_IDENTIDAD_VER');
+  }
+
   if (tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.CANCELACION || tipoNormalizado === TIPOS_NOTIFICACION_WHATSAPP.PAGO_RECHAZADO) {
     return (
       permisos.includes('NOTIFICAR_CAMINANTE') ||
@@ -611,6 +616,10 @@ function obtenerPlantillaWhatsapp_(tipo, configuracion) {
   plantillas[TIPOS_NOTIFICACION_WHATSAPP.AUTORIZACIONES] =
     configuracion.whatsappMensajeAutorizaciones ||
     'Hola {{nombre}}. Para finalizar tu inscripción, responde las autorizaciones aquí: {{link}}. El enlace estará disponible durante {{minutos}} minutos.';
+
+  plantillas[TIPOS_NOTIFICACION_WHATSAPP.DOCUMENTO_IDENTIDAD] =
+    configuracion.whatsappMensajeDocumentoIdentidad ||
+    'Hola {{nombre}} 👋\n\nPara completar la información requerida para el retiro, necesitamos que nos compartas un escaneo o una foto clara de tu documento de identidad por ambos lados.\n\nPuedes cargarlo de forma segura en el siguiente enlace:\n{{link}}\n\nSi ya lo enviaste, por favor ignora este mensaje. Muchas gracias 🙏';
 
   return plantillas[String(tipo || '').toUpperCase()] || '';
 }

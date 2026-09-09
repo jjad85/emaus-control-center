@@ -52,6 +52,8 @@ import EstadoAplicacion from './pages/EstadoAplicacion';
 import DatosHotel from './pages/DatosHotel';
 import ImpresionRetiro from './pages/ImpresionRetiro';
 import ServicioRetiro from './pages/ServicioRetiro';
+import RegistroDocumentoIdentidad from './pages/RegistroDocumentoIdentidad';
+import DocumentosIdentidad from './pages/DocumentosIdentidad';
 
 export default function App() {
   return (
@@ -71,6 +73,7 @@ export default function App() {
         <Route path="/servir/serenata" element={<RegistroApoyoAudiovisual />} />
         <Route path="/servir/apoyo-audiovisual" element={<RegistroApoyoAudiovisual />} />
         <Route path="/autorizaciones" element={<AutorizacionesCaminante />} />
+        <Route path="/documento-identidad" element={<RegistroDocumentoIdentidad />} />
 
         {/* Pantalla pública sin menú lateral ni autenticación */}
         <Route
@@ -227,6 +230,10 @@ export default function App() {
           <Route
             path="/sistema/datos-hotel"
             element={<PrivateRoute permiso="SISTEMA_TODO"><DatosHotel /></PrivateRoute>}
+          />
+          <Route
+            path="/sistema/documentos-identidad"
+            element={<PrivateRoute permiso="SISTEMA_DOCUMENTOS_IDENTIDAD_VER"><DocumentosIdentidad /></PrivateRoute>}
           />
           <Route
             path="/sistema/escarapelas-habitaciones"
