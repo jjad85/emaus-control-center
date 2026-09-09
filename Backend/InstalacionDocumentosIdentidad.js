@@ -45,7 +45,7 @@ function instalarDocumentosIdentidad() {
     hoja: HOJAS.DOCUMENTOS_IDENTIDAD,
     carpetaDriveId: carpeta.getId(),
     permiso: 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER',
-    roles: ['ADMIN', 'LIDER_RETIRO']
+    roles: ['ADMIN', 'LIDER_RETIRO', 'LIDER_MESA']
   };
 }
 
@@ -62,7 +62,7 @@ function configurarPermisoDocumentosIdentidad_() {
   }
 
   const permiso = 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER';
-  ['ADMIN', 'LIDER_RETIRO'].forEach(function(rol) {
+  ['ADMIN', 'LIDER_RETIRO', 'LIDER_MESA'].forEach(function(rol) {
     let fila = -1;
     for (var i = 1; i < datos.length; i += 1) {
       if (

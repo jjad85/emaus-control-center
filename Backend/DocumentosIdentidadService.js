@@ -131,6 +131,7 @@ function obtenerPanelDocumentosIdentidad(token) {
       nombre: persona.nombre,
       telefono: persona.telefono || '',
       documentoIdentidad: persona.documentoIdentidad || '',
+      mesa: persona.mesa || '',
       entregado: Boolean(registro),
       fechaRegistro: registro ? registro.fechaRegistro || '' : '',
       mimeType: registro ? registro.mimeType || '' : '',
@@ -296,7 +297,7 @@ function crearSolicitudDocumentoIdentidadWhatsapp(token, tipoPersona, personaId,
   return crearNotificacionWhatsappPendiente({
     tipo: TIPOS_NOTIFICACION_WHATSAPP.DOCUMENTO_IDENTIDAD,
     entidad: 'DocumentosIdentidad',
-    entidadId: persona.tipoPersona + ':' + persona.id + ':' + new Date().getTime(),
+    entidadId: persona.tipoPersona + ':' + persona.id,
     nombre: persona.nombre,
     telefono: persona.telefono,
     motivo: JSON.stringify({
@@ -349,14 +350,15 @@ function obtenerPersonasEsperadasDocumentosIdentidad_() {
         tipoPersona: 'Caminante',
         nombre: String(item.nombre || '').trim(),
         documentoIdentidad: String(item.documentoIdentidad || '').trim(),
-        telefono: String(item.telefono || item.celular || '').trim()
+        telefono: String(item.telefono || item.celular || '').trim(),
+        mesa: String(item.mesa || '').trim()
       };
     });
 
   const servidores = obtenerServidores({})
     .filter(function(item) {
-      return Boolean(item.activo) &&
-        !Boolean(item.exentoPago) &&
+      return convertirBooleano(item.activo) &&
+        !convertirBooleano(item.exentoPago) &&
         Boolean(normalizarNumeroDocumentoIdentidad_(item.documentoIdentidad));
     })
     .map(function(item) {
@@ -365,7 +367,8 @@ function obtenerPersonasEsperadasDocumentosIdentidad_() {
         tipoPersona: 'Servidor',
         nombre: String(item.nombre || '').trim(),
         documentoIdentidad: String(item.documentoIdentidad || '').trim(),
-        telefono: String(item.celular || '').trim()
+        telefono: String(item.celular || '').trim(),
+        mesa: ''
       };
     });
 

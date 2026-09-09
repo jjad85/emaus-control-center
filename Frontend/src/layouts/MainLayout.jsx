@@ -190,6 +190,12 @@ const menuGroups = [
         icon: <PrintRounded />,
         permiso: 'LOGISTICA_ESCARAPELAS_HABITACIONES_VER',
       },
+      {
+        label: 'Documentos de identidad',
+        path: '/sistema/documentos-identidad',
+        icon: <BadgeRounded />,
+        permiso: 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER',
+      },
     ],
   },
   {
@@ -273,12 +279,6 @@ const menuGroups = [
         path: '/sistema/datos-hotel',
         icon: <HotelRounded />,
         permiso: 'SISTEMA_TODO',
-      },
-      {
-        label: 'Documentos de identidad',
-        path: '/sistema/documentos-identidad',
-        icon: <BadgeRounded />,
-        permiso: 'SISTEMA_DOCUMENTOS_IDENTIDAD_VER',
       },
       {
         label: 'Auditoría',

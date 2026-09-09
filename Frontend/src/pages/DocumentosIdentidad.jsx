@@ -1,4 +1,7 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -13,6 +16,7 @@ import {
   Grid,
   InputAdornment,
   LinearProgress,
+  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -21,17 +25,21 @@ import BadgeRounded from '@mui/icons-material/BadgeRounded';
 import CancelRounded from '@mui/icons-material/CancelRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import DownloadRounded from '@mui/icons-material/DownloadRounded';
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import GroupsRounded from '@mui/icons-material/GroupsRounded';
+import PersonRounded from '@mui/icons-material/PersonRounded';
 import SearchRounded from '@mui/icons-material/SearchRounded';
+import WhatsApp from '@mui/icons-material/WhatsApp';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import PageHeader from '../components/PageHeader';
-import WhatsAppNotifyButton from '../components/WhatsAppNotifyButton';
 import {
   crearSolicitudDocumentoIdentidadWhatsapp,
   exportarDocumentosIdentidad,
   obtenerDocumentoIdentidadArchivo,
   obtenerPanelDocumentosIdentidad,
 } from '../api/documentosIdentidadApi';
+import { prepararNotificacionWhatsapp } from '../api/whatsappApi';
 
 function descargarBase64(nombre, mimeType, base64) {
   const binario = atob(base64);
@@ -71,17 +79,94 @@ function Indicador({ titulo, datos }) {
   );
 }
 
+function TarjetaPersona({ item, onOpen, onSolicitar, solicitando }) {
+  return (
+    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+      <Card
+        variant="outlined"
+        onClick={() => onOpen(item)}
+        sx={{
+          height: '100%',
+          borderRadius: 3,
+          cursor: 'pointer',
+          transition: 'transform .15s ease, box-shadow .15s ease',
+          '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 },
+        }}
+      >
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1.2} alignItems="flex-start">
+              {item.entregado ? (
+                <CheckCircleRounded color="success" sx={{ mt: 0.2 }} />
+              ) : (
+                <CancelRounded color="error" sx={{ mt: 0.2 }} />
+              )}
+              <Box minWidth={0} flex={1}>
+                <Typography fontWeight={900} lineHeight={1.2}>{item.nombre}</Typography>
+                {item.tipoPersona === 'Caminante' && item.mesa ? (
+                  <Typography variant="caption" color="text.secondary">Mesa {item.mesa}</Typography>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">{item.tipoPersona}</Typography>
+                )}
+              </Box>
+            </Stack>
+
+            {!item.entregado && (
+              <Box onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="success"
+                  fullWidth
+                  startIcon={solicitando ? <CircularProgress size={16} color="inherit" /> : <WhatsApp />}
+                  onClick={() => onSolicitar(item)}
+                  disabled={solicitando}
+                >
+                  Solicitar documento
+                </Button>
+              </Box>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
+    </Grid>
+  );
+}
+
+function ResumenAcordeon({ icono, titulo, items }) {
+  const total = items.length;
+  const entregados = items.filter((item) => item.entregado).length;
+  return (
+    <Stack direction="row" spacing={1.2} alignItems="center" width="100%" pr={1}>
+      {icono}
+      <Box flex={1} minWidth={0}>
+        <Typography fontWeight={950}>{titulo}</Typography>
+        <Typography variant="caption" color="text.secondary">
+          {entregados} entregados de {total}
+        </Typography>
+      </Box>
+      <Chip
+        size="small"
+        color={total > 0 && entregados === total ? 'success' : 'default'}
+        label={`${entregados}/${total}`}
+      />
+    </Stack>
+  );
+}
+
 export default function DocumentosIdentidad() {
   const { token } = useAuth();
   const [data, setData] = useState({ items: [], indicadores: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [texto, setTexto] = useState('');
+  const [mesa, setMesa] = useState('');
   const [detalle, setDetalle] = useState(null);
   const [archivo, setArchivo] = useState(null);
   const [cargandoArchivo, setCargandoArchivo] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [progresoExportacion, setProgresoExportacion] = useState('');
+  const [solicitandoClave, setSolicitandoClave] = useState('');
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -98,15 +183,44 @@ export default function DocumentosIdentidad() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const items = useMemo(() => {
+  const todosCaminantes = useMemo(
+    () => (data.items || []).filter((item) => item.tipoPersona === 'Caminante'),
+    [data.items]
+  );
+
+  const todosServidores = useMemo(
+    () => (data.items || []).filter((item) => item.tipoPersona === 'Servidor'),
+    [data.items]
+  );
+
+  const mesas = useMemo(() => (
+    Array.from(new Set(
+      todosCaminantes
+        .map((item) => String(item.mesa || '').trim())
+        .filter(Boolean)
+    )).sort((a, b) => Number(a) - Number(b) || a.localeCompare(b, 'es'))
+  ), [todosCaminantes]);
+
+  const coincideBusqueda = useCallback((item) => {
     const q = String(texto || '').trim().toLowerCase();
-    if (!q) return data.items || [];
-    return (data.items || []).filter((item) =>
+    if (!q) return true;
+    return (
       String(item.nombre || '').toLowerCase().includes(q) ||
-      String(item.tipoPersona || '').toLowerCase().includes(q) ||
       String(item.documentoIdentidad || '').includes(q)
     );
-  }, [data.items, texto]);
+  }, [texto]);
+
+  const caminantes = useMemo(() => (
+    todosCaminantes.filter((item) =>
+      coincideBusqueda(item) &&
+      (!mesa || String(item.mesa || '').trim() === String(mesa))
+    )
+  ), [todosCaminantes, coincideBusqueda, mesa]);
+
+  const servidores = useMemo(
+    () => todosServidores.filter(coincideBusqueda),
+    [todosServidores, coincideBusqueda]
+  );
 
   const linkPublico = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -127,6 +241,55 @@ export default function DocumentosIdentidad() {
       setError(err.message || 'No fue posible abrir el documento.');
     } finally {
       setCargandoArchivo(false);
+    }
+  }
+
+  async function solicitarDocumento(item) {
+    const clave = `${item.tipoPersona}-${item.id}`;
+    const ventanaWhatsapp = window.open('', '_blank');
+
+    if (!ventanaWhatsapp) {
+      setError('El navegador bloqueó la nueva pestaña de WhatsApp. Habilita las ventanas emergentes para este sitio.');
+      return;
+    }
+
+    try {
+      ventanaWhatsapp.document.title = 'Preparando WhatsApp…';
+      ventanaWhatsapp.document.body.innerHTML = `
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;background:#f5f7f6;color:#173b34;text-align:center;padding:24px;box-sizing:border-box;">
+          <div><div style="font-size:42px;margin-bottom:12px;">💬</div><strong>Preparando mensaje de WhatsApp…</strong></div>
+        </div>
+      `;
+    } catch {
+      // La pestaña puede no permitir modificación temporal en algunos navegadores.
+    }
+
+    setSolicitandoClave(clave);
+    setError('');
+
+    try {
+      const notificacion = await crearSolicitudDocumentoIdentidadWhatsapp(
+        token,
+        item.tipoPersona,
+        item.id,
+        linkPublico
+      );
+
+      if (!notificacion?.id) {
+        throw new Error('No fue posible preparar la solicitud de documento.');
+      }
+
+      const preparada = await prepararNotificacionWhatsapp(token, notificacion.id);
+      if (!preparada?.url) {
+        throw new Error('No fue posible obtener el enlace de WhatsApp.');
+      }
+
+      ventanaWhatsapp.location.replace(preparada.url);
+    } catch (err) {
+      try { ventanaWhatsapp.close(); } catch { /* sin acción */ }
+      setError(err.message || 'No fue posible abrir WhatsApp.');
+    } finally {
+      setSolicitandoClave('');
     }
   }
 
@@ -162,7 +325,7 @@ export default function DocumentosIdentidad() {
   return (
     <>
       <PageHeader
-        eyebrow="Sistema"
+        eyebrow="Logística"
         title="Documentos de identidad"
         subtitle="Control de cédulas entregadas por caminantes y servidores requeridos por la casa de retiros."
         onRefresh={cargar}
@@ -199,61 +362,77 @@ export default function DocumentosIdentidad() {
 
         {loading ? (
           <Box py={8} display="grid" sx={{ placeItems: 'center' }}><CircularProgress /></Box>
-        ) : !items.length ? (
-          <Alert severity="info">No hay personas que coincidan con la búsqueda.</Alert>
         ) : (
-          <Grid container spacing={1.5}>
-            {items.map((item) => (
-              <Grid key={`${item.tipoPersona}-${item.id}`} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                <Card
-                  variant="outlined"
-                  onClick={() => abrirDetalle(item)}
-                  sx={{
-                    height: '100%',
-                    borderRadius: 3,
-                    cursor: 'pointer',
-                    transition: 'transform .15s ease, box-shadow .15s ease',
-                    '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 },
-                  }}
-                >
-                  <CardContent>
-                    <Stack spacing={1.5}>
-                      <Stack direction="row" spacing={1.2} alignItems="flex-start">
-                        {item.entregado ? (
-                          <CheckCircleRounded color="success" sx={{ mt: 0.2 }} />
-                        ) : (
-                          <CancelRounded color="error" sx={{ mt: 0.2 }} />
-                        )}
-                        <Box minWidth={0} flex={1}>
-                          <Typography fontWeight={900} lineHeight={1.2}>{item.nombre}</Typography>
-                          <Typography variant="caption" color="text.secondary">{item.tipoPersona}</Typography>
-                        </Box>
-                      </Stack>
+          <Stack spacing={1.5}>
+            <Accordion defaultExpanded sx={{ borderRadius: '16px !important', overflow: 'hidden', '&:before': { display: 'none' } }}>
+              <AccordionSummary expandIcon={<ExpandMoreRounded />}>
+                <ResumenAcordeon
+                  icono={<GroupsRounded color="primary" />}
+                  titulo="Caminantes"
+                  items={todosCaminantes}
+                />
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={2}>
+                  <TextField
+                    select
+                    label="Filtrar por mesa"
+                    value={mesa}
+                    onChange={(e) => setMesa(e.target.value)}
+                    sx={{ width: { xs: '100%', sm: 260 } }}
+                  >
+                    <MenuItem value="">Todas las mesas</MenuItem>
+                    {mesas.map((numeroMesa) => (
+                      <MenuItem key={numeroMesa} value={numeroMesa}>Mesa {numeroMesa}</MenuItem>
+                    ))}
+                  </TextField>
 
-                      {!item.entregado && (
-                        <Box onClick={(e) => e.stopPropagation()}>
-                          <WhatsAppNotifyButton
-                            token={token}
-                            label="Solicitar documento"
-                            size="small"
-                            fullWidth
-                            crearNotificacion={() =>
-                              crearSolicitudDocumentoIdentidadWhatsapp(
-                                token,
-                                item.tipoPersona,
-                                item.id,
-                                linkPublico
-                              )
-                            }
-                          />
-                        </Box>
-                      )}
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+                  {!caminantes.length ? (
+                    <Alert severity="info">No hay caminantes que coincidan con los filtros seleccionados.</Alert>
+                  ) : (
+                    <Grid container spacing={1.5}>
+                      {caminantes.map((item) => (
+                        <TarjetaPersona
+                          key={`${item.tipoPersona}-${item.id}`}
+                          item={item}
+                          onOpen={abrirDetalle}
+                          onSolicitar={solicitarDocumento}
+                          solicitando={solicitandoClave === `${item.tipoPersona}-${item.id}`}
+                        />
+                      ))}
+                    </Grid>
+                  )}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion sx={{ borderRadius: '16px !important', overflow: 'hidden', '&:before': { display: 'none' } }}>
+              <AccordionSummary expandIcon={<ExpandMoreRounded />}>
+                <ResumenAcordeon
+                  icono={<PersonRounded color="primary" />}
+                  titulo="Servidores"
+                  items={todosServidores}
+                />
+              </AccordionSummary>
+              <AccordionDetails>
+                {!servidores.length ? (
+                  <Alert severity="info">No hay servidores que coincidan con la búsqueda.</Alert>
+                ) : (
+                  <Grid container spacing={1.5}>
+                    {servidores.map((item) => (
+                      <TarjetaPersona
+                        key={`${item.tipoPersona}-${item.id}`}
+                        item={item}
+                        onOpen={abrirDetalle}
+                        onSolicitar={solicitarDocumento}
+                        solicitando={solicitandoClave === `${item.tipoPersona}-${item.id}`}
+                      />
+                    ))}
+                  </Grid>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          </Stack>
         )}
       </Stack>
 
@@ -268,7 +447,11 @@ export default function DocumentosIdentidad() {
             <BadgeRounded color="primary" />
             <Box>
               <Typography variant="h6" fontWeight={900}>{detalle?.nombre}</Typography>
-              <Typography variant="caption" color="text.secondary">{detalle?.tipoPersona}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {detalle?.tipoPersona === 'Caminante' && detalle?.mesa
+                  ? `Caminante · Mesa ${detalle.mesa}`
+                  : detalle?.tipoPersona}
+              </Typography>
             </Box>
           </Stack>
         </DialogTitle>
